@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -6,6 +6,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { RippleModule } from 'primeng/ripple';
+import { CardModule } from 'primeng/card';
 import { AppFloatingConfigurator } from '../../layout/component/app.floatingconfigurator';
 import { AuthService } from '@/core/services/auth.service';
 import { MessageService } from 'primeng/api';
@@ -14,7 +15,7 @@ import { CommonModule } from '@angular/common';
 @Component({
     selector: 'app-login',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, ButtonModule, CheckboxModule, InputTextModule, PasswordModule, FormsModule, RouterModule, RippleModule, AppFloatingConfigurator],
+    imports: [CommonModule, ReactiveFormsModule, ButtonModule, CheckboxModule, InputTextModule, PasswordModule, FormsModule, RouterModule, RippleModule, AppFloatingConfigurator, CardModule],
     template: `
         <app-floating-configurator />
         <div class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-screen overflow-hidden">
@@ -39,45 +40,90 @@ import { CommonModule } from '@angular/common';
                                     />
                                 </g>
                             </svg>
-                            <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">Welcome to PrimeLand!</div>
-                            <span class="text-muted-color font-medium">Sign in to continue</span>
-                        </div>
-
-                        <div>
-                    <form [formGroup]="userDetailForm" (ngSubmit)="login()">
-
-                        <label for="cedula"
-                            class="block text-surface-900 dark:text-surface-0 text-xl font-medium">Cedula</label>
-                        <input pInputText type="cedula" formControlName="cedula" id="cedula" placeholder="cedula"
-                            class="w-full md:w-[30rem] mb-4" required />
-
-                        <label for="password"
-                            class="block text-surface-900 dark:text-surface-0 font-medium text-xl">Password</label>
-                        <p-password type="password" formControlName="password" id="password" placeholder="Password"
-                            [toggleMask]="true" styleClass="mb-4" [fluid]="true" [feedback]="false"
-                            required></p-password>
-
-                        <label for="role"
-                            class="block text-surface-900 dark:text-surface-0 text-xl font-medium">Role</label>
-                        <input pInputText type="role" formControlName="role" id="role" placeholder="role"
-                            class="w-full md:w-[30rem] mb-4" required />
-
-                        <div class="flex items-center justify-between mt-2 mb-6 gap-8">
-                            <span routerLink="/auth/forgot-password"
-                                class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">Forgot
-                                password?</span>
-                        </div>
-
-                        <p-button type="submit" styleClass="w-full">Sign In</p-button>
-
-                        <div class="mt-3 text-center">Don't have an account?
-                            <span routerLink="/auth/register" class="font-medium no-underline ml-2 cursor-pointer text-primary">
-                                Register
+                            <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">Egas Tamayo & Asociados</div>
+                            <span class="text-muted-color font-medium text-sm">
+                                Contabilidad, Impuestos, Nómina
                             </span>
+                            <div class="mt-2">
+                                <span class="text-muted-color font-medium">
+                                    {{ mostrarSelectorEmpresa() ? 'Selecciona una empresa' : 'Inicia sesión para continuar' }}
+                                </span>
+                            </div>
                         </div>
-                        
-                    </form>
-                </div>
+
+                        <!-- PASO 1: Formulario de Login -->
+                        <div *ngIf="!mostrarSelectorEmpresa()">
+                            <form [formGroup]="userDetailForm" (ngSubmit)="login()">
+                                <label for="nombreUsuario"
+                                       class="block text-surface-900 dark:text-surface-0 text-xl font-medium">Nombre Usuario</label>
+                                <input pInputText type="text" formControlName="nombreUsuario" id="nombreUsuario" placeholder="Nombre de usuario"
+                                       class="w-full md:w-[30rem] mb-4" required />
+
+                                <label for="contrasena"
+                                       class="block text-surface-900 dark:text-surface-0 font-medium text-xl">Contraseña</label>
+                                <p-password type="password" formControlName="contrasena" id="contrasena" placeholder="Contraseña"
+                                            [toggleMask]="true" styleClass="mb-4" [fluid]="true" [feedback]="false"
+                                            required></p-password>
+
+                                <div class="flex items-center justify-between mt-2 mb-6 gap-8">
+                                    <span routerLink="/auth/forgot-password"
+                                          class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">¿Olvidaste tu contraseña?</span>
+                                </div>
+
+                                <p-button type="submit" [loading]="cargandoLogin()" styleClass="w-full">Iniciar Sesión</p-button>
+
+                            </form>
+                        </div>
+
+                        <!-- PASO 2: Selector de Empresa -->
+                        <div *ngIf="mostrarSelectorEmpresa()">
+                            <div class="text-center mb-6">
+                                <p class="text-surface-700 dark:text-surface-300">
+                                    Credenciales válidas. Selecciona la empresa con la que deseas ingresar:
+                                </p>
+                            </div>
+
+                            <div class="space-y-3">
+                                <p-card *ngFor="let empresa of empresasDisponibles()"
+                                        styleClass="cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-800 transition-all duration-200 border-1 hover:border-primary-300"
+                                        (click)="seleccionarEmpresa(empresa.id)">
+                                    <div class="flex items-center gap-4">
+                                        <!-- Icono de empresa -->
+                                        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30">
+                                            <i class="pi pi-building text-primary text-xl"></i>
+                                        </div>
+
+                                        <!-- Información de la empresa -->
+                                        <div class="flex-1">
+                                            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-1">
+                                                {{ empresa.nomempresa }}
+                                            </h3>
+                                            <div class="flex items-center gap-2">
+                                                <i class="pi pi-tag text-surface-500 text-sm"></i>
+                                                <p class="text-sm text-surface-600 dark:text-surface-400">
+                                                    ID: {{ empresa.id }}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <!-- Flecha de acceso -->
+                                        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-100 dark:bg-surface-700">
+                                            <i class="pi pi-arrow-right text-primary text-sm"></i>
+                                        </div>
+                                    </div>
+                                </p-card>
+                            </div>
+
+                            <div class="mt-6">
+                                <p-button
+                                    type="button"
+                                    styleClass="w-full"
+                                    severity="secondary"
+                                    (click)="cancelarSeleccion()">
+                                    Cancelar
+                                </p-button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -90,31 +136,92 @@ export class Login {
     readonly authService = inject(AuthService);
     readonly router = inject(Router);
 
+    // Signals para manejar el estado del componente
+    readonly cargandoLogin = signal(false);
+    readonly empresasDisponibles = signal<Array<{id: number, nomempresa: string, flag: boolean}>>([]);
+    readonly mostrarSelectorEmpresa = signal(false);
+
     userDetailForm = this.formBuilder.group({
-        cedula: ['', [Validators.required, Validators.pattern('^[0-9]+$')]],
-        password: ['', [Validators.required, Validators.minLength(6)]],
-        role: ['', [Validators.required, Validators.minLength(3)]],
+        nombreUsuario: ['', [Validators.required, Validators.minLength(3)]],
+        contrasena: ['', [Validators.required, Validators.minLength(4)]],
     });
 
+    /** PASO 1: Login inicial */
     login(): void {
         if (this.userDetailForm.invalid) {
-            this.msgService.add({ severity: 'warn', summary: 'Advertencia', detail: 'Por favor, completa los campos requeridos.' });
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Advertencia',
+                detail: 'Por favor, completa los campos requeridos.'
+            });
             return;
         }
 
-        const { cedula, password, role } = this.userDetailForm.value;
+        const { nombreUsuario, contrasena } = this.userDetailForm.value;
+        this.cargandoLogin.set(true);
 
-        this.authService.login(cedula!, password!, role!).subscribe({
-            next: () => {
-                const roles = this.authService.getRolesSignal()();
-                if (roles.includes('Admin')) {
-                    this.router.navigate(['/admin/dashboard']);
-                } else if (roles) {
-                    this.router.navigate(['/dashboard']);
-                } else {
-                    this.msgService.add({ severity: 'error', summary: 'Error', detail: 'Rol no encontrado' });
-                }
+        this.authService.login(nombreUsuario!, contrasena!).subscribe({
+            next: (response) => {
+                this.cargandoLogin.set(false);
+
+                // Guardar empresas disponibles y mostrar selector
+                this.empresasDisponibles.set(response.listado);
+                this.mostrarSelectorEmpresa.set(true);
+
+                this.msgService.add({
+                    severity: 'success',
+                    summary: 'Credenciales válidas',
+                    detail: 'Ahora selecciona la empresa con la que deseas ingresar'
+                });
             },
+            error: (error) => {
+                this.cargandoLogin.set(false);
+                console.error('Error en login:', error);
+                this.msgService.add({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: 'Credenciales incorrectas. Verifique su usuario y contraseña.'
+                });
+            }
         });
+    }
+
+    /** PASO 2: Seleccionar empresa */
+    seleccionarEmpresa(idEmpresa: number): void {
+        this.cargandoLogin.set(true);
+
+        this.authService.loginConEmpresa(idEmpresa).subscribe({
+            next: (response) => {
+                this.cargandoLogin.set(false);
+
+                const empresaSeleccionada = this.empresasDisponibles().find(emp => emp.id === idEmpresa);
+
+                this.msgService.add({
+                    severity: 'success',
+                    summary: 'Bienvenido',
+                    detail: `Acceso autorizado a ${empresaSeleccionada?.nomempresa}`
+                });
+
+                // Redirigir al dashboard
+                this.router.navigate(['/dashboard']);
+            },
+            error: (error) => {
+                this.cargandoLogin.set(false);
+                console.error('Error al obtener token de empresa:', error);
+                this.msgService.add({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: 'No se pudo acceder a la empresa seleccionada. Intenta nuevamente.'
+                });
+            }
+        });
+    }
+
+    /** Cancelar selección y volver al login */
+    cancelarSeleccion(): void {
+        this.authService.cancelarLogin();
+        this.empresasDisponibles.set([]);
+        this.mostrarSelectorEmpresa.set(false);
+        this.userDetailForm.reset();
     }
 }

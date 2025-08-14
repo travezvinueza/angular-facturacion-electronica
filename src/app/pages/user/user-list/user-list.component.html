@@ -1,166 +1,170 @@
-<div class="grid">
-  <div class="col-8">
-    <div class="card px-6 py-6">
-      <p-toolbar styleClass="mb-6">
-        <ng-template #start>
-          <p-button label="New" icon="pi pi-plus" severity="secondary" class="mr-2" (onClick)="openNew()" />
-        </ng-template>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-4 h-screen p-4 mb-4">
+    <!-- Panel Izquierdo - Lista de Usuarios -->
+    <div class="lg:col-span-4 flex flex-col">
+        <p-card styleClass="h-full">
+            <ng-template pTemplate="header">
+                <div class="flex justify-between items-center p-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-surface-900 dark:text-surface-0">Lista de Usuarios</h2>
+                        <p class="text-surface-600 dark:text-surface-400 text-sm">Gestiona los usuarios de la empresa</p>
+                    </div>
+                </div>
+            </ng-template>
 
-        <ng-template #end>
-          <p-button label="Export" icon="pi pi-upload" severity="secondary" (onClick)="exportCSV()" />
-        </ng-template>
-      </p-toolbar>
+            <!-- Toolbar -->
+            <p-toolbar styleClass="mb-4">
+                <ng-template pTemplate="right">
+                    <p-iconField iconPosition="left">
+                        <p-inputIcon>
+                            <i class="pi pi-search"></i>
+                        </p-inputIcon>
+                        <input
+                            pInputText
+                            type="text"
+                            placeholder="Buscar usuarios..."
+                            (input)="onSearch($event)"
+                            class="w-full">
+                    </p-iconField>
+                </ng-template>
+            </p-toolbar>
 
-      <p-table #dt [value]="users" responsiveLayout="scroll" [rows]="10" [paginator]="true"
-        [globalFilterFields]="['name_us']" [tableStyle]="{ 'min-width': '75rem' }" [rowHover]="true" dataKey="id"
-        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} users" [showCurrentPageReport]="true"
-        [rowsPerPageOptions]="[10, 20, 30]">
-        <ng-template pTemplate="header">
-          <tr>
-            <th pSortableColumn="id_us" scope="col">
-              Id <p-sortIcon field="id_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="name_us" scope="col">
-              Name <p-sortIcon field="name_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="lastname_us" scope="col">
-              Lastname <p-sortIcon field="lastname_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="email_us" scope="col">
-              Email <p-sortIcon field="email_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="rol" scope="col">
-              Rol <p-sortIcon field="rol"></p-sortIcon>
-            </th>
-            <th pSortableColumn="dni_us" scope="col">
-              Dni <p-sortIcon field="dni_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="phone_us" scope="col">
-              Phone <p-sortIcon field="phone_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="nationality_us" scope="col">
-              Nationality <p-sortIcon field="nationality_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="gender_us" scope="col">
-              Gender <p-sortIcon field="gender_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="terms_and_conditions" scope="col">
-              Terms and Conditions <p-sortIcon field="terms_and_conditions"></p-sortIcon>
-            </th>
-          </tr>
-        </ng-template>
+            <!-- Lista de Usuarios -->
+            <div class="flex-1 overflow-auto">
 
-        <ng-template pTemplate="body" let-user>
-          <tr>
-            <td style="min-width: 10rem">{{ user.id }}</td>
-            <td style="min-width: 10rem">{{ user.name_us }}</td>
-            <td style="min-width: 10rem">{{ user.lastname_us }}</td>
-            <td style="min-width: 10rem">{{ user.email_us }}</td>
-            <td style="min-width: 10rem">{{ user.rol }}</td>
-            <td style="min-width: 10rem">{{ user.dni_us }}</td>
-            <td style="min-width: 10rem">{{ user.phone_us }}</td>
-            <td style="min-width: 10rem">{{ user.nationality_us }}</td>
-            <td style="min-width: 10rem">{{ user.gender_us }}</td>
-            <td style="min-width: 10rem">{{ user.terms_and_conditions }}</td>
-          </tr>
-        </ng-template>
-      </p-table>
+                <!-- Loading Skeleton -->
+                <div *ngIf="loading" class="space-y-3">
+                    <div *ngFor="let item of [1,2,3,4,5]" class="border rounded-lg p-4">
+                        <div class="flex items-center space-x-4">
+                            <p-skeleton shape="circle" size="3rem"></p-skeleton>
+                            <div class="flex-1">
+                                <p-skeleton height="1rem" class="mb-2"></p-skeleton>
+                                <p-skeleton height="0.8rem" width="70%"></p-skeleton>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
+                <!-- Lista Real de Usuarios -->
+                <div *ngIf="!loading" class="space-y-2">
+                    <div
+                        *ngFor="let user of paginatedUsers"
+                        class="border rounded-lg p-4 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors cursor-pointer"
+                        (click)="selectUser(user)">
+
+                        <div class="flex items-center space-x-4">
+                            <!-- Avatar -->
+                            <div class="flex items-center justify-center w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30">
+                                <i class="pi pi-user text-primary text-xl"></i>
+                            </div>
+
+                            <!-- Info del Usuario -->
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-surface-900 dark:text-surface-0 truncate">
+                                    {{ user.usunombre }}
+                                </h3>
+                                <p class="text-sm text-surface-600 dark:text-surface-400 truncate">
+                                    {{ user.usucod }} • {{ user.usucodv }}
+                                </p>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <!-- Estado -->
+                                    <p-tag
+                                        [value]="getEstadoText(user.usuestado)"
+                                        [severity]="getEstadoSeverity(user.usuestado)"
+                                        styleClass="text-xs">
+                                    </p-tag>
+
+                                    <!-- Accesos -->
+                                    <div class="flex space-x-1">
+                                        <i *ngIf="user.usuwebapp" class="pi pi-desktop text-green-500 text-xs" title="Acceso Web"></i>
+                                        <i *ngIf="user.usuapp" class="pi pi-mobile text-blue-500 text-xs" title="Acceso Móvil"></i>
+                                        <i *ngIf="user.usugeol" class="pi pi-map-marker text-orange-500 text-xs" title="Geolocalización"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Flecha -->
+                            <i class="pi pi-chevron-right text-surface-400"></i>
+                        </div>
+                    </div>
+
+                    <!-- Mensaje si no hay usuarios -->
+                    <div *ngIf="filteredUsers.length === 0" class="text-center py-8">
+                        <i class="pi pi-users text-4xl text-surface-400 mb-4"></i>
+                        <p class="text-surface-600 dark:text-surface-400">No se encontraron usuarios</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paginación -->
+            <ng-template pTemplate="footer">
+                <p-paginator
+                    *ngIf="!loading && filteredUsers.length > 0"
+                    [rows]="itemsPerPage"
+                    [totalRecords]="filteredUsers.length"
+                    [first]="first"
+                    (onPageChange)="onPageChange($event)"
+                    [rowsPerPageOptions]="[5, 10, 20]">
+                </p-paginator>
+            </ng-template>
+
+        </p-card>
     </div>
 
-    <p-dialog [(visible)]="userDialog" [style]="{ width: '450px' }" header="Usuario Details" [modal]="true"
-      styleClass="p-fluid">
-      <form [formGroup]="userForm">
-        <div class="field">
-          <div>
-            <label for="name_us">Name</label>
-            <input type="text" pInputText id="name_us" formControlName="name_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('name_us') }" />
-            <small *ngIf="isRequire('name_us', 'required')" class="input-invalid">User name is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="lastname_us">Lastname</label>
-            <input type="text" pInputText id="lastname_us" formControlName="lastname_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('lastname_us') }" />
-            <small *ngIf="isRequire('lastname_us', 'required')" class="input-invalid">Last name is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="email_us">Email</label>
-            <input type="text" pInputText id="email_us" formControlName="email_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('email_us') }" />
-            <small *ngIf="isRequire('email_us', 'required')" class="input-invalid">Email is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="password_us">Password</label>
-            <input type="text" pInputText id="password_us" formControlName="password_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('password_us') }" />
-            <small *ngIf="isRequire('password_us', 'required')" class="input-invalid">Password is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="dni_us">DNI</label>
-            <input type="text" pInputText id="dni_us" formControlName="dni_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('dni_us') }" />
-            <small *ngIf="isRequire('dni_us', 'required')" class="input-invalid">DNI is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="phone_us">Phone</label>
-            <input type="text" pInputText id="phone_us" formControlName="phone_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('phone_us') }" />
-            <small *ngIf="isRequire('phone_us', 'required')" class="input-invalid">Phone is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="nationality_us">Nationality</label>
-            <input type="text" pInputText id="nationality_us" formControlName="nationality_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('nationality_us') }" />
-            <small *ngIf="isRequire('nationality_us', 'required')" class="input-invalid">Nationality is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="gender_us">Gender</label>
-            <input type="text" pInputText id="gender_us" formControlName="gender_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('gender_us') }" />
-            <small *ngIf="isRequire('gender_us', 'required')" class="input-invalid">Gender is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="terms_and_conditions">Terms and Conditions</label>
-            <input type="text" pInputText id="terms_and_conditions" formControlName="terms_and_conditions" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('terms_and_conditions') }" />
-            <small *ngIf="isRequire('terms_and_conditions', 'required')" class="input-invalid">Terms and Conditions is
-              required.</small>
-          </div>
+    <!-- Panel Derecho - Mapa -->
+    <div class="lg:col-span-8">
+        <p-card styleClass="h-full">
+            <ng-template pTemplate="header">
+                <div class="flex justify-between items-center p-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-surface-900 dark:text-surface-0">Ubicaciones</h2>
+                        <p class="text-surface-600 dark:text-surface-400 text-sm">Mapa de geolocalización de usuarios</p>
+                    </div>
+                </div>
+            </ng-template>
 
-        </div>
+            <!-- Contenedor del Mapa -->
+            <div class="h-full min-h-[500px] relative">
+                <!-- Loading del mapa -->
+                <div *ngIf="!map" class="absolute inset-0 flex items-center justify-center bg-surface-100 dark:bg-surface-800 rounded-lg z-10">
+                    <div class="text-center">
+                        <i class="pi pi-spin pi-spinner text-2xl text-primary mb-2"></i>
+                        <p class="text-surface-600 dark:text-surface-400">Cargando mapa...</p>
+                    </div>
+                </div>
 
-        <div class="flex">
-          <p-button label="Cancel" onkeyup icon="pi pi-times" text (click)="hideDialog()" />
-          <p-button label="Save" onkeyup icon="pi pi-check" (click)="saveUser()" />
-        </div>
-      </form>
-    </p-dialog>
+                <!-- Mapa de Leaflet -->
+                <div #mapContainer
+                     class="w-full h-full rounded-lg"
+                     style="min-height: 500px; height: 100%; width: 100%;">
+                </div>
+            </div>
 
-    <p-confirmdialog [style]="{ width: '450px' }" />
-  </div>
+        </p-card>
+    </div>
 </div>
+
+<!-- Dialog para Nuevo Usuario -->
+<p-dialog
+    [(visible)]="userDialog"
+    [style]="{ width: '450px' }"
+    header="Detalles del Usuario"
+    [modal]="true"
+    class="p-fluid">
+
+    <!-- Contenido del formulario aquí -->
+    <ng-template pTemplate="content">
+        <div class="text-center py-8">
+            <i class="pi pi-cog text-4xl text-surface-400 mb-4"></i>
+            <p class="text-surface-600 dark:text-surface-400">Formulario de usuario en construcción</p>
+        </div>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+        <p-button
+            label="Cancelar"
+            icon="pi pi-times"
+            text
+            (click)="hideDialog()">
+        </p-button>
+    </ng-template>
+</p-dialog>
