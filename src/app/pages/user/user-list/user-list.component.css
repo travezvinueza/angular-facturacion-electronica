@@ -1,0 +1,25 @@
+.numero-punto-custom {
+    /* Sobrescribir cualquier estilo heredado */
+    background: none !important;
+    border: none !important;
+}
+
+.numero-punto-custom div {
+    /* Asegurar que no haya estilos conflictivos */
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+}
+
+/* Animación opcional para cuando aparece el punto */
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}

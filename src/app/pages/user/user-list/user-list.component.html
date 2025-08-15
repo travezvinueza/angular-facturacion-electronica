@@ -252,17 +252,21 @@
 
                         <!-- Radio para círculo -->
                         <div class="mb-3" *ngIf="tipoGeocerca === 'circular'">
-                            <label class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-1">
-                                Radio (metros)
+                            <label class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-2">
+                                Radio: {{ radioGeocerca }} metros
                             </label>
-                            <p-inputNumber
+                            <p-slider
                                 [(ngModel)]="radioGeocerca"
-                                (onInput)="actualizarRadioCirculo()"
-                                [min]="10"
-                                [max]="10000"
-                                suffix=" m"
+                                (onSlideEnd)="actualizarRadioCirculo()"
+                                [min]="50"
+                                [max]="2000"
+                                [step]="10"
                                 styleClass="w-full">
-                            </p-inputNumber>
+                            </p-slider>
+                            <div class="flex justify-between text-xs text-surface-500 mt-1">
+                                <span>50m</span>
+                                <span>2000m</span>
+                            </div>
                         </div>
 
                         <!-- Instrucciones -->
@@ -270,21 +274,33 @@
                             <div class="text-xs text-blue-700 dark:text-blue-300">
                                 <i class="pi pi-info-circle mr-1"></i>
                                 <span *ngIf="tipoGeocerca === 'circular'">
-                                    Haga clic en el mapa para colocar el centro del círculo
+                                    <strong>Círculo:</strong> Haga clic en el mapa para colocar el centro, luego ajuste el radio con el slider
                                 </span>
                                 <span *ngIf="tipoGeocerca === 'poligono'">
-                                    Haga clic en el mapa para agregar puntos del polígono (mín. 3 puntos)
+                                    <strong>Polígono:</strong> Haga clic en el mapa para agregar puntos numerados (mínimo 3).
+                                    Use <i class="pi pi-undo"></i> para deshacer el último punto.
                                 </span>
                             </div>
                         </div>
 
                         <!-- Estado del polígono -->
                         <div class="mb-3" *ngIf="tipoGeocerca === 'poligono' && coordenadasGeocerca.length > 0">
-                            <div class="text-xs text-surface-600 dark:text-surface-400">
-                                Puntos agregados: {{ coordenadasGeocerca.length }}
-                                <span *ngIf="coordenadasGeocerca.length >= 3" class="text-green-600 dark:text-green-400 ml-2">
-                                    ✓ Listo para continuar
-                                </span>
+                            <div class="flex items-center justify-between">
+                                <div class="text-xs text-surface-600 dark:text-surface-400">
+                                    Puntos agregados: {{ coordenadasGeocerca.length }}
+                                    <span *ngIf="coordenadasGeocerca.length >= 3" class="text-green-600 dark:text-green-400 ml-2">
+                                        ✓ Listo para continuar
+                                    </span>
+                                </div>
+                                <p-button
+                                    icon="pi pi-undo"
+                                    severity="secondary"
+                                    size="small"
+                                    [text]="true"
+                                    (click)="deshacerUltimoPunto()"
+                                    pTooltip="Deshacer último punto"
+                                    tooltipPosition="bottom">
+                                </p-button>
                             </div>
                         </div>
 
@@ -363,6 +379,20 @@
     <ng-template pTemplate="content">
         <form [formGroup]="geocercaForm" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <!-- Código de Geocerca -->
+                <div>
+                    <label for="geoccod" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Código de la Geocerca *
+                    </label>
+                    <input
+                        id="geoccod"
+                        pInputText
+                        formControlName="geoccod"
+                        placeholder="Ej: GEO001"
+                        class="w-full">
+                </div>
+
                 <!-- Nombre -->
                 <div>
                     <label for="geocnom" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
