@@ -24,6 +24,7 @@
                             placeholder="Buscar usuarios..."
                             (input)="onSearch($event)"
                             class="w-full">
+
                     </p-iconField>
                 </ng-template>
             </p-toolbar>
@@ -49,6 +50,9 @@
                     <div
                         *ngFor="let user of paginatedUsers"
                         class="border rounded-lg p-4 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors cursor-pointer"
+                        [class.border-primary-500]="selectedUser?.usucod === user.usucod"
+                        [class.bg-primary-50]="selectedUser?.usucod === user.usucod"
+                        [class.dark:bg-primary-900]="selectedUser?.usucod === user.usucod"
                         (click)="selectUser(user)">
 
                         <div class="flex items-center space-x-4">
@@ -114,10 +118,216 @@
     <div class="lg:col-span-8">
         <p-card styleClass="h-full">
             <ng-template pTemplate="header">
-                <div class="flex justify-between items-center p-4">
-                    <div>
-                        <h2 class="text-xl font-bold text-surface-900 dark:text-surface-0">Ubicaciones</h2>
-                        <p class="text-surface-600 dark:text-surface-400 text-sm">Mapa de geolocalización de usuarios</p>
+                <div class="flex flex-col gap-4 p-4">
+                    <!-- Título del mapa -->
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-0">Ubicaciones</h2>
+                            <p class="text-surface-600 dark:text-surface-400 text-sm">Mapa de geolocalización de usuarios</p>
+                        </div>
+                        <!-- Botones adicionales -->
+                        <div class="flex gap-2">
+                            <p-button
+                                icon="pi pi-refresh"
+                                severity="secondary"
+                                size="small"
+                                [text]="true"
+                                (click)="resetMapView()"
+                                pTooltip="Restablecer vista"
+                                tooltipPosition="bottom">
+                            </p-button>
+
+                        </div>
+                    </div>
+
+                    <!-- AQUÍ ESTÁ EL BUSCADOR DE UBICACIONES -->
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <p-iconField iconPosition="left" styleClass="w-full">
+                                <p-inputIcon>
+                                    <i class="pi pi-map-marker"></i>
+                                </p-inputIcon>
+                                <input
+                                    pInputText
+                                    type="text"
+                                    placeholder="Buscar ubicación (ej: Quito, Ecuador)"
+                                    [(ngModel)]="searchLocation"
+                                    (keyup.enter)="searchLocationOnMap()"
+                                    class="w-full"
+                                    #locationInput>
+                            </p-iconField>
+                        </div>
+                        <p-button
+                            icon="pi pi-search"
+                            severity="primary"
+                            (click)="searchLocationOnMap()"
+                            [loading]="searchingLocation"
+                            pTooltip="Buscar ubicación"
+                            tooltipPosition="bottom">
+                        </p-button>
+                        <p-button
+                            icon="pi pi-times"
+                            severity="secondary"
+                            [text]="true"
+                            (click)="clearLocationSearch()"
+                            pTooltip="Limpiar búsqueda"
+                            tooltipPosition="bottom">
+                        </p-button>
+                    </div>
+
+                    <!-- CONTROLES DE GEOCERCAS -->
+                    <div class="border-t pt-3" *ngIf="!creandoGeocerca">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Crear Geocerca</span>
+                            <p-button
+                                icon="pi pi-plus-circle"
+                                label="Nueva Geocerca"
+                                severity="success"
+                                size="small"
+                                (click)="iniciarCreacionGeocerca()"
+                                [disabled]="!selectedUser"
+                                pTooltip="Seleccione un usuario primero"
+                                tooltipPosition="bottom">
+                            </p-button>
+                        </div>
+                        <div *ngIf="!selectedUser" class="text-xs text-orange-600 dark:text-orange-400">
+                            ⚠️ Seleccione un usuario de la lista para crear una geocerca
+                        </div>
+                    </div>
+
+                    <!-- PANEL DE CREACIÓN DE GEOCERCAS -->
+                    <div class="border rounded-lg p-3 bg-primary-50 dark:bg-primary-900/20" *ngIf="creandoGeocerca">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-map text-primary"></i>
+                                <span class="font-medium text-primary">Creando Geocerca</span>
+                            </div>
+                            <p-button
+                                icon="pi pi-times"
+                                severity="danger"
+                                size="small"
+                                [text]="true"
+                                (click)="cancelarCreacionGeocerca()"
+                                pTooltip="Cancelar creación"
+                                tooltipPosition="bottom">
+                            </p-button>
+                        </div>
+
+                        <!-- Usuario seleccionado -->
+                        <div class="mb-3 p-2 bg-surface-0 dark:bg-surface-800 rounded border">
+                            <div class="text-xs text-surface-600 dark:text-surface-400 mb-1">Usuario asignado:</div>
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-user text-primary text-sm"></i>
+                                <span class="text-sm font-medium">{{ selectedUser?.usunombre }}</span>
+                                <span class="text-xs text-surface-500">({{ selectedUser?.usucod }})</span>
+                            </div>
+                        </div>
+
+                        <!-- Tipo de geocerca -->
+                        <div class="mb-3">
+                            <label class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-1">
+                                Tipo de Geocerca
+                            </label>
+                            <p-select
+                                [(ngModel)]="tipoGeocerca"
+                                [options]="tiposGeocerca"
+                                optionLabel="label"
+                                optionValue="value"
+                                (onChange)="onTipoGeocercaChange()"
+                                styleClass="w-full">
+                                <ng-template pTemplate="item" let-option>
+                                    <div class="flex items-center gap-2">
+                                        <i [class]="option.icon"></i>
+                                        <span>{{ option.label }}</span>
+                                    </div>
+                                </ng-template>
+                                <ng-template pTemplate="item" let-option>
+                                    <div class="flex items-center gap-2">
+                                        <i [class]="option.icon"></i>
+                                        <span>{{ option.label }}</span>
+                                    </div>
+                                </ng-template>
+                            </p-select>
+                        </div>
+
+                        <!-- Radio para círculo -->
+                        <div class="mb-3" *ngIf="tipoGeocerca === 'circular'">
+                            <label class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-1">
+                                Radio (metros)
+                            </label>
+                            <p-inputNumber
+                                [(ngModel)]="radioGeocerca"
+                                (onInput)="actualizarRadioCirculo()"
+                                [min]="10"
+                                [max]="10000"
+                                suffix=" m"
+                                styleClass="w-full">
+                            </p-inputNumber>
+                        </div>
+
+                        <!-- Instrucciones -->
+                        <div class="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                            <div class="text-xs text-blue-700 dark:text-blue-300">
+                                <i class="pi pi-info-circle mr-1"></i>
+                                <span *ngIf="tipoGeocerca === 'circular'">
+                                    Haga clic en el mapa para colocar el centro del círculo
+                                </span>
+                                <span *ngIf="tipoGeocerca === 'poligono'">
+                                    Haga clic en el mapa para agregar puntos del polígono (mín. 3 puntos)
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Estado del polígono -->
+                        <div class="mb-3" *ngIf="tipoGeocerca === 'poligono' && coordenadasGeocerca.length > 0">
+                            <div class="text-xs text-surface-600 dark:text-surface-400">
+                                Puntos agregados: {{ coordenadasGeocerca.length }}
+                                <span *ngIf="coordenadasGeocerca.length >= 3" class="text-green-600 dark:text-green-400 ml-2">
+                                    ✓ Listo para continuar
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Botones de acción -->
+                        <div class="flex gap-2">
+                            <p-button
+                                label="Limpiar"
+                                icon="pi pi-refresh"
+                                severity="secondary"
+                                size="small"
+                                [text]="true"
+                                (click)="limpiarDibujo()">
+                            </p-button>
+                            <p-button
+                                label="Continuar"
+                                icon="pi pi-arrow-right"
+                                severity="primary"
+                                size="small"
+                                (click)="abrirDialogoGeocerca()"
+                                [disabled]="!centroGeocerca || (tipoGeocerca === 'poligono' && coordenadasGeocerca.length < 3)">
+                            </p-button>
+                        </div>
+                    </div>
+
+
+
+                    <!-- Resultados de búsqueda -->
+                    <div *ngIf="searchResults.length > 0" class="bg-surface-50 dark:bg-surface-800 rounded-lg p-3">
+                        <div class="text-sm text-surface-600 dark:text-surface-400 mb-2">
+                            Resultados de búsqueda:
+                        </div>
+                        <div class="space-y-1">
+                            <div
+                                *ngFor="let result of searchResults.slice(0, 3)"
+                                class="flex items-center justify-between p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded cursor-pointer transition-colors"
+                                (click)="selectSearchResult(result)">
+                                <div class="flex items-center gap-2">
+                                    <i class="pi pi-map-marker text-primary text-sm"></i>
+                                    <span class="text-sm text-surface-900 dark:text-surface-0">{{ result.display_name }}</span>
+                                </div>
+                                <i class="pi pi-arrow-right text-surface-400 text-xs"></i>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </ng-template>
@@ -142,29 +352,175 @@
         </p-card>
     </div>
 </div>
-
-<!-- Dialogs para Nuevo Usu  -->
+<!-- Dialog para completar datos de Geocerca -->
 <p-dialog
-    [(visible)]="userDialog"
-    [style]="{ width: '450px' }"
-    header="Detalles del Usuario"
+    [(visible)]="geocercaDialog"
+    [style]="{ width: '600px' }"
+    header="Completar datos de la Geocerca"
     [modal]="true"
     class="p-fluid">
 
-    <!-- Contenido del formulario aquí -->
     <ng-template pTemplate="content">
-        <div class="text-center py-8">
-            <i class="pi pi-cog text-4xl text-surface-400 mb-4"></i>
-            <p class="text-surface-600 dark:text-surface-400">Formulario de usuario en construcción</p>
-        </div>
+        <form [formGroup]="geocercaForm" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Nombre -->
+                <div>
+                    <label for="geocnom" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Nombre de la Geocerca *
+                    </label>
+                    <input
+                        id="geocnom"
+                        pInputText
+                        formControlName="geocnom"
+                        placeholder="Ej: Zona Norte"
+                        class="w-full">
+                </div>
+
+                <!-- Sector -->
+                <div>
+                    <label for="geocsec" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Sector *
+                    </label>
+                    <input
+                        id="geocsec"
+                        pInputText
+                        formControlName="geocsec"
+                        placeholder="Ej: Sector Comercial 1"
+                        class="w-full">
+                </div>
+
+                <!-- Dirección de referencia -->
+                <div class="md:col-span-2">
+                    <label for="geocdirre" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Dirección de Referencia *
+                    </label>
+                    <input
+                        id="geocdirre"
+                        pInputText
+                        formControlName="geocdirre"
+                        placeholder="Ej: Av. Principal y Calle 10"
+                        class="w-full">
+                </div>
+
+                <!-- Ciudad -->
+                <div>
+                    <label for="geocciud" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Ciudad *
+                    </label>
+                    <input
+                        id="geocciud"
+                        pInputText
+                        formControlName="geocciud"
+                        class="w-full">
+                </div>
+
+                <!-- Provincia -->
+                <div>
+                    <label for="geocprov" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Provincia *
+                    </label>
+                    <input
+                        id="geocprov"
+                        pInputText
+                        formControlName="geocprov"
+                        class="w-full">
+                </div>
+
+                <!-- País -->
+                <div>
+                    <label for="geocpais" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        País *
+                    </label>
+                    <input
+                        id="geocpais"
+                        pInputText
+                        formControlName="geocpais"
+                        class="w-full">
+                </div>
+
+                <!-- Prioridad -->
+                <div>
+                    <label for="geocpri" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Prioridad (1-10) *
+                    </label>
+                    <p-inputNumber
+                        id="geocpri"
+                        formControlName="geocpri"
+                        [min]="1"
+                        [max]="10"
+                        class="w-full">
+                    </p-inputNumber>
+                </div>
+
+                <!-- Estado activo -->
+                <div class="flex items-center gap-2 mt-6">
+                    <p-toggleSwitch
+                        formControlName="geocact"
+                        inputId="geocact">
+                    </p-toggleSwitch>
+                    <label for="geocact" class="text-sm font-medium text-surface-700 dark:text-surface-300">
+                        Geocerca activa
+                    </label>
+                </div>
+
+                <!-- Descripción -->
+                <div class="md:col-span-2">
+                    <label for="geocdesc" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Descripción *
+                    </label>
+                    <textarea
+                        id="geocdesc"
+                        pInputTextarea
+                        formControlName="geocdesc"
+                        placeholder="Descripción detallada de la geocerca"
+                        rows="3"
+                        class="w-full">
+                    </textarea>
+                </div>
+            </div>
+
+            <!-- Resumen de la geocerca -->
+            <div class="mt-4 p-3 bg-surface-50 dark:bg-surface-800 rounded border">
+                <h4 class="text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">Resumen de la Geocerca</h4>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <span class="text-surface-600 dark:text-surface-400">Tipo:</span>
+                        <span class="ml-2 font-medium">{{ tipoGeocerca === 'circular' ? 'Circular' : 'Polígono' }}</span>
+                    </div>
+                    <div>
+                        <span class="text-surface-600 dark:text-surface-400">Puntos:</span>
+                        <span class="ml-2 font-medium">{{ coordenadasGeocerca.length }}</span>
+                    </div>
+                    <div>
+                        <span class="text-surface-600 dark:text-surface-400">Centro:</span>
+                        <span class="ml-2 font-medium">{{ centroGeocerca?.lat?.toFixed(6) || 'N/A' }}, {{ centroGeocerca?.lng?.toFixed(6) || 'N/A' }}</span>
+                    </div>
+                    <div>
+                        <span class="text-surface-600 dark:text-surface-400">Usuario:</span>
+                        <span class="ml-2 font-medium">{{ selectedUser?.usunombre }}</span>
+                    </div>
+                </div>
+            </div>
+        </form>
     </ng-template>
 
     <ng-template pTemplate="footer">
-        <p-button
-            label="Cancelar"
-            icon="pi pi-times"
-            text
-            (click)="hideDialog()">
-        </p-button>
+        <div class="flex justify-end gap-2">
+            <p-button
+                label="Cancelar"
+                icon="pi pi-times"
+                severity="secondary"
+                [text]="true"
+                (click)="cerrarDialogoGeocerca()">
+            </p-button>
+            <p-button
+                label="Crear Geocerca"
+                icon="pi pi-check"
+                severity="primary"
+                (click)="guardarGeocerca()">
+            </p-button>
+        </div>
     </ng-template>
 </p-dialog>
+
+

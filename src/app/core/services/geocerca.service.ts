@@ -1,0 +1,99 @@
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
+import { CrearGeocercaDto, GeocercaResponseDto } from '../models/GeocercaDto';
+import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
+
+@Injectable({
+    providedIn: 'root'
+})
+export class GeocercaService {
+    private readonly baseUrl = environment.apiUrl2;
+    private readonly authService = inject(AuthService);
+
+    constructor(private readonly http: HttpClient) { }
+
+    /** Crear una nueva geocerca */
+    crearGeocerca(geocerca: CrearGeocercaDto): Observable<GeocercaResponseDto> {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+
+        return this.http.post<GeocercaResponseDto>(`${this.baseUrl}/crear-con-vendedores`, geocerca, { headers });
+    }
+
+    /** Generar código único para geocerca */
+    generarCodigoGeocerca(): string {
+        const timestamp = Date.now().toString().slice(-6);
+        return `G${timestamp}`;
+    }
+
+    /** Calcular área de un polígono usando fórmula de Shoelace */
+    calcularAreaPoligono(coordenadas: Array<{lat: number, lng: number}>): number {
+        if (coordenadas.length < 3) return 0;
+
+        let area = 0;
+        const n = coordenadas.length;
+
+        for (let i = 0; i < n; i++) {
+            const j = (i + 1) % n;
+            area += coordenadas[i].lat * coordenadas[j].lng;
+            area -= coordenadas[j].lat * coordenadas[i].lng;
+        }
+
+        area = Math.abs(area) / 2;
+
+        // Convertir a metros cuadrados (aproximación)
+        // 1 grado ≈ 111,320 metros en el ecuador
+        const metrosLat = 111320;
+        const metrosLng = 111320 * Math.cos(coordenadas[0].lat * Math.PI / 180);
+
+        return Math.round(area * metrosLat * metrosLng);
+    }
+
+    /** Calcular perímetro de un polígono */
+    calcularPerimetroPoligono(coordenadas: Array<{lat: number, lng: number}>): number {
+        if (coordenadas.length < 2) return 0;
+
+        let perimetro = 0;
+
+        for (let i = 0; i < coordenadas.length - 1; i++) {
+            perimetro += this.calcularDistancia(coordenadas[i], coordenadas[i + 1]);
+        }
+
+        // Cerrar el polígono
+        if (coordenadas.length > 2) {
+            perimetro += this.calcularDistancia(coordenadas[coordenadas.length - 1], coordenadas[0]);
+        }
+
+        return Math.round(perimetro);
+    }
+
+    /** Calcular área de un círculo */
+    calcularAreaCirculo(radio: number): number {
+        return Math.round(Math.PI * radio * radio);
+    }
+
+    /** Calcular perímetro de un círculo */
+    calcularPerimetroCirculo(radio: number): number {
+        return Math.round(2 * Math.PI * radio);
+    }
+
+    /** Calcular distancia entre dos puntos usando fórmula de Haversine */
+    private calcularDistancia(punto1: {lat: number, lng: number}, punto2: {lat: number, lng: number}): number {
+        const R = 6371000; // Radio de la Tierra en metros
+        const dLat = (punto2.lat - punto1.lat) * Math.PI / 180;
+        const dLng = (punto2.lng - punto1.lng) * Math.PI / 180;
+
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(punto1.lat * Math.PI / 180) * Math.cos(punto2.lat * Math.PI / 180) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c;
+    }
+}
