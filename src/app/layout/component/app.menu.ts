@@ -29,35 +29,45 @@ export class AppMenu {
     ngOnInit() {
         this.model = [
             {
-                label: 'UI Components',
+                label: 'Home',
                 items: [
                     { label: 'Dashboard', isAuthenticated: true, icon: 'pi pi-fw pi-home', routerLink: ['/dashboard'] },
-                    { label: 'Gestion Usuarios', isAuthenticated: true, icon: 'pi pi-fw pi-id-card', routerLink: ['/pages/user-list'] },
-                    { label: 'Gestion de Geocercas', isAuthenticated: true, icon: 'pi pi-fw pi-check-square', routerLink: ['/pages/geocercas-list'] },
-                    { label: 'Gestion Sucursales', isAuthenticated: true, icon: 'pi pi-fw pi-mobile', class: 'rotated-icon', routerLink: ['/uikit/button'] },
-                    { label: 'Firma Electronica', isAuthenticated: true, icon: 'pi pi-fw pi-table', routerLink: ['/uikit/table'] },
-                    { label: 'Puntos Emision', isAuthenticated: true, icon: 'pi pi-fw pi-list', routerLink: ['/uikit/list'] },
-                    { label: 'Gestionar Secuencias', isAuthenticated: true, icon: 'pi pi-fw pi-share-alt', routerLink: ['/uikit/tree'] },
-                    { label: 'Factura', isAuthenticated: true, icon: 'pi pi-fw pi-tablet', routerLink: ['/uikit/panel'] },
-                    { label: 'Suscriptores', isAuthenticated: true, icon: 'pi pi-fw pi-clone', routerLink: ['/uikit/overlay'] },
+
                 ]
             },
             {
-                label: 'Get Started',
+                label: 'Geolocalización',
                 items: [
                     {
-                        label: 'View Source',
-                        icon: 'pi pi-fw pi-github',
-                        url: 'https://github.com/primefaces/sakai-ng',
-                        target: '_blank'
+                        label: 'Configuración',
+                        isAuthenticated: true,
+                        icon: 'pi pi-fw pi-cog',
+                        items: [
+                            { label: 'Crear Geocercas', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/user-list'] },
+                            { label: 'Geocercas y Vendedores', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/geocercas-vendedores'] },
+                        ]
                     },
-                    {
-                        label: 'Logout',
-                        icon: 'pi pi-fw pi-sign-out',
-                        command: () => this.logout()
-                    }
                 ]
             },
+            {
+                label: 'Vendedores',
+                items: [
+                    { label: 'Lista de Vendedores', isAuthenticated: true, icon: 'pi pi-fw pi-id-card', routerLink: ['/pages/geocercas-list'] },
+                ]
+            },
+            {
+                label: 'Reportes',
+                items: [
+                    { label: 'Detalles Registro', isAuthenticated: true, icon: 'pi pi-objects-column', routerLink: ['/pages/transactions-list'] },
+                ]
+            },
+            {
+                label: 'Cerrar Sesión',
+                items: [
+                    { label: 'Cerrar Sesión', isAuthenticated: true, icon: 'pi pi-fw pi-sign-out', command: () => this.logout() },
+                ]
+            }
+
         ];
 
         // Filtrado simplificado: solo verificamos si requiere autenticación

@@ -1,371 +1,373 @@
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-4 h-screen p-4 mb-4">
-    <!-- Panel Izquierdo - Lista de Usuarios -->
-    <div class="lg:col-span-4 flex flex-col">
-        <p-card styleClass="h-full">
-            <ng-template pTemplate="header">
-                <div class="flex justify-between items-center p-4">
-                    <div>
-                        <h2 class="text-xl font-bold text-surface-900 dark:text-surface-0">Lista de Usuarios</h2>
-                        <p class="text-surface-600 dark:text-surface-400 text-sm">Gestiona los usuarios de la empresa</p>
-                    </div>
-                </div>
-            </ng-template>
-
-            <!-- Toolbar -->
-            <p-toolbar styleClass="mb-4">
-                <ng-template pTemplate="right">
-                    <p-iconField iconPosition="left">
-                        <p-inputIcon>
-                            <i class="pi pi-search"></i>
-                        </p-inputIcon>
-                        <input
-                            pInputText
-                            type="text"
-                            placeholder="Buscar usuarios..."
-                            (input)="onSearch($event)"
-                            class="w-full">
-
-                    </p-iconField>
-                </ng-template>
-            </p-toolbar>
-
-            <!-- Lista de Usuarios -->
-            <div class="flex-1 overflow-auto">
-
-                <!-- Loading Skeleton -->
-                <div *ngIf="loading" class="space-y-3">
-                    <div *ngFor="let item of [1,2,3,4,5]" class="border rounded-lg p-4">
-                        <div class="flex items-center space-x-4">
-                            <p-skeleton shape="circle" size="3rem"></p-skeleton>
-                            <div class="flex-1">
-                                <p-skeleton height="1rem" class="mb-2"></p-skeleton>
-                                <p-skeleton height="0.8rem" width="70%"></p-skeleton>
+<!-- Contenedor principal -->
+<div class="flex flex-col min-h-screen p-2 sm:p-4 gap-2 sm:gap-4">
+    <!-- Cuerpo principal: Panel izquierdo + derecho -->
+    <div class="flex flex-1 flex-col lg:flex-row gap-2 sm:gap-4 overflow-hidden min-h-0">
+        <!-- Panel Izquierdo - Lista de Usuarios -->
+        <div class="w-full lg:w-1/3 flex flex-col">
+            <p-card class="flex flex-col flex-1 overflow-hidden h-full">
+                <!-- Header Mejorado -->
+                <ng-template pTemplate="header">
+                    <div class="p-3 sm:p-4 border-b border-surface-200 dark:border-surface-700 bg-gradient-to-r from-surface-50 to-white dark:from-surface-900 dark:to-surface-800">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-10 h-10 flex items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 shadow-sm">
+                                <i class="pi pi-users text-primary-600 dark:text-primary-300 text-xl"></i>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Lista Real de Usuarios -->
-                <div *ngIf="!loading" class="space-y-2">
-                    <div
-                        *ngFor="let user of paginatedUsers"
-                        class="border rounded-lg p-4 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors cursor-pointer"
-                        [class.border-primary-500]="selectedUser?.usucod === user.usucod"
-                        [class.bg-primary-50]="selectedUser?.usucod === user.usucod"
-                        [class.dark:bg-primary-900]="selectedUser?.usucod === user.usucod"
-                        (click)="selectUser(user)">
-
-                        <div class="flex items-center space-x-4">
-                            <!-- Avatar -->
-                            <div class="flex items-center justify-center w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30">
-                                <i class="pi pi-user text-primary text-xl"></i>
-                            </div>
-
-                            <!-- Info del Usuario -->
-                            <div class="flex-1 min-w-0">
-                                <h3 class="font-semibold text-surface-900 dark:text-surface-0 truncate">
-                                    {{ user.usunombre }}
-                                </h3>
-                                <p class="text-sm text-surface-600 dark:text-surface-400 truncate">
-                                    {{ user.usucod }} • {{ user.usucodv }}
+                            <div>
+                                <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-white tracking-tight">
+                                    Lista de Vendedores
+                                </h2>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    Visualización y gestión de vendedores
                                 </p>
-                                <div class="flex items-center space-x-2 mt-1">
-                                    <!-- Estado -->
-                                    <p-tag
-                                        [value]="getEstadoText(user.usuestado)"
-                                        [severity]="getEstadoSeverity(user.usuestado)"
-                                        styleClass="text-xs">
-                                    </p-tag>
-
-                                    <!-- Accesos -->
-                                    <div class="flex space-x-1">
-                                        <i *ngIf="user.usuwebapp" class="pi pi-desktop text-green-500 text-xs" title="Acceso Web"></i>
-                                        <i *ngIf="user.usuapp" class="pi pi-mobile text-blue-500 text-xs" title="Acceso Móvil"></i>
-                                        <i *ngIf="user.usugeol" class="pi pi-map-marker text-orange-500 text-xs" title="Geolocalización"></i>
-                                    </div>
-                                </div>
                             </div>
-
-                            <!-- Flecha -->
-                            <i class="pi pi-chevron-right text-surface-400"></i>
                         </div>
-                    </div>
 
-                    <!-- Mensaje si no hay usuarios -->
-                    <div *ngIf="filteredUsers.length === 0" class="text-center py-8">
-                        <i class="pi pi-users text-4xl text-surface-400 mb-4"></i>
-                        <p class="text-surface-600 dark:text-surface-400">No se encontraron usuarios</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Paginación -->
-            <ng-template pTemplate="footer">
-                <p-paginator
-                    *ngIf="!loading && filteredUsers.length > 0"
-                    [rows]="itemsPerPage"
-                    [totalRecords]="filteredUsers.length"
-                    [first]="first"
-                    (onPageChange)="onPageChange($event)"
-                    [rowsPerPageOptions]="[5, 10, 20]">
-                </p-paginator>
-            </ng-template>
-
-        </p-card>
-    </div>
-
-    <!-- Panel Derecho - Mapa -->
-    <div class="lg:col-span-8">
-        <p-card styleClass="h-full">
-            <ng-template pTemplate="header">
-                <div class="flex flex-col gap-4 p-4">
-                    <!-- Título del mapa -->
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <h2 class="text-xl font-bold text-surface-900 dark:text-surface-0">Ubicaciones</h2>
-                            <p class="text-surface-600 dark:text-surface-400 text-sm">Mapa de geolocalización de usuarios</p>
-                        </div>
-                        <!-- Botones adicionales -->
-                        <div class="flex gap-2">
-                            <p-button
-                                icon="pi pi-refresh"
-                                severity="secondary"
-                                size="small"
-                                [text]="true"
-                                (click)="resetMapView()"
-                                pTooltip="Restablecer vista"
-                                tooltipPosition="bottom">
-                            </p-button>
-
-                        </div>
-                    </div>
-
-                    <!-- AQUÍ ESTÁ EL BUSCADOR DE UBICACIONES -->
-                    <div class="flex gap-2">
-                        <div class="flex-1">
-                            <p-iconField iconPosition="left" styleClass="w-full">
+                        <!-- Buscador Mejorado -->
+                        <div class="relative mt-2">
+                            <p-iconField iconPosition="left" class="w-full">
                                 <p-inputIcon>
-                                    <i class="pi pi-map-marker"></i>
+                                    <i class="pi pi-search text-primary-400"></i>
                                 </p-inputIcon>
                                 <input
                                     pInputText
                                     type="text"
-                                    placeholder="Buscar ubicación (ej: Quito, Ecuador)"
-                                    [(ngModel)]="searchLocation"
-                                    (keyup.enter)="searchLocationOnMap()"
-                                    class="w-full"
-                                    #locationInput>
+                                    placeholder="Buscar vendedores..."
+                                    (input)="onSearch($event)"
+                                    class="w-full py-2.5 text-sm rounded-lg border-2 border-surface-200 hover:border-primary-200 focus:border-primary-500 transition-colors pl-9 shadow-sm dark:bg-surface-800 dark:border-surface-700 dark:hover:border-primary-700">
                             </p-iconField>
                         </div>
-                        <p-button
-                            icon="pi pi-search"
-                            severity="primary"
-                            (click)="searchLocationOnMap()"
-                            [loading]="searchingLocation"
-                            pTooltip="Buscar ubicación"
-                            tooltipPosition="bottom">
-                        </p-button>
-                        <p-button
-                            icon="pi pi-times"
-                            severity="secondary"
-                            [text]="true"
-                            (click)="clearLocationSearch()"
-                            pTooltip="Limpiar búsqueda"
-                            tooltipPosition="bottom">
-                        </p-button>
                     </div>
+                </ng-template>
 
-                    <!-- CONTROLES DE GEOCERCAS -->
-                    <div class="border-t pt-3" *ngIf="!creandoGeocerca">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Crear Geocerca</span>
-                            <p-button
-                                icon="pi pi-plus-circle"
-                                label="Nueva Geocerca"
-                                severity="success"
-                                size="small"
-                                (click)="iniciarCreacionGeocerca()"
-                                [disabled]="!selectedUser"
-                                pTooltip="Seleccione un usuario primero"
-                                tooltipPosition="bottom">
-                            </p-button>
-                        </div>
-                        <div *ngIf="!selectedUser" class="text-xs text-orange-600 dark:text-orange-400">
-                            ⚠️ Seleccione un usuario de la lista para crear una geocerca
-                        </div>
-                    </div>
-
-                    <!-- PANEL DE CREACIÓN DE GEOCERCAS -->
-                    <div class="border rounded-lg p-3 bg-primary-50 dark:bg-primary-900/20" *ngIf="creandoGeocerca">
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="flex items-center gap-2">
-                                <i class="pi pi-map text-primary"></i>
-                                <span class="font-medium text-primary">Creando Geocerca</span>
-                            </div>
-                            <p-button
-                                icon="pi pi-times"
-                                severity="danger"
-                                size="small"
-                                [text]="true"
-                                (click)="cancelarCreacionGeocerca()"
-                                pTooltip="Cancelar creación"
-                                tooltipPosition="bottom">
-                            </p-button>
-                        </div>
-
-                        <!-- Usuario seleccionado -->
-                        <div class="mb-3 p-2 bg-surface-0 dark:bg-surface-800 rounded border">
-                            <div class="text-xs text-surface-600 dark:text-surface-400 mb-1">Usuario asignado:</div>
-                            <div class="flex items-center gap-2">
-                                <i class="pi pi-user text-primary text-sm"></i>
-                                <span class="text-sm font-medium">{{ selectedUser?.usunombre }}</span>
-                                <span class="text-xs text-surface-500">({{ selectedUser?.usucod }})</span>
-                            </div>
-                        </div>
-
-                        <!-- Tipo de geocerca -->
-                        <div class="mb-3">
-                            <label class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-1">
-                                Tipo de Geocerca
-                            </label>
-                            <p-select
-                                [(ngModel)]="tipoGeocerca"
-                                [options]="tiposGeocerca"
-                                optionLabel="label"
-                                optionValue="value"
-                                (onChange)="onTipoGeocercaChange()"
-                                styleClass="w-full">
-                                <ng-template pTemplate="item" let-option>
-                                    <div class="flex items-center gap-2">
-                                        <i [class]="option.icon"></i>
-                                        <span>{{ option.label }}</span>
-                                    </div>
-                                </ng-template>
-                                <ng-template pTemplate="item" let-option>
-                                    <div class="flex items-center gap-2">
-                                        <i [class]="option.icon"></i>
-                                        <span>{{ option.label }}</span>
-                                    </div>
-                                </ng-template>
-                            </p-select>
-                        </div>
-
-                        <!-- Radio para círculo -->
-                        <div class="mb-3" *ngIf="tipoGeocerca === 'circular'">
-                            <label class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-2">
-                                Radio: {{ radioGeocerca }} metros
-                            </label>
-                            <p-slider
-                                [(ngModel)]="radioGeocerca"
-                                (onSlideEnd)="actualizarRadioCirculo()"
-                                [min]="50"
-                                [max]="2000"
-                                [step]="10"
-                                styleClass="w-full">
-                            </p-slider>
-                            <div class="flex justify-between text-xs text-surface-500 mt-1">
-                                <span>50m</span>
-                                <span>2000m</span>
-                            </div>
-                        </div>
-
-                        <!-- Instrucciones -->
-                        <div class="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-                            <div class="text-xs text-blue-700 dark:text-blue-300">
-                                <i class="pi pi-info-circle mr-1"></i>
-                                <span *ngIf="tipoGeocerca === 'circular'">
-                                    <strong>Círculo:</strong> Haga clic en el mapa para colocar el centro, luego ajuste el radio con el slider
-                                </span>
-                                <span *ngIf="tipoGeocerca === 'poligono'">
-                                    <strong>Polígono:</strong> Haga clic en el mapa para agregar puntos numerados (mínimo 3).
-                                    Use <i class="pi pi-undo"></i> para deshacer el último punto.
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- Estado del polígono -->
-                        <div class="mb-3" *ngIf="tipoGeocerca === 'poligono' && coordenadasGeocerca.length > 0">
-                            <div class="flex items-center justify-between">
-                                <div class="text-xs text-surface-600 dark:text-surface-400">
-                                    Puntos agregados: {{ coordenadasGeocerca.length }}
-                                    <span *ngIf="coordenadasGeocerca.length >= 3" class="text-green-600 dark:text-green-400 ml-2">
-                                        ✓ Listo para continuar
-                                    </span>
+                <!-- Lista de Usuarios -->
+                <div class="flex-1 overflow-auto p-3 min-h-0">
+                    <!-- Loading Skeleton -->
+                    <div *ngIf="loading" class="space-y-3">
+                        <div *ngFor="let item of [1,2,3,4,5]" class="border rounded-lg p-4">
+                            <div class="flex items-center space-x-4">
+                                <p-skeleton shape="circle" size="3rem"></p-skeleton>
+                                <div class="flex-1">
+                                    <p-skeleton height="1rem" class="mb-2"></p-skeleton>
+                                    <p-skeleton height="0.8rem" width="70%"></p-skeleton>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista Real de Usuarios -->
+                    <div *ngIf="!loading" class="space-y-2">
+                        <div
+                            *ngFor="let user of paginatedUsers"
+                            class="border rounded-lg p-4 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors cursor-pointer"
+                            [class.border-primary-500]="selectedUser?.usucod === user.usucod"
+                            [class.bg-primary-50]="selectedUser?.usucod === user.usucod"
+                            [class.dark:bg-primary-900]="selectedUser?.usucod === user.usucod"
+                            (click)="selectUser(user)">
+
+                            <div class="flex items-center space-x-4">
+                                <!-- Avatar -->
+                                <div class="flex items-center justify-center w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30">
+                                    <i class="pi pi-user text-primary text-xl"></i>
+                                </div>
+
+                                <!-- Info del Usuario -->
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="font-semibold text-surface-900 dark:text-surface-0 truncate">
+                                        {{ user.usunombre }}
+                                    </h3>
+                                    <p class="text-sm text-surface-600 dark:text-surface-400 truncate">
+                                        {{ user.usucod }} • {{ user.usucodv }}
+                                    </p>
+                                </div>
+
+                                <!-- Flecha -->
+                                <i class="pi pi-chevron-right text-surface-400"></i>
+                            </div>
+                        </div>
+
+                        <!-- Mensaje si no hay usuarios -->
+                        <div *ngIf="filteredUsers.length === 0" class="text-center py-8">
+                            <i class="pi pi-users text-4xl text-surface-400 mb-4"></i>
+                            <p class="text-surface-600 dark:text-surface-400">No se encontraron usuarios</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Paginación -->
+                <ng-template pTemplate="footer">
+                    <div class="pt-2 pb-1">
+                        <p-paginator
+                            *ngIf="!loading && filteredUsers.length > 0"
+                            [rows]="itemsPerPage"
+                            [totalRecords]="filteredUsers.length"
+                            [first]="first"
+                            (onPageChange)="onPageChange($event)"
+                            [rowsPerPageOptions]="[5, 10, 20]">
+                        </p-paginator>
+                    </div>
+                </ng-template>
+            </p-card>
+        </div>
+
+        <!-- Panel Derecho - Mapa -->
+        <div class="w-full lg:w-2/3 flex flex-col">
+            <p-card class="flex flex-col flex-1 overflow-hidden h-full">
+                <ng-template pTemplate="header">
+                    <!-- Header Mejorado -->
+                    <div class="flex flex-col gap-3 sm:gap-4 p-3 sm:p-4">
+                        <!-- Título y botones -->
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 shadow-sm">
+                                    <i class="pi pi-map-marker text-primary-600 dark:text-primary-300 text-xl"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-white tracking-tight">
+                                        Ubicaciones
+                                    </h2>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                        Mapa de geolocalización de usuarios
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Botones de acción -->
+                            <div class="flex gap-2 flex-shrink-0 items-center">
                                 <p-button
-                                    icon="pi pi-undo"
+                                    icon="pi pi-refresh"
                                     severity="secondary"
                                     size="small"
                                     [text]="true"
-                                    (click)="deshacerUltimoPunto()"
-                                    pTooltip="Deshacer último punto"
+                                    (click)="resetMapView()"
+                                    pTooltip="Restablecer vista"
                                     tooltipPosition="bottom">
                                 </p-button>
                             </div>
                         </div>
 
-                        <!-- Botones de acción -->
-                        <div class="flex gap-2">
-                            <p-button
-                                label="Limpiar"
-                                icon="pi pi-refresh"
-                                severity="secondary"
-                                size="small"
-                                [text]="true"
-                                (click)="limpiarDibujo()">
-                            </p-button>
-                            <p-button
-                                label="Continuar"
-                                icon="pi pi-arrow-right"
-                                severity="primary"
-                                size="small"
-                                (click)="abrirDialogoGeocerca()"
-                                [disabled]="!centroGeocerca || (tipoGeocerca === 'poligono' && coordenadasGeocerca.length < 3)">
-                            </p-button>
+                        <!-- Buscador de ubicaciones mejorado -->
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <div class="flex-1 min-w-0">
+                                <p-iconField iconPosition="left" class="w-full">
+                                    <p-inputIcon>
+                                        <i class="pi pi-map-marker text-primary-400"></i>
+                                    </p-inputIcon>
+                                    <input
+                                        pInputText
+                                        type="text"
+                                        placeholder="Buscar ubicación (ej: Quito, Ecuador)"
+                                        [(ngModel)]="searchLocation"
+                                        (keyup.enter)="searchLocationOnMap()"
+                                        class="w-full py-2.5 text-sm rounded-lg border-2 border-surface-200 hover:border-primary-200 focus:border-primary-500 transition-colors pl-9 shadow-sm dark:bg-surface-800 dark:border-surface-700 dark:hover:border-primary-700"
+                                        #locationInput>
+                                </p-iconField>
+                            </div>
+                            <div class="flex gap-2 flex-shrink-0">
+                                <p-button
+                                    icon="pi pi-search"
+                                    severity="primary"
+                                    (click)="searchLocationOnMap()"
+                                    [loading]="searchingLocation"
+                                    pTooltip="Buscar ubicación"
+                                    tooltipPosition="bottom">
+                                </p-button>
+                                <p-button
+                                    icon="pi pi-times"
+                                    severity="secondary"
+                                    [text]="true"
+                                    (click)="clearLocationSearch()"
+                                    pTooltip="Limpiar búsqueda"
+                                    tooltipPosition="bottom">
+                                </p-button>
+                            </div>
                         </div>
-                    </div>
 
-
-
-                    <!-- Resultados de búsqueda -->
-                    <div *ngIf="searchResults.length > 0" class="bg-surface-50 dark:bg-surface-800 rounded-lg p-3">
-                        <div class="text-sm text-surface-600 dark:text-surface-400 mb-2">
-                            Resultados de búsqueda:
+                        <!-- CONTROLES DE GEOCERCAS (CONFIGURACIÓN ORIGINAL) -->
+                        <div class="border-t pt-3" *ngIf="!creandoGeocerca">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Crear Geocerca</span>
+                                <p-button
+                                    icon="pi pi-plus-circle"
+                                    label="Nueva Geocerca"
+                                    severity="success"
+                                    size="small"
+                                    (click)="iniciarCreacionGeocerca()"
+                                    [disabled]="!selectedUser"
+                                    pTooltip="Seleccione un usuario primero"
+                                    tooltipPosition="bottom">
+                                </p-button>
+                            </div>
+                            <div *ngIf="!selectedUser" class="text-xs text-orange-600 dark:text-orange-400">
+                                ⚠️ Seleccione un usuario de la lista para crear una geocerca
+                            </div>
                         </div>
-                        <div class="space-y-1">
-                            <div
-                                *ngFor="let result of searchResults.slice(0, 3)"
-                                class="flex items-center justify-between p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded cursor-pointer transition-colors"
-                                (click)="selectSearchResult(result)">
+
+                        <!-- PANEL DE CREACIÓN DE GEOCERCAS MEJORADO -->
+                        <div class="p-4 rounded-lg bg-primary-50/70 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 shadow-sm" *ngIf="creandoGeocerca">
+                            <div class="flex items-center justify-between mb-3">
                                 <div class="flex items-center gap-2">
-                                    <i class="pi pi-map-marker text-primary text-sm"></i>
-                                    <span class="text-sm text-surface-900 dark:text-surface-0">{{ result.display_name }}</span>
+                                    <i class="pi pi-map text-primary-600 dark:text-primary-400 text-lg"></i>
+                                    <span class="font-medium text-primary-700 dark:text-primary-300">Creando Geocerca</span>
                                 </div>
-                                <i class="pi pi-arrow-right text-surface-400 text-xs"></i>
+                                <p-button
+                                    icon="pi pi-times"
+                                    severity="danger"
+                                    size="small"
+                                    [text]="true"
+                                    (click)="cancelarCreacionGeocerca()"
+                                    pTooltip="Cancelar creación"
+                                    tooltipPosition="bottom">
+                                </p-button>
+                            </div>
+
+                            <!-- Usuario seleccionado -->
+                            <div class="mb-3 p-2 bg-surface-0 dark:bg-surface-800 rounded border">
+                                <div class="text-xs text-surface-600 dark:text-surface-400 mb-1">Usuario asignado:</div>
+                                <div class="flex items-center gap-2">
+                                    <i class="pi pi-user text-primary text-sm"></i>
+                                    <span class="text-sm font-medium">{{ selectedUser?.usunombre }}</span>
+                                    <span class="text-xs text-surface-500">({{ selectedUser?.usucod }})</span>
+                                </div>
+                            </div>
+
+                            <!-- Controles de geocerca en 3 columnas con Flexbox -->
+                            <div class="flex flex-col md:flex-row gap-4 mb-3">
+                                <!-- Columna 1: Tipo de geocerca -->
+                                <div class="flex-1">
+                                    <label class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-1">
+                                        Tipo de Geocerca
+                                    </label>
+                                    <p-select
+                                        [(ngModel)]="tipoGeocerca"
+                                        [options]="tiposGeocerca"
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        (onChange)="onTipoGeocercaChange()"
+                                        class="w-full">
+                                        <ng-template pTemplate="item" let-option>
+                                            <div class="flex items-center gap-2">
+                                                <i [class]="option.icon"></i>
+                                                <span>{{ option.label }}</span>
+                                            </div>
+                                        </ng-template>
+                                    </p-select>
+                                </div>
+
+                                <!-- Columna 2: Radio para círculo -->
+                                <div class="flex-1" *ngIf="tipoGeocerca === 'circular'">
+                                    <label class="block text-xs font-medium text-surface-700 dark:text-surface-300 mb-2">
+                                        Radio: {{ radioGeocerca }} metros
+                                    </label>
+                                    <p-slider
+                                        [(ngModel)]="radioGeocerca"
+                                        (onSlideEnd)="actualizarRadioCirculo()"
+                                        [min]="50"
+                                        [max]="2000"
+                                        [step]="10"
+                                        class="w-full">
+                                    </p-slider>
+                                    <div class="flex justify-between text-xs text-surface-500 mt-1">
+                                        <span>50m</span>
+                                        <span>2000m</span>
+                                    </div>
+                                </div>
+
+                                <!-- Columna 3: Estado del polígono -->
+                                <div class="flex-1" *ngIf="tipoGeocerca === 'poligono' && coordenadasGeocerca.length > 0">
+                                    <div class="flex items-center justify-between">
+                                        <div class="text-xs text-surface-600 dark:text-surface-400">
+                                            Puntos agregados: {{ coordenadasGeocerca.length }}
+                                            <span *ngIf="coordenadasGeocerca.length >= 3" class="text-green-600 dark:text-green-400 ml-2">
+                                                ✓ Listo para continuar
+                                            </span>
+                                        </div>
+                                        <p-button
+                                            icon="pi pi-undo"
+                                            severity="secondary"
+                                            size="small"
+                                            [text]="true"
+                                            (click)="deshacerUltimoPunto()"
+                                            pTooltip="Deshacer último punto"
+                                            tooltipPosition="bottom">
+                                        </p-button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Instrucciones -->
+                            <div class="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                                <div class="text-xs text-blue-700 dark:text-blue-300">
+                                    <i class="pi pi-info-circle mr-1"></i>
+                                    <span *ngIf="tipoGeocerca === 'circular'">
+                                        <strong>Círculo:</strong> Haga clic en el mapa para colocar el centro, luego ajuste el radio con el slider
+                                    </span>
+                                    <span *ngIf="tipoGeocerca === 'poligono'">
+                                        <strong>Polígono:</strong> Haga clic en el mapa para agregar puntos numerados (mínimo 3).
+                                        Use <i class="pi pi-undo"></i> para deshacer el último punto.
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Botones de acción -->
+                            <div class="flex gap-2">
+                                <p-button
+                                    label="Limpiar"
+                                    icon="pi pi-refresh"
+                                    severity="secondary"
+                                    size="small"
+                                    [text]="true"
+                                    (click)="limpiarDibujo()">
+                                </p-button>
+                                <p-button
+                                    label="Continuar"
+                                    icon="pi pi-arrow-right"
+                                    severity="primary"
+                                    size="small"
+                                    (click)="abrirDialogoGeocerca()"
+                                    [disabled]="!centroGeocerca || (tipoGeocerca === 'poligono' && coordenadasGeocerca.length < 3)">
+                                </p-button>
+                            </div>
+                        </div>
+
+                        <!-- Resultados de búsqueda -->
+                        <div *ngIf="searchResults.length > 0" class="bg-surface-50 dark:bg-surface-800 rounded-lg p-3">
+                            <div class="text-sm text-surface-600 dark:text-surface-400 mb-2">
+                                Resultados de búsqueda:
+                            </div>
+                            <div class="space-y-1">
+                                <div
+                                    *ngFor="let result of searchResults.slice(0, 3)"
+                                    class="flex items-center justify-between p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded cursor-pointer transition-colors"
+                                    (click)="selectSearchResult(result)">
+                                    <div class="flex items-center gap-2 min-w-0 flex-1">
+                                        <i class="pi pi-map-marker text-primary text-sm flex-shrink-0"></i>
+                                        <span class="text-sm text-surface-900 dark:text-surface-0 truncate">{{ result.display_name }}</span>
+                                    </div>
+                                    <i class="pi pi-arrow-right text-surface-400 text-xs flex-shrink-0"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </ng-template>
+                </ng-template>
 
-            <!-- Contenedor del Mapa -->
-            <div class="h-full min-h-[500px] relative">
-                <!-- Loading del mapa -->
-                <div *ngIf="!map" class="absolute inset-0 flex items-center justify-center bg-surface-100 dark:bg-surface-800 rounded-lg z-10">
-                    <div class="text-center">
-                        <i class="pi pi-spin pi-spinner text-2xl text-primary mb-2"></i>
-                        <p class="text-surface-600 dark:text-surface-400">Cargando mapa...</p>
+                <!-- Contenedor del Mapa -->
+                <div class="flex-1 relative overflow-hidden min-h-0">
+                    <!-- Loading del mapa -->
+                    <div *ngIf="!map" class="absolute inset-0 flex items-center justify-center bg-surface-100 dark:bg-surface-800 rounded-lg z-10">
+                        <div class="text-center">
+                            <i class="pi pi-spin pi-spinner text-2xl text-primary mb-2"></i>
+                            <p class="text-surface-600 dark:text-surface-400">Cargando mapa...</p>
+                        </div>
+                    </div>
+
+                    <!-- Mapa de Leaflet -->
+                    <div #mapContainer
+                         class="w-full h-full rounded-lg"
+                         style="min-height: 500px; height: 100%; width: 100%;">
                     </div>
                 </div>
-
-                <!-- Mapa de Leaflet -->
-                <div #mapContainer
-                     class="w-full h-full rounded-lg"
-                     style="min-height: 500px; height: 100%; width: 100%;">
-                </div>
-            </div>
-
-        </p-card>
+            </p-card>
+        </div>
     </div>
 </div>
 <!-- Dialog para completar datos de Geocerca -->
