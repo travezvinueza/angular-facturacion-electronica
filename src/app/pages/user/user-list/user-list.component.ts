@@ -28,6 +28,11 @@ import { SelectModule } from 'primeng/select';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { SliderModule } from 'primeng/slider';
 import * as L from 'leaflet';
+import 'leaflet.markercluster';
+import { Canton, Parroquia, Provincia } from '@/core/models/ProvinciaDto';
+import { AutoComplete } from 'primeng/autocomplete';
+import provinciasData from '../../../../assets/data/provincias.json';
+
 
 @Component({
     selector: 'app-user-list',
@@ -54,7 +59,8 @@ import * as L from 'leaflet';
         TooltipModule,
         SelectModule,
         ToggleSwitchModule,
-        SliderModule
+        SliderModule,
+        AutoComplete
     ],
     templateUrl: './user-list.component.html',
     styleUrls: ['./user-list.component.css']
@@ -71,7 +77,7 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Propiedades de paginación
     first: number = 0;
-    itemsPerPage: number = 5;
+    itemsPerPage: number = 10;
 
     // Propiedades del dialog
     userForm!: FormGroup;
@@ -79,7 +85,10 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
     // Mapa
     map: L.Map | null = null;
     currentTileLayer: L.TileLayer | null = null;
+
     // Buscador de ubicaciones
+    userMarkers: Map<string, L.Marker> = new Map();
+    markerClusterGroup: L.MarkerClusterGroup | null = null;
     searchLocation: string = '';
     searchingLocation: boolean = false;
     searchResults: any[] = [];
@@ -106,6 +115,21 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         { label: 'Polígono', value: 'poligono', icon: 'pi pi-stop' }
     ];
 
+    // Propiedades para AutoComplete de provincias
+    provinciasData: any = {};
+    provinciasList: Provincia[] = [];
+    cantonesList: Canton[] = [];
+    parroquiasList: Parroquia[] = [];
+
+    // Propiedades para las sugerencias filtradas
+    provinciasFiltradas: Provincia[] = [];
+    ciudadesFiltradas: Canton[] = [];
+    sectoresFiltrados: Parroquia[] = [];
+
+    // Propiedades para elementos seleccionados
+    provinciaSeleccionada: Provincia | null = null;
+    ciudadSeleccionada: Canton | null = null;
+
     constructor(
         private readonly formBuilder: FormBuilder,
         private readonly userService: UserService,
@@ -119,13 +143,13 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         this.getAllUsers();
         this.initializeForm();
         this.initializeGeocercaForm();
+        this.cargarProvincias();
     }
 
     ngAfterViewInit(): void {
-        // Delay para asegurar que el DOM esté completamente listo
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             this.initializeMap();
-        }, 500); // Aumentamos el delay
+        });
     }
 
     initializeForm(): void {
@@ -186,6 +210,9 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.filteredUsers = [...this.users];
                 this.updatePagination();
                 this.loading = false;
+                if (this.map && this.markerClusterGroup) {
+                    this.addUserMarkersToMap();
+                }
             },
             error: (error: HttpErrorResponse) => {
                 console.error('Error al cargar usuarios:', error);
@@ -221,38 +248,21 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
     selectUser(user: UserDto): void {
         this.selectedUser = user;
 
+        if (user.ubicacion && this.map) {
+            this.map.setView([user.ubicacion.geublat, user.ubicacion.geublon], 15);
+
+            const marker = this.userMarkers.get(user.usucod);
+            if (marker) {
+                marker.openPopup();
+            }
+        }
+
         this.msgService.add({
             severity: 'info',
             summary: 'Usuario seleccionado',
             detail: `${user.usunombre} seleccionado para geocercas`
         });
         console.log('Usuario seleccionado:', user);
-    }
-
-    getEstadoText(estado: number): string {
-        switch (estado) {
-            case 0:
-                return 'Activo';
-            case 1:
-                return 'Inactivo';
-            case 2:
-                return 'Bloqueado';
-            default:
-                return 'Desconocido';
-        }
-    }
-
-    getEstadoSeverity(estado: number): 'success' | 'warning' | 'danger' | 'info' {
-        switch (estado) {
-            case 0:
-                return 'success';
-            case 1:
-                return 'warning';
-            case 2:
-                return 'danger';
-            default:
-                return 'info';
-        }
     }
 
     initializeMap(): void {
@@ -272,7 +282,8 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
 
             this.map = L.map(container, {
                 center: [-0.2298, -78.5249], // Coordenadas de Quito
-                zoom: 13
+                zoom: 13,
+                zoomControl: false
             });
 
             this.currentTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -284,9 +295,22 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
             const marker = L.marker([-0.2298, -78.5249]).addTo(this.map);
             marker.bindPopup('<b>Quito, Ecuador</b><br>Ubicación principal').openPopup();
 
-            setTimeout(() => {
+            if (!this.markerClusterGroup) {
+                this.markerClusterGroup = L.markerClusterGroup({
+                    showCoverageOnHover: false,
+                    maxClusterRadius: 50,
+                    spiderfyOnMaxZoom: true
+                });
+                this.map.addLayer(this.markerClusterGroup);
+            }
+
+            if (!this.loading && this.users.length > 0) {
+                this.addUserMarkersToMap();
+            }
+
+            requestAnimationFrame(() => {
                 this.map?.invalidateSize();
-            }, 200);
+            });
 
             console.log('Mapa inicializado correctamente');
         } catch (error) {
@@ -307,6 +331,34 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
       </div>
     `;
         this.map = null;
+    }
+
+    addUserMarkersToMap(): void {
+        if (!this.map || !this.markerClusterGroup) return;
+
+        this.markerClusterGroup.clearLayers();
+        this.userMarkers.clear();
+
+        this.users.forEach((user) => {
+            if (user.ubicacion && user.ubicacion.geublat && user.ubicacion.geublon) {
+                const marker = L.marker([user.ubicacion.geublat, user.ubicacion.geublon]);
+
+                const popupContent = `
+                <div class="p-2">
+                    <p class="font-semibold mb-1 text-sm">${user.usunombre}</p>
+                    <p class="text-sm mb-1">${user.usucod} • ${user.usucodv}</p>
+                    <p class="text-xs text-gray-500">
+                        Última ubicación: ${new Date(user.ubicacion.geubfech).toLocaleString('es-EC')}
+                    </p>
+                </div> `;
+                marker.bindPopup(popupContent);
+                this.userMarkers.set(user.usucod, marker);
+
+                if (this.markerClusterGroup) {
+                    this.markerClusterGroup.addLayer(marker);
+                }
+            }
+        });
     }
 
     // === MÉTODOS DEL BUSCADOR DE UBICACIONES ===
@@ -407,13 +459,140 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
             geocnom: ['', [Validators.required, Validators.minLength(3)]],
             geocsec: ['', [Validators.required]],
             geocdirre: ['', [Validators.required]],
-            geocciud: ['Quito', [Validators.required]],
-            geocprov: ['Pichincha', [Validators.required]],
+            geocciud: ['', [Validators.required]],
+            geocprov: ['', [Validators.required]],
             geocpais: ['Ecuador', [Validators.required]],
             geocpri: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
             geocdesc: ['', [Validators.required]],
             geocact: [true]
         });
+    }
+    private cargarProvincias() {
+        this.provinciasData = provinciasData;
+        this.procesarDatosProvincias();
+        this.provinciasFiltradas = this.provinciasList;
+    }
+
+    private procesarDatosProvincias(): void {
+        this.provinciasList = [];
+
+        if (!this.provinciasData) {
+            console.error('Error: No hay datos de provincias para procesar');
+            return;
+        }
+
+        Object.keys(this.provinciasData).forEach(provinciaId => {
+            const provinciaData = this.provinciasData[provinciaId];
+
+            // Validar datos de provincia
+            if (!provinciaData?.provincia) {
+                return;
+            }
+
+            const cantones: Canton[] = [];
+
+            if (provinciaData.cantones) {
+                Object.keys(provinciaData.cantones).forEach(cantonId => {
+                    const cantonData = provinciaData.cantones[cantonId];
+
+                    // Validar datos de cantón
+                    if (!cantonData?.canton) {
+                        return;
+                    }
+
+                    const parroquias: Parroquia[] = [];
+                    if (cantonData.parroquias) {
+                        Object.keys(cantonData.parroquias).forEach(parroquiaId => {
+                            const parroquiaNombre = cantonData.parroquias[parroquiaId];
+
+                            if (parroquiaNombre && typeof parroquiaNombre === 'string') {
+                                parroquias.push({
+                                    codigo: parroquiaId,
+                                    parroquia: parroquiaNombre
+                                });
+                            }
+                        });
+                    }
+
+                    cantones.push({
+                        codigo: cantonId,
+                        canton: cantonData.canton,
+                        parroquias: parroquias
+                    });
+                });
+            }
+
+            this.provinciasList.push({
+                codigo: provinciaId,
+                provincia: provinciaData.provincia,
+                cantones: cantones
+            });
+        });
+    }
+
+    // Métodos para filtrar AutoComplete
+
+    filtrarProvincias(event: any) {
+        const query = event.query?.toLowerCase() || '';
+        this.provinciasFiltradas = this.provinciasList.filter(provincia =>
+            provincia && provincia.provincia && provincia.provincia.toLowerCase().includes(query)
+        );
+    }
+
+    filtrarCiudades(event: any) {
+        const query = event.query?.toLowerCase() || '';
+        this.ciudadesFiltradas = this.cantonesList.filter(canton =>
+            canton && canton.canton && canton.canton.toLowerCase().includes(query)
+        );
+    }
+
+    filtrarSectores(event: any) {
+        const query = event.query?.toLowerCase() || '';
+        this.sectoresFiltrados = this.parroquiasList.filter(parroquia =>
+            parroquia && parroquia.parroquia && parroquia.parroquia.toLowerCase().includes(query)
+        );
+    }
+
+    // Métodos para manejar selecciones
+
+    onProvinciaSeleccionada(event: any) {
+        const provinciaObj = event.value;
+        this.provinciaSeleccionada = provinciaObj;
+        this.cantonesList = provinciaObj?.cantones || [];
+        this.ciudadSeleccionada = null;
+        this.parroquiasList = [];
+
+        this.geocercaForm.patchValue({
+            geocciud: '',
+            geocsec: ''
+        });
+    }
+
+    onProvinciaLimpiada() {
+        this.provinciaSeleccionada = null;
+        this.cantonesList = [];
+        this.ciudadSeleccionada = null;
+        this.parroquiasList = [];
+
+    }
+
+    onCiudadSeleccionada(event: any): void {
+        const ciudadObj = event.value;
+
+        this.ciudadSeleccionada = ciudadObj;
+        this.parroquiasList = ciudadObj?.parroquias || [];
+
+        this.geocercaForm.patchValue({
+            geocsec: ''
+        });
+    }
+
+    onCiudadLimpiada() {
+        this.ciudadSeleccionada = null;
+        this.parroquiasList = [];
+
+    }
+    onSectorSeleccionado(event: any) {
     }
 
     iniciarCreacionGeocerca(): void {
@@ -433,19 +612,16 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         this.coordenadasGeocerca = [];
         this.centroGeocerca = null;
 
-        // Limpiar completamente antes de empezar
         this.limpiarDibujo();
 
         if (!this.dibujoLayer) {
             this.dibujoLayer = L.layerGroup().addTo(this.map!);
         }
 
-        // Limpiar eventos del mapa antes de configurar nuevos
         if (this.map) {
             this.map.off('click');
         }
 
-        // Configurar eventos después de un pequeño delay
         setTimeout(() => {
             this.configurarEventosMapa();
             console.log('Eventos configurados para tipo:', this.tipoGeocerca);
@@ -576,16 +752,16 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
     private crearLineasPunteadas(): void {
         if (this.coordenadasGeocerca.length < 2) return;
 
-        // Crear líneas entre puntos consecutivos
         for (let i = 0; i < this.coordenadasGeocerca.length; i++) {
             const punto1 = this.coordenadasGeocerca[i];
             const punto2 = this.coordenadasGeocerca[(i + 1) % this.coordenadasGeocerca.length];
 
-            // Para polígonos de 3+ puntos, crear todas las líneas incluyendo la de cierre
-            // Para líneas de 2 puntos, solo crear la línea directa
             if (this.coordenadasGeocerca.length >= 3 || i < this.coordenadasGeocerca.length - 1) {
                 const linea = L.polyline(
-                    [[punto1.lat, punto1.lng], [punto2.lat, punto2.lng]],
+                    [
+                        [punto1.lat, punto1.lng],
+                        [punto2.lat, punto2.lng]
+                    ],
                     {
                         color: '#8b5cf6',
                         weight: 2,
@@ -647,12 +823,11 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
 
     generarCoordenadasCirculo(lat: number, lng: number, radio: number): void {
         this.coordenadasGeocerca = [];
-        const puntos = 32; // Número de puntos para formar el círculo
+        const puntos = 32;
 
         for (let i = 0; i < puntos; i++) {
             const angulo = (i * 2 * Math.PI) / puntos;
 
-            // Convertir radio de metros a grados
             const deltaLat = (radio / 111320) * Math.cos(angulo);
             const deltaLng = (radio / (111320 * Math.cos((lat * Math.PI) / 180))) * Math.sin(angulo);
 
@@ -661,25 +836,20 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
                 lng: lng + deltaLng
             });
         }
-
     }
 
-    private prepararCoordenadasParaServicio(): Array<{lat: number, lng: number}> {
-        // Para círculos, las coordenadas ya están generadas correctamente
+    private prepararCoordenadasParaServicio(): Array<{ lat: number; lng: number }> {
         if (this.tipoGeocerca === 'circular') {
             return [...this.coordenadasGeocerca];
         }
 
-        // Para polígonos manuales, asegurar que tenemos las coordenadas sin duplicar el primer punto
         const coordenadas = [...this.coordenadasGeocerca];
 
-        // Verificar si el último punto es igual al primero y eliminarlo si es así
         if (coordenadas.length > 3) {
             const primero = coordenadas[0];
             const ultimo = coordenadas[coordenadas.length - 1];
 
-            if (Math.abs(primero.lat - ultimo.lat) < 0.000001 &&
-                Math.abs(primero.lng - ultimo.lng) < 0.000001) {
+            if (Math.abs(primero.lat - ultimo.lat) < 0.000001 && Math.abs(primero.lng - ultimo.lng) < 0.000001) {
                 coordenadas.pop();
             }
         }
@@ -719,7 +889,6 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         });
         this.marcadoresPuntos = [];
 
-        // Limpiar líneas temporales
         this.lineasTemporales.forEach((linea) => {
             if (this.dibujoLayer && this.map) {
                 try {
@@ -731,7 +900,6 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         });
         this.lineasTemporales = [];
 
-        // Limpiar forma actual
         if (this.formaActual && this.dibujoLayer) {
             try {
                 this.dibujoLayer.removeLayer(this.formaActual);
@@ -804,10 +972,10 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         const geocercaData: CrearGeocercaDto = {
             geoccod: formData.geoccod,
             geocnom: formData.geocnom,
-            geocsec: formData.geocsec,
             geocdirre: formData.geocdirre,
-            geocciud: formData.geocciud,
-            geocprov: formData.geocprov,
+            geocsec: formData.geocsec?.parroquia || formData.geocsec || '',
+            geocciud: formData.geocciud?.canton || formData.geocciud || '',
+            geocprov: formData.geocprov?.provincia || formData.geocprov || '',
             geocpais: formData.geocpais,
             geoclat: this.centroGeocerca.lat,
             geoclon: this.centroGeocerca.lng,
@@ -898,7 +1066,6 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         if (this.map) {
-            this.map.off();
             this.map.remove();
             this.map = null;
         }
