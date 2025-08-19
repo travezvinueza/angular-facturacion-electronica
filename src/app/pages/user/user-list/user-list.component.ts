@@ -262,7 +262,6 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
             summary: 'Usuario seleccionado',
             detail: `${user.usunombre} seleccionado para geocercas`
         });
-        console.log('Usuario seleccionado:', user);
     }
 
     initializeMap(): void {
@@ -451,7 +450,11 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
             detail: 'El mapa volvió a la vista inicial'
         });
     }
-    // === MÉTODOS PARA CREACIÓN DE GEOCERCAS ===
+    // =============================================================
+
+
+
+    // ================= MÉTODOS PARA CREACIÓN DE GEOCERCAS ====================
 
     initializeGeocercaForm(): void {
         this.geocercaForm = this.formBuilder.group({
@@ -461,138 +464,11 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
             geocdirre: ['', [Validators.required]],
             geocciud: ['', [Validators.required]],
             geocprov: ['', [Validators.required]],
-            geocpais: ['Ecuador', [Validators.required]],
-            geocpri: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
+            geocpais: ['ECUADOR', [Validators.required]],
+            geocpri: [5, [Validators.required, Validators.min(1), Validators.max(10)]],
             geocdesc: ['', [Validators.required]],
             geocact: [true]
         });
-    }
-    private cargarProvincias() {
-        this.provinciasData = provinciasData;
-        this.procesarDatosProvincias();
-        this.provinciasFiltradas = this.provinciasList;
-    }
-
-    private procesarDatosProvincias(): void {
-        this.provinciasList = [];
-
-        if (!this.provinciasData) {
-            console.error('Error: No hay datos de provincias para procesar');
-            return;
-        }
-
-        Object.keys(this.provinciasData).forEach(provinciaId => {
-            const provinciaData = this.provinciasData[provinciaId];
-
-            // Validar datos de provincia
-            if (!provinciaData?.provincia) {
-                return;
-            }
-
-            const cantones: Canton[] = [];
-
-            if (provinciaData.cantones) {
-                Object.keys(provinciaData.cantones).forEach(cantonId => {
-                    const cantonData = provinciaData.cantones[cantonId];
-
-                    // Validar datos de cantón
-                    if (!cantonData?.canton) {
-                        return;
-                    }
-
-                    const parroquias: Parroquia[] = [];
-                    if (cantonData.parroquias) {
-                        Object.keys(cantonData.parroquias).forEach(parroquiaId => {
-                            const parroquiaNombre = cantonData.parroquias[parroquiaId];
-
-                            if (parroquiaNombre && typeof parroquiaNombre === 'string') {
-                                parroquias.push({
-                                    codigo: parroquiaId,
-                                    parroquia: parroquiaNombre
-                                });
-                            }
-                        });
-                    }
-
-                    cantones.push({
-                        codigo: cantonId,
-                        canton: cantonData.canton,
-                        parroquias: parroquias
-                    });
-                });
-            }
-
-            this.provinciasList.push({
-                codigo: provinciaId,
-                provincia: provinciaData.provincia,
-                cantones: cantones
-            });
-        });
-    }
-
-    // Métodos para filtrar AutoComplete
-
-    filtrarProvincias(event: any) {
-        const query = event.query?.toLowerCase() || '';
-        this.provinciasFiltradas = this.provinciasList.filter(provincia =>
-            provincia && provincia.provincia && provincia.provincia.toLowerCase().includes(query)
-        );
-    }
-
-    filtrarCiudades(event: any) {
-        const query = event.query?.toLowerCase() || '';
-        this.ciudadesFiltradas = this.cantonesList.filter(canton =>
-            canton && canton.canton && canton.canton.toLowerCase().includes(query)
-        );
-    }
-
-    filtrarSectores(event: any) {
-        const query = event.query?.toLowerCase() || '';
-        this.sectoresFiltrados = this.parroquiasList.filter(parroquia =>
-            parroquia && parroquia.parroquia && parroquia.parroquia.toLowerCase().includes(query)
-        );
-    }
-
-    // Métodos para manejar selecciones
-
-    onProvinciaSeleccionada(event: any) {
-        const provinciaObj = event.value;
-        this.provinciaSeleccionada = provinciaObj;
-        this.cantonesList = provinciaObj?.cantones || [];
-        this.ciudadSeleccionada = null;
-        this.parroquiasList = [];
-
-        this.geocercaForm.patchValue({
-            geocciud: '',
-            geocsec: ''
-        });
-    }
-
-    onProvinciaLimpiada() {
-        this.provinciaSeleccionada = null;
-        this.cantonesList = [];
-        this.ciudadSeleccionada = null;
-        this.parroquiasList = [];
-
-    }
-
-    onCiudadSeleccionada(event: any): void {
-        const ciudadObj = event.value;
-
-        this.ciudadSeleccionada = ciudadObj;
-        this.parroquiasList = ciudadObj?.parroquias || [];
-
-        this.geocercaForm.patchValue({
-            geocsec: ''
-        });
-    }
-
-    onCiudadLimpiada() {
-        this.ciudadSeleccionada = null;
-        this.parroquiasList = [];
-
-    }
-    onSectorSeleccionado(event: any) {
     }
 
     iniciarCreacionGeocerca(): void {
@@ -604,9 +480,6 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
             });
             return;
         }
-
-        console.log('=== INICIANDO CREACIÓN DE GEOCERCA ===');
-        console.log('Tipo seleccionado:', this.tipoGeocerca);
 
         this.creandoGeocerca = true;
         this.coordenadasGeocerca = [];
@@ -651,14 +524,7 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     onMapClickCircular(e: L.LeafletMouseEvent): void {
-        console.log('CLICK CÍRCULO - Coordenadas:', e.latlng);
-        console.log('Modo actual:', this.tipoGeocerca);
-
         if (!this.creandoGeocerca) return;
-        if (this.tipoGeocerca !== 'circular') {
-            console.log('ERROR: Evento de círculo disparado pero tipo es:', this.tipoGeocerca);
-            return;
-        }
 
         const { lat, lng } = e.latlng;
         this.centroGeocerca = { lat, lng };
@@ -685,26 +551,8 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     onMapClickPoligono(e: L.LeafletMouseEvent): void {
-        console.log('CLICK POLÍGONO - Coordenadas:', e.latlng);
-        console.log('Modo actual:', this.tipoGeocerca);
-        console.log('Creando geocerca:', this.creandoGeocerca);
-
-        if (!this.creandoGeocerca) {
-            console.log('No está en modo creación, ignorando click');
-            return;
-        }
-
-        if (this.tipoGeocerca !== 'poligono') {
-            console.log('Tipo incorrecto, debería ser polígono pero es:', this.tipoGeocerca);
-            return;
-        }
-
         const { lat, lng } = e.latlng;
         this.coordenadasGeocerca.push({ lat, lng });
-
-        console.log('Puntos agregados hasta ahora:', this.coordenadasGeocerca.length);
-        console.log('Coordenadas actuales:', this.coordenadasGeocerca);
-
         this.agregarMarcadorPunto(lat, lng, this.coordenadasGeocerca.length);
         this.actualizarPoligono();
 
@@ -871,8 +719,6 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     limpiarDibujo(): void {
-        console.log('Limpiando dibujo...');
-
         if (this.dibujoLayer) {
             this.dibujoLayer.clearLayers();
         }
@@ -911,8 +757,6 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         this.coordenadasGeocerca = [];
         this.centroGeocerca = null;
         this.formaActual = null;
-
-        console.log('Dibujo limpiado completamente');
     }
 
     cancelarCreacionGeocerca(): void {
@@ -1027,8 +871,6 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     onTipoGeocercaChange(): void {
-        console.log('Cambiando tipo de geocerca a:', this.tipoGeocerca);
-
         this.limpiarDibujo();
 
         if (this.map) {
@@ -1039,6 +881,131 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
             this.configurarEventosMapa();
         }
     }
+
+    // === MÉTODOS PARA CARGAR DATOS DE PROVINCIAS =============
+    private cargarProvincias() {
+        this.provinciasData = provinciasData;
+        this.procesarDatosProvincias();
+        this.provinciasFiltradas = this.provinciasList;
+    }
+
+    private procesarDatosProvincias(): void {
+        this.provinciasList = [];
+
+        if (!this.provinciasData) {
+            console.error('Error: No hay datos de provincias para procesar');
+            return;
+        }
+
+        Object.keys(this.provinciasData).forEach(provinciaId => {
+            const provinciaData = this.provinciasData[provinciaId];
+
+            if (!provinciaData?.provincia) {
+                return;
+            }
+
+            const cantones: Canton[] = [];
+
+            if (provinciaData.cantones) {
+                Object.keys(provinciaData.cantones).forEach(cantonId => {
+                    const cantonData = provinciaData.cantones[cantonId];
+
+                    if (!cantonData?.canton) {
+                        return;
+                    }
+                    const parroquias: Parroquia[] = [];
+                    if (cantonData.parroquias) {
+                        Object.keys(cantonData.parroquias).forEach(parroquiaId => {
+                            const parroquiaNombre = cantonData.parroquias[parroquiaId];
+
+                            if (parroquiaNombre && typeof parroquiaNombre === 'string') {
+                                parroquias.push({
+                                    codigo: parroquiaId,
+                                    parroquia: parroquiaNombre
+                                });
+                            }
+                        });
+                    }
+
+                    cantones.push({
+                        codigo: cantonId,
+                        canton: cantonData.canton,
+                        parroquias: parroquias
+                    });
+                });
+            }
+
+            this.provinciasList.push({
+                codigo: provinciaId,
+                provincia: provinciaData.provincia,
+                cantones: cantones
+            });
+        });
+    }
+
+    // Métodos para filtrar AutoComplete
+
+    filtrarProvincias(event: any) {
+        const query = event.query?.toLowerCase() || '';
+        this.provinciasFiltradas = this.provinciasList.filter(provincia =>
+            provincia && provincia.provincia && provincia.provincia.toLowerCase().includes(query)
+        );
+    }
+
+    filtrarCiudades(event: any) {
+        const query = event.query?.toLowerCase() || '';
+        this.ciudadesFiltradas = this.cantonesList.filter(canton =>
+            canton && canton.canton && canton.canton.toLowerCase().includes(query)
+        );
+    }
+
+    filtrarSectores(event: any) {
+        const query = event.query?.toLowerCase() || '';
+        this.sectoresFiltrados = this.parroquiasList.filter(parroquia =>
+            parroquia && parroquia.parroquia && parroquia.parroquia.toLowerCase().includes(query)
+        );
+    }
+
+    // Métodos para manejar selecciones
+    onProvinciaSeleccionada(event: any) {
+        const provinciaObj = event.value;
+        this.provinciaSeleccionada = provinciaObj;
+        this.cantonesList = provinciaObj?.cantones || [];
+        this.ciudadSeleccionada = null;
+        this.parroquiasList = [];
+
+        this.geocercaForm.patchValue({
+            geocciud: '',
+            geocsec: ''
+        });
+    }
+
+    onProvinciaLimpiada() {
+        this.provinciaSeleccionada = null;
+        this.cantonesList = [];
+        this.ciudadSeleccionada = null;
+        this.parroquiasList = [];
+
+    }
+
+    onCiudadSeleccionada(event: any): void {
+        const ciudadObj = event.value;
+
+        this.ciudadSeleccionada = ciudadObj;
+        this.parroquiasList = ciudadObj?.parroquias || [];
+
+        this.geocercaForm.patchValue({
+            geocsec: ''
+        });
+    }
+
+    onCiudadLimpiada() {
+        this.ciudadSeleccionada = null;
+        this.parroquiasList = [];
+
+    }
+
+    // ==============================================================================
 
     ngOnDestroy(): void {
         if (this.searchMarker && this.map) {
