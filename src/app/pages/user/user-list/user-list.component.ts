@@ -77,7 +77,7 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Propiedades de paginación
     first: number = 0;
-    itemsPerPage: number = 10;
+    itemsPerPage: number = 5;
 
     // Propiedades del dialog
     userForm!: FormGroup;

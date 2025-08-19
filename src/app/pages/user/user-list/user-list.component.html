@@ -5,42 +5,46 @@
         <!-- Panel Izquierdo - Lista de Usuarios -->
         <div class="w-full lg:w-1/3 flex flex-col">
             <p-card class="flex flex-col flex-1 overflow-hidden h-full">
-                <!-- Header Mejorado -->
-                <ng-template pTemplate="header">
-                    <div class="p-3 sm:p-4 border-b border-surface-200 dark:border-surface-700 bg-gradient-to-r from-surface-50 to-white dark:from-surface-900 dark:to-surface-800">
-                        <div class="flex items-center gap-3 mb-3">
-                            <div class="w-10 h-10 flex items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 shadow-sm">
-                                <i class="pi pi-users text-primary-600 dark:text-primary-300 text-xl"></i>
-                            </div>
-                            <div>
-                                <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-white tracking-tight">
-                                    Lista de Vendedores
-                                </h2>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                    Visualización y gestión de vendedores
-                                </p>
-                            </div>
+                <!-- Header + Toolbar mejorados -->
+                <div class="p-3 sm:p-4 bg-gradient-to-r from-surface-50 to-white dark:from-surface-900 dark:to-surface-800 rounded-lg">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 flex items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 shadow-sm">
+                            <i class="pi pi-users text-primary-600 dark:text-primary-300 text-xl"></i>
                         </div>
-
-                        <!-- Buscador Mejorado -->
-                        <div class="relative mt-2">
-                            <p-iconField iconPosition="left" class="w-full">
-                                <p-inputIcon>
-                                    <i class="pi pi-search text-primary-400"></i>
-                                </p-inputIcon>
-                                <input
-                                    pInputText
-                                    type="text"
-                                    placeholder="Buscar vendedores..."
-                                    (input)="onSearch($event)"
-                                    class="w-full py-2.5 text-sm rounded-lg border-2 border-surface-200 hover:border-primary-200 focus:border-primary-500 transition-colors pl-9 shadow-sm dark:bg-surface-800 dark:border-surface-700 dark:hover:border-primary-700">
-                            </p-iconField>
+                        <div>
+                            <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-white tracking-tight">
+                                Creación de Geocercas
+                            </h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                Visualización y gestión de vendedores
+                            </p>
                         </div>
                     </div>
-                </ng-template>
 
-                <!-- Lista de Usuarios -->
-                <div class="flex-1 overflow-auto p-3 min-h-0">
+                    <div class="relative mt-2">
+                        <p-iconField iconPosition="left" class="w-full">
+                            <p-inputIcon>
+                                <i class="pi pi-search text-primary-400"></i>
+                            </p-inputIcon>
+                            <input
+                                pInputText
+                                type="text"
+                                placeholder="Buscar vendedores..."
+                                (input)="onSearch($event)"
+                                class="w-full py-2.5 text-sm rounded-lg border-2 border-surface-200 hover:border-primary-200 focus:border-primary-500 transition-colors pl-9 shadow-sm dark:bg-surface-800 dark:border-surface-700 dark:hover:border-primary-700">
+                        </p-iconField>
+                        <button
+                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-400 hover:text-primary-500 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-surface-700"
+                            title="Limpiar búsqueda">
+                            <i class="pi pi-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+
+
+                <!-- Lista de Usuarios con scroll -->
+                <div class="flex-1 overflow-auto min-h-0">
                     <!-- Loading Skeleton -->
                     @if (loading) {
                         <div class="space-y-2 sm:space-y-3 px-1">
@@ -61,45 +65,46 @@
                             }
                         </div>
                     }
-
                     <!-- Lista Real de Usuarios -->
                     @if (!loading) {
-                        <div class="space-y-2">
-                            @for (user of paginatedUsers; track user.usucod) {
+                        <div class="space-y-1 sm:space-y-2 px-1">
+                            @for (user of paginatedUsers; track user) {
                                 <div
-                                    class="border rounded-lg p-4 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors cursor-pointer"
-                                    [class.border-primary-500]="selectedUser?.usucod === user.usucod"
-                                    [class.bg-primary-50]="selectedUser?.usucod === user.usucod"
-                                    [class.dark:bg-primary-900]="selectedUser?.usucod === user.usucod"
+                                    class="border rounded-lg p-3 sm:p-4 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors cursor-pointer"
                                     (click)="selectUser(user)">
 
-                                    <div class="flex items-center space-x-4">
+                                    <div class="flex items-center space-x-3 sm:space-x-4">
                                         <!-- Avatar -->
-                                        <div
-                                            class="flex items-center justify-center w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30">
-                                            <i class="pi pi-user text-primary text-xl"></i>
+                                        <div class="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex-shrink-0">
+                                            <i class="pi pi-user text-primary text-lg sm:text-xl"></i>
                                         </div>
 
                                         <!-- Info del Usuario -->
                                         <div class="flex-1 min-w-0">
-                                            <h3 class="font-semibold text-surface-900 dark:text-surface-0 truncate">
+                                            <h3 class="font-semibold text-sm sm:text-base text-surface-900 dark:text-surface-0 truncate">
                                                 {{ user.usunombre }}
                                             </h3>
-                                            <p class="text-sm text-surface-600 dark:text-surface-400 truncate">
+                                            <p class="text-xs sm:text-sm text-surface-600 dark:text-surface-400 truncate">
                                                 {{ user.usucod }} • {{ user.usucodv }}
                                             </p>
+                                            <div class="flex space-x-1">
+                                                @if (user.ubicacion) {
+                                                    <i class="pi pi-map-marker text-green-500 text-xs" title="Con ubicación"></i>
+                                                }
+                                            </div>
                                         </div>
-
                                         <!-- Flecha -->
-                                        <i class="pi pi-chevron-right text-surface-400"></i>
+                                        <i class="pi pi-chevron-right text-surface-400 flex-shrink-0"></i>
                                     </div>
                                 </div>
                             }
-
+                            <!-- Mensaje si no hay usuarios -->
                             @if (filteredUsers.length === 0) {
-                                <div class="text-center py-8">
-                                    <i class="pi pi-users text-4xl text-surface-400 mb-4"></i>
-                                    <p class="text-surface-600 dark:text-surface-400">No se encontraron usuarios</p>
+                                <div class="text-center py-6 sm:py-8">
+                                    <i class="pi pi-users text-3xl sm:text-4xl text-surface-400 mb-3 sm:mb-4"></i>
+                                    <p class="text-sm sm:text-base text-surface-600 dark:text-surface-400">
+                                        No se encontraron usuarios
+                                    </p>
                                 </div>
                             }
                         </div>
