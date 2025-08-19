@@ -139,6 +139,8 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         private readonly http: HttpClient
     ) {}
 
+    // =============================== METODOS DE INICIALIZACION =================================
+
     ngOnInit(): void {
         this.getAllUsers();
         this.initializeForm();
@@ -165,102 +167,18 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         });
     }
 
-    deshacerUltimoPunto(): void {
-        if (this.coordenadasGeocerca.length === 0) return;
-
-        this.coordenadasGeocerca.pop();
-
-        if (this.marcadoresPuntos.length > 0) {
-            const ultimoMarcador = this.marcadoresPuntos.pop();
-            if (ultimoMarcador && this.dibujoLayer) {
-                this.dibujoLayer.removeLayer(ultimoMarcador);
-            }
-        }
-
-        if (this.formaActual && this.dibujoLayer) {
-            this.dibujoLayer.removeLayer(this.formaActual);
-            this.formaActual = null;
-        }
-
-        this.lineasTemporales.forEach((linea) => {
-            if (this.dibujoLayer) {
-                this.dibujoLayer.removeLayer(linea);
-            }
-        });
-        this.lineasTemporales = [];
-
-        if (this.coordenadasGeocerca.length >= 2) {
-            this.actualizarPoligono();
-        } else if (this.coordenadasGeocerca.length === 0) {
-            this.centroGeocerca = null;
-        }
-
-        this.msgService.add({
-            severity: 'info',
-            summary: 'Punto eliminado',
-            detail: `Último punto eliminado. Puntos restantes: ${this.coordenadasGeocerca.length}`
-        });
-    }
-
-    getAllUsers(): void {
-        this.loading = true;
-        this.userService.getAllListUser().subscribe({
-            next: (data: UserDto[]) => {
-                this.users = data;
-                this.filteredUsers = [...this.users];
-                this.updatePagination();
-                this.loading = false;
-                if (this.map && this.markerClusterGroup) {
-                    this.addUserMarkersToMap();
-                }
-            },
-            error: (error: HttpErrorResponse) => {
-                console.error('Error al cargar usuarios:', error);
-                this.loading = false;
-                this.msgService.add({
-                    severity: 'error',
-                    summary: 'Error',
-                    detail: 'No se pudieron cargar los usuarios'
-                });
-            }
-        });
-    }
-
-    onSearch(event: Event): void {
-        const value = (event.target as HTMLInputElement).value.toLowerCase();
-        this.filteredUsers = this.users.filter((user) => user.usunombre.toLowerCase().includes(value) || user.usucod.toLowerCase().includes(value) || user.usuemail.toLowerCase().includes(value));
-        this.first = 0; // Reset pagination
-        this.updatePagination();
-    }
-
-    onPageChange(event: any): void {
-        this.first = event.first;
-        this.itemsPerPage = event.rows;
-        this.updatePagination();
-    }
-
-    updatePagination(): void {
-        const start = this.first;
-        const end = start + this.itemsPerPage;
-        this.paginatedUsers = this.filteredUsers.slice(start, end);
-    }
-
-    selectUser(user: UserDto): void {
-        this.selectedUser = user;
-
-        if (user.ubicacion && this.map) {
-            this.map.setView([user.ubicacion.geublat, user.ubicacion.geublon], 15);
-
-            const marker = this.userMarkers.get(user.usucod);
-            if (marker) {
-                marker.openPopup();
-            }
-        }
-
-        this.msgService.add({
-            severity: 'info',
-            summary: 'Usuario seleccionado',
-            detail: `${user.usunombre} seleccionado para geocercas`
+    initializeGeocercaForm(): void {
+        this.geocercaForm = this.formBuilder.group({
+            geoccod: ['', [Validators.required, Validators.minLength(3)]],
+            geocnom: ['', [Validators.required, Validators.minLength(3)]],
+            geocsec: ['', [Validators.required]],
+            geocdirre: ['', [Validators.required]],
+            geocciud: ['', [Validators.required]],
+            geocprov: ['', [Validators.required]],
+            geocpais: ['ECUADOR', [Validators.required]],
+            geocpri: [5, [Validators.required, Validators.min(1), Validators.max(10)]],
+            geocdesc: ['', [Validators.required]],
+            geocact: [true]
         });
     }
 
@@ -318,6 +236,339 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         }
     }
 
+    //================================================================================
+
+
+    //FUNCIONES PARA OBTENER LOS USUARIOS/MANEJO DEL PANEL IZQUIERDO EN EL COMPONENTE
+
+    getAllUsers(): void {
+        this.loading = true;
+        this.userService.getAllListUser().subscribe({
+            next: (data: UserDto[]) => {
+                this.users = data;
+                this.filteredUsers = [...this.users];
+                this.updatePagination();
+                this.loading = false;
+                if (this.map && this.markerClusterGroup) {
+                    this.addUserMarkersToMap();
+                }
+            },
+            error: (error: HttpErrorResponse) => {
+                console.error('Error al cargar usuarios:', error);
+                this.loading = false;
+                this.msgService.add({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: 'No se pudieron cargar los usuarios'
+                });
+            }
+        });
+    }
+
+    deshacerUltimoPunto(): void {
+        if (this.coordenadasGeocerca.length === 0) return;
+
+        this.coordenadasGeocerca.pop();
+
+        if (this.marcadoresPuntos.length > 0) {
+            const ultimoMarcador = this.marcadoresPuntos.pop();
+            if (ultimoMarcador && this.dibujoLayer) {
+                this.dibujoLayer.removeLayer(ultimoMarcador);
+            }
+        }
+
+        if (this.formaActual && this.dibujoLayer) {
+            this.dibujoLayer.removeLayer(this.formaActual);
+            this.formaActual = null;
+        }
+
+        this.lineasTemporales.forEach((linea) => {
+            if (this.dibujoLayer) {
+                this.dibujoLayer.removeLayer(linea);
+            }
+        });
+        this.lineasTemporales = [];
+
+        if (this.coordenadasGeocerca.length >= 2) {
+            this.actualizarPoligono();
+        } else if (this.coordenadasGeocerca.length === 0) {
+            this.centroGeocerca = null;
+        }
+
+        this.msgService.add({
+            severity: 'info',
+            summary: 'Punto eliminado',
+            detail: `Último punto eliminado. Puntos restantes: ${this.coordenadasGeocerca.length}`
+        });
+    }
+
+    onSearch(event: Event): void {
+        const value = (event.target as HTMLInputElement).value.toLowerCase();
+        this.filteredUsers = this.users.filter((user) => user.usunombre.toLowerCase().includes(value) || user.usucod.toLowerCase().includes(value) || user.usuemail.toLowerCase().includes(value));
+        this.first = 0;
+        this.updatePagination();
+    }
+
+    onPageChange(event: any): void {
+        this.first = event.first;
+        this.itemsPerPage = event.rows;
+        this.updatePagination();
+    }
+
+    updatePagination(): void {
+        const start = this.first;
+        const end = start + this.itemsPerPage;
+        this.paginatedUsers = this.filteredUsers.slice(start, end);
+    }
+
+    selectUser(user: UserDto): void {
+        this.selectedUser = user;
+
+        if (user.ubicacion && this.map) {
+            this.map.setView([user.ubicacion.geublat, user.ubicacion.geublon], 15);
+
+            const marker = this.userMarkers.get(user.usucod);
+            if (marker) {
+                marker.openPopup();
+            }
+        }
+
+        this.msgService.add({
+            severity: 'info',
+            summary: 'Usuario seleccionado',
+            detail: `${user.usunombre} seleccionado para geocercas`
+        });
+    }
+    //============================================================================================
+
+
+    // FUNCIONES PARA LA CONFIGURACION DEL MAPA Y LOS MARCADORES DE LOS USUARIOS
+
+    configurarEventosMapa(): void {
+        if (!this.map) return;
+
+        this.map.off('click');
+
+        setTimeout(() => {
+            if (this.tipoGeocerca === 'circular') {
+                console.log('Configurando eventos para CÍRCULO');
+                this.map!.on('click', this.onMapClickCircular.bind(this));
+            } else {
+                console.log('Configurando eventos para POLÍGONO');
+                this.map!.on('click', this.onMapClickPoligono.bind(this));
+            }
+        }, 100);
+    }
+
+    onMapClickCircular(e: L.LeafletMouseEvent): void {
+        if (!this.creandoGeocerca) return;
+
+        const { lat, lng } = e.latlng;
+        this.centroGeocerca = { lat, lng };
+
+        if (this.formaActual && this.dibujoLayer) {
+            this.dibujoLayer.removeLayer(this.formaActual);
+        }
+
+        this.formaActual = L.circle([lat, lng], {
+            radius: this.radioGeocerca,
+            color: '#3b82f6',
+            fillColor: '#3b82f6',
+            fillOpacity: 0.2
+        });
+
+        this.dibujoLayer!.addLayer(this.formaActual);
+        this.generarCoordenadasCirculo(lat, lng, this.radioGeocerca);
+
+        this.msgService.add({
+            severity: 'success',
+            summary: 'Geocerca circular creada',
+            detail: 'Ajuste el radio si es necesario y proceda a guardar'
+        });
+    }
+
+    onMapClickPoligono(e: L.LeafletMouseEvent): void {
+        const { lat, lng } = e.latlng;
+        this.coordenadasGeocerca.push({ lat, lng });
+        this.agregarMarcadorPunto(lat, lng, this.coordenadasGeocerca.length);
+        this.actualizarPoligono();
+
+        this.msgService.add({
+            severity: 'info',
+            summary: `Punto ${this.coordenadasGeocerca.length} agregado`,
+            detail: this.coordenadasGeocerca.length >= 3 ? 'Ya puede continuar o agregar más puntos' : `Necesita ${3 - this.coordenadasGeocerca.length} puntos más`
+        });
+    }
+
+    agregarMarcadorPunto(lat: number, lng: number, numero: number): void {
+        if (!this.dibujoLayer) return;
+
+        const iconoNumero = L.divIcon({
+            className: 'numero-punto-custom',
+            iconSize: [30, 30],
+            html: `<div style="
+            background-color: #8b5cf6;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            font-weight: bold;
+            font-size: 14px;
+            box-sizing: border-box;
+            cursor: move;
+        ">${numero}</div>`,
+            iconAnchor: [15, 15]
+        });
+
+        const marcador = L.marker([lat, lng], {
+            icon: iconoNumero,
+            draggable: true
+        });
+
+        marcador.addTo(this.dibujoLayer);
+        this.marcadoresPuntos.push(marcador);
+
+        marcador.bindTooltip(`Punto ${numero}<br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`, {
+            permanent: false,
+            direction: 'top'
+        });
+
+        marcador.on('dragstart', () => {
+            marcador.closeTooltip();
+            // Agregar clase para animación visual
+            const iconElement = (marcador as any)._icon;
+            if (iconElement) {
+                iconElement.classList.add('dragging');
+            }
+        });
+
+        marcador.on('drag', (event) => {
+            const newPos = event.target.getLatLng();
+            // Actualizar tooltip mientras se arrastra
+            marcador.setTooltipContent(`Punto ${numero}<br>Lat: ${newPos.lat.toFixed(6)}<br>Lng: ${newPos.lng.toFixed(6)}`);
+        });
+
+        marcador.on('dragend', (event) => {
+            const newPos = event.target.getLatLng();
+
+            const iconElement = (marcador as any)._icon;
+            if (iconElement) {
+                iconElement.classList.remove('dragging');
+            }
+
+            const index = this.marcadoresPuntos.findIndex(marker => marker === marcador);
+
+            if (index !== -1) {
+                this.coordenadasGeocerca[index] = {
+                    lat: newPos.lat,
+                    lng: newPos.lng
+                };
+
+                this.actualizarPoligono();
+                marcador.setTooltipContent(`Punto ${numero}<br>Lat: ${newPos.lat.toFixed(6)}<br>Lng: ${newPos.lng.toFixed(6)}`);
+
+                this.msgService.add({
+                    severity: 'success',
+                    summary: `Punto ${numero} movido`,
+                    detail: `Nueva posición: ${newPos.lat.toFixed(6)}, ${newPos.lng.toFixed(6)}`
+                });
+            }
+        });
+    }
+
+    private crearLineasPunteadas(): void {
+        if (this.coordenadasGeocerca.length < 2) return;
+
+        for (let i = 0; i < this.coordenadasGeocerca.length; i++) {
+            const punto1 = this.coordenadasGeocerca[i];
+            const punto2 = this.coordenadasGeocerca[(i + 1) % this.coordenadasGeocerca.length];
+
+            if (this.coordenadasGeocerca.length >= 3 || i < this.coordenadasGeocerca.length - 1) {
+                const linea = L.polyline(
+                    [
+                        [punto1.lat, punto1.lng],
+                        [punto2.lat, punto2.lng]
+                    ],
+                    {
+                        color: '#8b5cf6',
+                        weight: 2,
+                        opacity: 0.8,
+                        dashArray: '8, 6'
+                    }
+                );
+
+                this.lineasTemporales.push(linea);
+                this.dibujoLayer!.addLayer(linea);
+            }
+        }
+    }
+
+    actualizarPoligono(): void {
+        if (this.coordenadasGeocerca.length < 2) return;
+
+        if (this.formaActual && this.dibujoLayer) {
+            this.dibujoLayer.removeLayer(this.formaActual);
+        }
+
+        this.lineasTemporales.forEach((linea) => {
+            if (this.dibujoLayer) {
+                this.dibujoLayer.removeLayer(linea);
+            }
+        });
+
+        this.lineasTemporales = [];
+
+        this.crearLineasPunteadas();
+
+        if (this.coordenadasGeocerca.length >= 3) {
+            const latLngs = this.coordenadasGeocerca.map((coord) => [coord.lat, coord.lng] as L.LatLngTuple);
+
+            const polygon = L.polygon(latLngs, {
+                stroke: false,
+                fillColor: '#8b5cf6',
+                fillOpacity: 0.15
+            });
+
+            this.formaActual = polygon;
+            this.dibujoLayer!.addLayer(polygon);
+        }
+
+        this.calcularCentroPoligono();
+    }
+
+    calcularCentroPoligono(): void {
+        if (this.coordenadasGeocerca.length === 0) return;
+
+        const sumLat = this.coordenadasGeocerca.reduce((sum, coord) => sum + coord.lat, 0);
+        const sumLng = this.coordenadasGeocerca.reduce((sum, coord) => sum + coord.lng, 0);
+
+        this.centroGeocerca = {
+            lat: sumLat / this.coordenadasGeocerca.length,
+            lng: sumLng / this.coordenadasGeocerca.length
+        };
+    }
+
+    generarCoordenadasCirculo(lat: number, lng: number, radio: number): void {
+        this.coordenadasGeocerca = [];
+        const puntos = 32;
+
+        for (let i = 0; i < puntos; i++) {
+            const angulo = (i * 2 * Math.PI) / puntos;
+
+            const deltaLat = (radio / 111320) * Math.cos(angulo);
+            const deltaLng = (radio / (111320 * Math.cos((lat * Math.PI) / 180))) * Math.sin(angulo);
+
+            this.coordenadasGeocerca.push({
+                lat: lat + deltaLat,
+                lng: lng + deltaLng
+            });
+        }
+    }
     showMapFallback(): void {
         const mapElement = this.mapContainer.nativeElement;
         mapElement.innerHTML = `
@@ -360,7 +611,7 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         });
     }
 
-    // === MÉTODOS DEL BUSCADOR DE UBICACIONES ===
+    // ==================== MÉTODOS DEL BUSCADOR DE UBICACIONES ==================
 
     searchLocationOnMap(): void {
         if (!this.searchLocation.trim()) {
@@ -456,21 +707,6 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // ================= MÉTODOS PARA CREACIÓN DE GEOCERCAS ====================
 
-    initializeGeocercaForm(): void {
-        this.geocercaForm = this.formBuilder.group({
-            geoccod: ['', [Validators.required, Validators.minLength(3)]],
-            geocnom: ['', [Validators.required, Validators.minLength(3)]],
-            geocsec: ['', [Validators.required]],
-            geocdirre: ['', [Validators.required]],
-            geocciud: ['', [Validators.required]],
-            geocprov: ['', [Validators.required]],
-            geocpais: ['ECUADOR', [Validators.required]],
-            geocpri: [5, [Validators.required, Validators.min(1), Validators.max(10)]],
-            geocdesc: ['', [Validators.required]],
-            geocact: [true]
-        });
-    }
-
     iniciarCreacionGeocerca(): void {
         if (!this.selectedUser) {
             this.msgService.add({
@@ -505,185 +741,6 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
             summary: 'Modo creación activado',
             detail: `Haga clic en el mapa para crear una geocerca ${this.tipoGeocerca}`
         });
-    }
-
-    configurarEventosMapa(): void {
-        if (!this.map) return;
-
-        this.map.off('click');
-
-        setTimeout(() => {
-            if (this.tipoGeocerca === 'circular') {
-                console.log('Configurando eventos para CÍRCULO');
-                this.map!.on('click', this.onMapClickCircular.bind(this));
-            } else {
-                console.log('Configurando eventos para POLÍGONO');
-                this.map!.on('click', this.onMapClickPoligono.bind(this));
-            }
-        }, 100);
-    }
-
-    onMapClickCircular(e: L.LeafletMouseEvent): void {
-        if (!this.creandoGeocerca) return;
-
-        const { lat, lng } = e.latlng;
-        this.centroGeocerca = { lat, lng };
-
-        if (this.formaActual && this.dibujoLayer) {
-            this.dibujoLayer.removeLayer(this.formaActual);
-        }
-
-        this.formaActual = L.circle([lat, lng], {
-            radius: this.radioGeocerca,
-            color: '#3b82f6',
-            fillColor: '#3b82f6',
-            fillOpacity: 0.2
-        });
-
-        this.dibujoLayer!.addLayer(this.formaActual);
-        this.generarCoordenadasCirculo(lat, lng, this.radioGeocerca);
-
-        this.msgService.add({
-            severity: 'success',
-            summary: 'Geocerca circular creada',
-            detail: 'Ajuste el radio si es necesario y proceda a guardar'
-        });
-    }
-
-    onMapClickPoligono(e: L.LeafletMouseEvent): void {
-        const { lat, lng } = e.latlng;
-        this.coordenadasGeocerca.push({ lat, lng });
-        this.agregarMarcadorPunto(lat, lng, this.coordenadasGeocerca.length);
-        this.actualizarPoligono();
-
-        this.msgService.add({
-            severity: 'info',
-            summary: `Punto ${this.coordenadasGeocerca.length} agregado`,
-            detail: this.coordenadasGeocerca.length >= 3 ? 'Ya puede continuar o agregar más puntos' : `Necesita ${3 - this.coordenadasGeocerca.length} puntos más`
-        });
-    }
-
-    agregarMarcadorPunto(lat: number, lng: number, numero: number): void {
-        if (!this.dibujoLayer) return;
-
-        const iconoNumero = L.divIcon({
-            className: 'numero-punto-custom',
-            iconSize: [30, 30],
-            html: `<div style="
-            background-color: #8b5cf6;
-            color: white;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 3px solid white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            font-weight: bold;
-            font-size: 14px;
-            box-sizing: border-box;
-        ">${numero}</div>`,
-            iconAnchor: [15, 15]
-        });
-
-        const marcador = L.marker([lat, lng], { icon: iconoNumero });
-        marcador.addTo(this.dibujoLayer);
-        this.marcadoresPuntos.push(marcador);
-
-        marcador.bindTooltip(`Punto ${numero}<br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`, {
-            permanent: false,
-            direction: 'top'
-        });
-    }
-
-    private crearLineasPunteadas(): void {
-        if (this.coordenadasGeocerca.length < 2) return;
-
-        for (let i = 0; i < this.coordenadasGeocerca.length; i++) {
-            const punto1 = this.coordenadasGeocerca[i];
-            const punto2 = this.coordenadasGeocerca[(i + 1) % this.coordenadasGeocerca.length];
-
-            if (this.coordenadasGeocerca.length >= 3 || i < this.coordenadasGeocerca.length - 1) {
-                const linea = L.polyline(
-                    [
-                        [punto1.lat, punto1.lng],
-                        [punto2.lat, punto2.lng]
-                    ],
-                    {
-                        color: '#8b5cf6',
-                        weight: 2,
-                        opacity: 0.8,
-                        dashArray: '8, 6'
-                    }
-                );
-
-                this.lineasTemporales.push(linea);
-                this.dibujoLayer!.addLayer(linea);
-            }
-        }
-    }
-
-    actualizarPoligono(): void {
-        if (this.coordenadasGeocerca.length < 2) return;
-
-        if (this.formaActual && this.dibujoLayer) {
-            this.dibujoLayer.removeLayer(this.formaActual);
-        }
-
-        this.lineasTemporales.forEach((linea) => {
-            if (this.dibujoLayer) {
-                this.dibujoLayer.removeLayer(linea);
-            }
-        });
-
-        this.lineasTemporales = [];
-
-        this.crearLineasPunteadas();
-
-        if (this.coordenadasGeocerca.length >= 3) {
-            const latLngs = this.coordenadasGeocerca.map((coord) => [coord.lat, coord.lng] as L.LatLngTuple);
-
-            const polygon = L.polygon(latLngs, {
-                stroke: false,
-                fillColor: '#8b5cf6',
-                fillOpacity: 0.15
-            });
-
-            this.formaActual = polygon;
-            this.dibujoLayer!.addLayer(polygon);
-        }
-
-        this.calcularCentroPoligono();
-    }
-
-    calcularCentroPoligono(): void {
-        if (this.coordenadasGeocerca.length === 0) return;
-
-        const sumLat = this.coordenadasGeocerca.reduce((sum, coord) => sum + coord.lat, 0);
-        const sumLng = this.coordenadasGeocerca.reduce((sum, coord) => sum + coord.lng, 0);
-
-        this.centroGeocerca = {
-            lat: sumLat / this.coordenadasGeocerca.length,
-            lng: sumLng / this.coordenadasGeocerca.length
-        };
-    }
-
-    generarCoordenadasCirculo(lat: number, lng: number, radio: number): void {
-        this.coordenadasGeocerca = [];
-        const puntos = 32;
-
-        for (let i = 0; i < puntos; i++) {
-            const angulo = (i * 2 * Math.PI) / puntos;
-
-            const deltaLat = (radio / 111320) * Math.cos(angulo);
-            const deltaLng = (radio / (111320 * Math.cos((lat * Math.PI) / 180))) * Math.sin(angulo);
-
-            this.coordenadasGeocerca.push({
-                lat: lat + deltaLat,
-                lng: lng + deltaLng
-            });
-        }
     }
 
     private prepararCoordenadasParaServicio(): Array<{ lat: number; lng: number }> {
@@ -882,7 +939,7 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         }
     }
 
-    // === MÉTODOS PARA CARGAR DATOS DE PROVINCIAS =============
+    // ============== MÉTODOS PARA CARGAR DATOS DE PROVINCIAS =============
     private cargarProvincias() {
         this.provinciasData = provinciasData;
         this.procesarDatosProvincias();

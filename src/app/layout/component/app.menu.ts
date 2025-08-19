@@ -43,7 +43,7 @@ export class AppMenu {
                         isAuthenticated: true,
                         icon: 'pi pi-fw pi-cog',
                         items: [
-                            { label: 'Crear Geocercas', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/user-list'] },
+                            { label: 'Crear Geocercas', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/geocercas'] },
                             { label: 'Geocercas y Vendedores', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/geocercas-vendedores'] },
                         ]
                     },
@@ -52,7 +52,7 @@ export class AppMenu {
             {
                 label: 'Vendedores',
                 items: [
-                    { label: 'Lista de Vendedores', isAuthenticated: true, icon: 'pi pi-fw pi-id-card', routerLink: ['/pages/geocercas-list'] },
+                    { label: 'Lista de Vendedores', isAuthenticated: true, icon: 'pi pi-fw pi-id-card', routerLink: ['/pages/vendedores'] },
                 ]
             },
             {

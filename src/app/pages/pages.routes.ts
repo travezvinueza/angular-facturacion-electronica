@@ -9,7 +9,7 @@ export default [
     { path: 'documentation', component: Documentation },
     { path: 'crud', component: Crud },
     { path: 'empty', component: Empty },
-    { path: 'user-list', component: UserListComponent },
-    { path: 'geocercas-list', component: GeocercasListComponent },
+    { path: 'geocercas', component: UserListComponent },
+    { path: 'vendedores', component: GeocercasListComponent },
     { path: '**', redirectTo: '/notfound' }
 ] as Routes;
