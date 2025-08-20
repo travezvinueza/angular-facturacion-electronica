@@ -854,7 +854,7 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         const formData = this.geocercaForm.value;
-        const usuario = this.authService.getCurrentUser() || 'admin';
+        const usuario = this.authService.getUsuarioFromToken() || 'SUPERVISOR';
         const empresa = this.authService.getEmpresa()?.nomempresa || 'PC-ADMIN';
 
         const coordenadasParaCalculo = this.prepararCoordenadasParaServicio();

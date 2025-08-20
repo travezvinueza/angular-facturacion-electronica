@@ -12,7 +12,6 @@ export class AuthService {
     private readonly baseUrl = environment.apiUrl + '/login';
     private readonly userSignal = signal<string | null>(this.getUsuarioFromToken());
 
-    // Signals para manejar el flujo de dos pasos
     private readonly empresasDisponiblesSignal = signal<Array<{id: number, nomempresa: string, flag: boolean}>>([]);
     private readonly tokenTemporalSignal = signal<string | null>(null);
 
@@ -54,7 +53,6 @@ export class AuthService {
         );
     }
 
-    /** Decodifica el token JWT */
     private decodeToken(token: string): JwtPayload | null {
         try {
             const payload = token.split('.')[1];
@@ -65,26 +63,22 @@ export class AuthService {
         }
     }
 
-    /** Obtiene el token decodificado */
     getDecodedToken(): JwtPayload | null {
         const token = localStorage.getItem('token');
         return token ? this.decodeToken(token) : null;
     }
 
-    /** Obtiene el usuario del token */
      getUsuarioFromToken(): string | null {
         const decoded = this.getDecodedToken();
         return decoded?.usuario || null;
     }
 
-    /** Verifica si el token ha expirado */
     isTokenExpired(): boolean {
         const decoded = this.getDecodedToken();
         const expiration = decoded?.exp ? decoded.exp * 1000 : 0;
         return Date.now() > expiration;
     }
 
-    /** Obtiene el usuario actual (como signal) */
     getUserSignal(): Signal<string | null> {
         return this.userSignal;
     }
@@ -94,31 +88,20 @@ export class AuthService {
         return this.userSignal();
     }
 
-    /** Actualiza el usuario desde el token */
     updateUserFromToken(token: string): void {
         const decodedToken = this.decodeToken(token);
         const usuario = decodedToken?.usuario || null;
         this.userSignal.set(usuario);
     }
 
-    /** Verifica si el usuario está autenticado */
     isAuthenticated(): boolean {
         const token = localStorage.getItem('token');
         return token ? !this.isTokenExpired() : false;
     }
 
-    /** Obtiene la empresa guardada */
     getEmpresa(): {id: number, nomempresa: string, flag: boolean} | null {
         const empresa = localStorage.getItem('empresa');
         return empresa ? JSON.parse(empresa) : null;
-    }
-    /** Obtiene las empresas disponibles después del login inicial */
-    getEmpresasDisponibles(): Array<{id: number, nomempresa: string, flag: boolean}> {
-        return this.empresasDisponiblesSignal();
-    }
-
-    tieneEmpresasPendientes(): boolean {
-        return this.empresasDisponiblesSignal().length > 0 && !this.isAuthenticated();
     }
 
     cancelarLogin(): void {
@@ -127,12 +110,10 @@ export class AuthService {
     }
 
 
-    /** Obtiene el token actual */
     getToken(): string | null {
         return localStorage.getItem('token');
     }
 
-    /** Cierra sesión */
     logOut(): void {
         localStorage.removeItem('token');
         localStorage.removeItem('empresa');

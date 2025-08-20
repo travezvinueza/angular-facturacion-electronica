@@ -1,7 +1,7 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { CrearGeocercaDto, GeocercaResponseDto } from '../models/GeocercaDto';
+import { ActualizarGeocercaDto, CrearGeocercaDto, GeocercaResponseDto } from '../models/GeocercaDto';
 import { AuthService } from './auth.service';
 import { environment } from '../../../environments/environment';
 
@@ -23,6 +23,21 @@ export class GeocercaService {
         });
 
         return this.http.post<GeocercaResponseDto>(`${this.baseUrl}/crear-con-vendedores`, geocerca, { headers });
+    }
+
+    /** Actualizar una geocerca existente */
+    actualizarGeocerca(codigoGeocerca: string, geocerca: ActualizarGeocercaDto): Observable<GeocercaResponseDto> {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+
+        return this.http.put<GeocercaResponseDto>(
+            `${this.baseUrl}/actualizar-geocerca/${codigoGeocerca}`,
+            geocerca,
+            { headers }
+        );
     }
 
     /** Generar código único para geocerca */

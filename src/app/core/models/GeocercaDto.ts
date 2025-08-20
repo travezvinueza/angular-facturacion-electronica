@@ -39,3 +39,22 @@ export interface GeocercaResponseDto {
     message: string;
     data?: any;
 }
+export interface ActualizarGeocercaDto {
+    geocnom: string;
+    geocsec: string;
+    geocdirre: string;
+    geocciud: string;
+    geocprov: string;
+    geocpais: string;
+    geoclat: number;
+    geoclon: number;
+    geoccoor: CoordenadaDto[];
+    geocarm: number;
+    geocperm: number;
+    geocest: string;
+    geocact: boolean;
+    geocpri: number;
+    geocdesc: string;
+    geocusedi: string;
+    geoceqedi: string;
+}
