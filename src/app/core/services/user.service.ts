@@ -44,11 +44,6 @@ export class UserService {
             httpParams = httpParams.set('pageSize', '10');
         }
 
-        if (params?.activo !== undefined) {
-            httpParams = httpParams.set('activo', params.activo.toString());
-        } else {
-            httpParams = httpParams.set('activo', 'true');
-        }
 
         if (params?.busqueda) {
             httpParams = httpParams.set('busqueda', params.busqueda);

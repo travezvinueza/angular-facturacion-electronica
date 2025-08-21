@@ -40,6 +40,36 @@ export class GeocercaService {
         );
     }
 
+    /** Eliminar una geocerca existente */
+    eliminarGeocerca(codigoGeocerca: string): Observable<void> {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`
+        });
+
+        return this.http.delete<void>(`${this.baseUrl}/eliminar-geocerca/${codigoGeocerca}`, { headers });
+    }
+
+    /** Activar una geocerca existente */
+    activarGeocerca(codigoGeocerca: string): Observable<void> {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`
+        });
+
+        return this.http.patch<void>(`${this.baseUrl}/activar-geocerca/${codigoGeocerca}`, { headers });
+    }
+
+    /** Desactivar una geocerca existente */
+    desactivarGeocerca(codigoGeocerca: string): Observable<void> {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`
+        });
+
+        return this.http.patch<void>(`${this.baseUrl}/desactivar-geocerca/${codigoGeocerca}`, { headers });
+    }
+
     /** Generar código único para geocerca */
     generarCodigoGeocerca(): string {
         const timestamp = Date.now().toString().slice(-6);

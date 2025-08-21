@@ -31,8 +31,7 @@ import * as L from 'leaflet';
 import 'leaflet.markercluster';
 import { Canton, Parroquia, Provincia } from '@/core/models/ProvinciaDto';
 import { AutoComplete } from 'primeng/autocomplete';
-import provinciasData from '../../../../assets/data/provincias.json';
-
+import { ProvinceService } from '@/core/services/province.service';
 
 @Component({
     selector: 'app-user-list',
@@ -67,6 +66,21 @@ import provinciasData from '../../../../assets/data/provincias.json';
 })
 export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
     @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
+
+
+    // Propiedades para AutoComplete de provincias
+    cantonesList: Canton[] = [];
+    parroquiasList: Parroquia[] = [];
+
+    // Propiedades para las sugerencias filtradas
+    provinciasFiltradas: Provincia[] = [];
+    ciudadesFiltradas: Canton[] = [];
+    sectoresFiltrados: Parroquia[] = [];
+
+    // Propiedades para elementos seleccionados
+    provinciaSeleccionada: Provincia | null = null;
+    ciudadSeleccionada: Canton | null = null;
+    sectorSeleccionado: Parroquia | null = null;
 
     // Propiedades de usuarios
     users: UserDto[] = [];
@@ -115,20 +129,6 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         { label: 'Polígono', value: 'poligono', icon: 'pi pi-stop' }
     ];
 
-    // Propiedades para AutoComplete de provincias
-    provinciasData: any = {};
-    provinciasList: Provincia[] = [];
-    cantonesList: Canton[] = [];
-    parroquiasList: Parroquia[] = [];
-
-    // Propiedades para las sugerencias filtradas
-    provinciasFiltradas: Provincia[] = [];
-    ciudadesFiltradas: Canton[] = [];
-    sectoresFiltrados: Parroquia[] = [];
-
-    // Propiedades para elementos seleccionados
-    provinciaSeleccionada: Provincia | null = null;
-    ciudadSeleccionada: Canton | null = null;
 
     constructor(
         private readonly formBuilder: FormBuilder,
@@ -136,7 +136,9 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         private readonly geocercaService: GeocercaService,
         private readonly authService: AuthService,
         private readonly msgService: MessageService,
-        private readonly http: HttpClient
+        private readonly http: HttpClient,
+        private provinceService: ProvinceService
+
     ) {}
 
     // =============================== METODOS DE INICIALIZACION =================================
@@ -145,13 +147,17 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         this.getAllUsers();
         this.initializeForm();
         this.initializeGeocercaForm();
-        this.cargarProvincias();
+        this.inicializarProvincias();
     }
 
     ngAfterViewInit(): void {
         requestAnimationFrame(() => {
             this.initializeMap();
         });
+    }
+
+    private inicializarProvincias(): void {
+        this.provinciasFiltradas = this.provinceService.getProvincias();
     }
 
     initializeForm(): void {
@@ -440,7 +446,6 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
 
         marcador.on('dragstart', () => {
             marcador.closeTooltip();
-            // Agregar clase para animación visual
             const iconElement = (marcador as any)._icon;
             if (iconElement) {
                 iconElement.classList.add('dragging');
@@ -449,7 +454,6 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
 
         marcador.on('drag', (event) => {
             const newPos = event.target.getLatLng();
-            // Actualizar tooltip mientras se arrastra
             marcador.setTooltipContent(`Punto ${numero}<br>Lat: ${newPos.lat.toFixed(6)}<br>Lng: ${newPos.lng.toFixed(6)}`);
         });
 
@@ -940,97 +944,37 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     // ============== MÉTODOS PARA CARGAR DATOS DE PROVINCIAS =============
-    private cargarProvincias() {
-        this.provinciasData = provinciasData;
-        this.procesarDatosProvincias();
-        this.provinciasFiltradas = this.provinciasList;
-    }
 
-    private procesarDatosProvincias(): void {
-        this.provinciasList = [];
-
-        if (!this.provinciasData) {
-            console.error('Error: No hay datos de provincias para procesar');
-            return;
-        }
-
-        Object.keys(this.provinciasData).forEach(provinciaId => {
-            const provinciaData = this.provinciasData[provinciaId];
-
-            if (!provinciaData?.provincia) {
-                return;
-            }
-
-            const cantones: Canton[] = [];
-
-            if (provinciaData.cantones) {
-                Object.keys(provinciaData.cantones).forEach(cantonId => {
-                    const cantonData = provinciaData.cantones[cantonId];
-
-                    if (!cantonData?.canton) {
-                        return;
-                    }
-                    const parroquias: Parroquia[] = [];
-                    if (cantonData.parroquias) {
-                        Object.keys(cantonData.parroquias).forEach(parroquiaId => {
-                            const parroquiaNombre = cantonData.parroquias[parroquiaId];
-
-                            if (parroquiaNombre && typeof parroquiaNombre === 'string') {
-                                parroquias.push({
-                                    codigo: parroquiaId,
-                                    parroquia: parroquiaNombre
-                                });
-                            }
-                        });
-                    }
-
-                    cantones.push({
-                        codigo: cantonId,
-                        canton: cantonData.canton,
-                        parroquias: parroquias
-                    });
-                });
-            }
-
-            this.provinciasList.push({
-                codigo: provinciaId,
-                provincia: provinciaData.provincia,
-                cantones: cantones
-            });
-        });
-    }
-
-    // Métodos para filtrar AutoComplete
-
-    filtrarProvincias(event: any) {
+    filtrarProvincias(event: any): void {
         const query = event.query?.toLowerCase() || '';
-        this.provinciasFiltradas = this.provinciasList.filter(provincia =>
-            provincia && provincia.provincia && provincia.provincia.toLowerCase().includes(query)
-        );
+        this.provinciasFiltradas = this.provinceService.filtrarProvincias(query);
     }
 
-    filtrarCiudades(event: any) {
+    filtrarCiudades(event: any): void {
         const query = event.query?.toLowerCase() || '';
-        this.ciudadesFiltradas = this.cantonesList.filter(canton =>
-            canton && canton.canton && canton.canton.toLowerCase().includes(query)
-        );
+        this.ciudadesFiltradas = this.provinceService.filtrarCantones(this.cantonesList, query);
     }
 
-    filtrarSectores(event: any) {
+    filtrarSectores(event: any): void {
         const query = event.query?.toLowerCase() || '';
-        this.sectoresFiltrados = this.parroquiasList.filter(parroquia =>
-            parroquia && parroquia.parroquia && parroquia.parroquia.toLowerCase().includes(query)
-        );
+        this.sectoresFiltrados = this.provinceService.filtrarParroquias(this.parroquiasList, query);
     }
+
 
     // Métodos para manejar selecciones
-    onProvinciaSeleccionada(event: any) {
-        const provinciaObj = event.value;
+    onProvinciaSeleccionada(event: any): void {
+        const provinciaObj: Provincia = event.value;
         this.provinciaSeleccionada = provinciaObj;
-        this.cantonesList = provinciaObj?.cantones || [];
+
+        // Usar el servicio para obtener cantones
+        this.cantonesList = this.provinceService.getCantones(provinciaObj.codigo);
+
+        // Limpiar selecciones dependientes
         this.ciudadSeleccionada = null;
         this.parroquiasList = [];
+        this.sectorSeleccionado = null;
 
+        // Actualizar formulario
         this.geocercaForm.patchValue({
             geocciud: '',
             geocsec: ''
@@ -1042,15 +986,22 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         this.cantonesList = [];
         this.ciudadSeleccionada = null;
         this.parroquiasList = [];
+        this.sectorSeleccionado = null;
 
     }
 
     onCiudadSeleccionada(event: any): void {
-        const ciudadObj = event.value;
-
+        const ciudadObj: Canton = event.value;
         this.ciudadSeleccionada = ciudadObj;
-        this.parroquiasList = ciudadObj?.parroquias || [];
 
+        if (this.provinciaSeleccionada) {
+            this.parroquiasList = this.provinceService.getParroquias(
+                this.provinciaSeleccionada.codigo,
+                ciudadObj.codigo
+            );
+        }
+
+        this.sectorSeleccionado = null;
         this.geocercaForm.patchValue({
             geocsec: ''
         });
@@ -1059,7 +1010,7 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
     onCiudadLimpiada() {
         this.ciudadSeleccionada = null;
         this.parroquiasList = [];
-
+        this.sectorSeleccionado = null;
     }
 
     // ==============================================================================
