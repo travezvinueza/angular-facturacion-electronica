@@ -75,7 +75,7 @@ interface NominatimResult {
 export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
     @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
 
-    // Propiedades del drawer
+    // Propiedades del drawerR
     drawerGeocercasVisible: boolean = false;
 
     // Filtro de geocercas
