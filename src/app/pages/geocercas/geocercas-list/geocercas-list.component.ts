@@ -321,25 +321,79 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         this.userMarkers.clear();
 
         this.users.forEach(user => {
-            if (user.ubicacion && user.ubicacion.geublat && user.ubicacion.geublon) {
-                const marker = L.marker([user.ubicacion.geublat, user.ubicacion.geublon]);
+            if (user.ubicacion?.geublat && user.ubicacion?.geublon) {
+                // Icono personalizado para usuarios
+                const customIcon = L.divIcon({
+                    html: `
+                    <div class="relative">
+                        <div class="w-8 h-8 bg-green-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="absolute -top-1 -right-1 w-3 h-3 bg-blue-400 border border-white rounded-full"></div>
+                    </div>
+                `,
+                    className: 'custom-user-marker',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                });
 
-                const popupContent = `
-                <div class="p-2">
-                    <p class="font-semibold mb-1 text-sm">${user.usunombre}</p>
-                    <p class="text-sm mb-1">${user.usucod} • ${user.usucodv}</p>
-                    <p class="text-xs text-gray-500">
-                        Última ubicación: ${new Date(user.ubicacion.geubfech).toLocaleString('es-EC')}
-                    </p>
-                </div> `;
-                marker.bindPopup(popupContent);
+                const marker = L.marker([user.ubicacion.geublat, user.ubicacion.geublon], {
+                    icon: customIcon
+                });
+
+                const popupContent = this.createUserPopupContent(user);
+                marker.bindPopup(popupContent, {
+                    maxWidth: 240,
+                    className: 'custom-popup'
+                });
+
                 this.userMarkers.set(user.usucod, marker);
-
-                if (this.markerClusterGroup) {
-                    this.markerClusterGroup.addLayer(marker);
-                }
+                this.markerClusterGroup?.addLayer(marker);
             }
         });
+    }
+
+    private createUserPopupContent(user: any): string {
+        const lastUpdate = new Date(user.ubicacion.geubfech).toLocaleString('es-EC', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        return `
+        <div class="bg-white rounded-lg shadow-sm border-0 overflow-hidden">
+            <!-- Content -->
+            <div class="p-2 space-y-1.5">
+                <!-- Códigos -->
+                <div class="flex items-center space-x-1.5 text-xs">
+                    <svg class="w-2.5 h-2.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="text-gray-700 font-medium">${user.usucod}</span>
+                    <span class="text-gray-400">•</span>
+                    <span class="text-gray-500">${user.usucodv}</span>
+                </div>
+
+                <!-- Última ubicación -->
+                <div class="flex items-center space-x-1.5 text-xs">
+                    <svg class="w-2.5 h-2.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                    </svg>
+                    <span class="text-gray-500">Última ubicación: ${lastUpdate}</span>
+                </div>
+
+                <!-- Estado activo -->
+                <div class="flex items-center space-x-1.5 mt-2">
+                    <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <span class="text-xs text-green-600 font-medium">Usuario activo</span>
+                </div>
+            </div>
+        </div>
+    `;
     }
 
     resetMapView(): void {
@@ -353,6 +407,13 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
             summary: 'Vista restablecida',
             detail: 'El mapa volvió a la vista inicial'
         });
+    }
+
+    refreshData(): void {
+        this.loading = true;
+        this.selectedUser = null;
+        this.getAllUsers();
+        this.resetMapView();
     }
 
     ngOnDestroy(): void {

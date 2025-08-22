@@ -7,7 +7,7 @@ import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
 import { CommonModule } from '@angular/common';
 import { PaginatorModule } from 'primeng/paginator';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { SkeletonModule } from 'primeng/skeleton';
 import { TagModule } from 'primeng/tag';
 import { ToolbarModule } from 'primeng/toolbar';
@@ -32,6 +32,7 @@ import { AutoComplete } from 'primeng/autocomplete';
 import { Canton, Parroquia, Provincia } from '@/core/models/ProvinciaDto';
 import { ProvinceService } from '@/core/services/province.service';
 import { Slider } from 'primeng/slider';
+import { Drawer } from 'primeng/drawer';
 
 interface NominatimResult {
     lat: string;
@@ -65,13 +66,21 @@ interface NominatimResult {
         Tooltip,
         ToggleSwitch,
         AutoComplete,
-        Slider
+        Slider,
+        Drawer
     ],
     templateUrl: './vendedores.component.html',
-    styleUrl: './vendedores.component.scss'
+    styleUrl: './vendedores.component.css'
 })
 export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
     @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
+
+    // Propiedades del drawer
+    drawerGeocercasVisible: boolean = false;
+
+    // Filtro de geocercas
+    filtroGeocerca: string = '';
+    geocercasFiltradas: any[] = [];
 
     // Propiedades de usuarios/vendedores
     users: VendedorDto[] = [];
@@ -138,9 +147,9 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
         private readonly msgService: MessageService,
         private readonly geocercaService: GeocercaService,
         private readonly provinceService: ProvinceService,
+        private readonly confirmationService: ConfirmationService,
         private readonly http: HttpClient
     ) {}
-
 
     //====================== MÉTODOS DE INICIALIZACIÓN =======================
 
@@ -298,7 +307,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     //==========================================================================//
 
-
     // ===================================== MÉTODO PARA OBTENER TODOS LOS USUARIOS ================================
 
     getAllUsers(): void {
@@ -334,7 +342,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     //==========================================================================//
-
 
     // ======================================================= MÉTODO PARA FILTRAR USUARIOS =======================================
     onSearch(event: Event): void {
@@ -381,9 +388,9 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
                 marker.openPopup();
             }
         }
+        this.actualizarDrawerSiEstaAbierto();
     }
     //==========================================================================//
-
 
     // ======================== MÉTODOS PARA GESTIÓN DEL MAPA  =====================
 
@@ -394,29 +401,109 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
         this.userMarkers.clear();
 
         this.users.forEach((user) => {
-            if (user.ubicacionActual && user.ubicacionActual.geublat && user.ubicacionActual.geublon) {
-                const marker = L.marker([user.ubicacionActual.geublat, user.ubicacionActual.geublon]);
+            if (user.ubicacionActual?.geublat && user.ubicacionActual?.geublon) {
+                const customIcon = L.divIcon({
+                    html: `
+                    <div class="relative">
+                        <div class="w-8 h-8 bg-blue-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" viewBox="0 0 20 20">
+                              <path
+                                fill="currentColor"
+                                fill-rule="evenodd"
+                                clip-rule="evenodd"
+                                d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                              />
+                            </svg>
 
-                const popupContent = `
-                <div class="p-2">
-                    <p class="font-semibold mb-1 text-sm">${user.nombreVendedor}</p>
-                    <p class="text-sm mb-1">${user.codigoVendedor} • ${user.codigoVendedorSecundario}</p>
-                    <p class="text-xs text-gray-500 mb-1">
-                        Última ubicación: ${new Date(user.ubicacionActual.geubfech).toLocaleString('es-EC')}
-                    </p>
-                    <p class="text-xs text-blue-600">
-                        Geocercas: ${user.totalGeocercas}
-                    </p>
-                </div>`;
+                        </div>
+                        <div class="absolute -top-1 -right-1 w-3 h-3 bg-green-400 border border-white rounded-full"></div>
+                    </div>
+                `,
+                    className: 'custom-user-marker',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                });
 
-                marker.bindPopup(popupContent);
+                const marker = L.marker([user.ubicacionActual.geublat, user.ubicacionActual.geublon], {
+                    icon: customIcon
+                });
+
+                const popupContent = this.createUserPopupContent(user);
+                marker.bindPopup(popupContent, {
+                    maxWidth: 240,
+                    className: 'custom-popup'
+                });
+
                 this.userMarkers.set(user.codigoVendedor, marker);
-
-                if (this.markerClusterGroup) {
-                    this.markerClusterGroup.addLayer(marker);
-                }
+                this.markerClusterGroup?.addLayer(marker);
             }
         });
+    }
+
+    private createUserPopupContent(user: any): string {
+        const lastUpdate = new Date(user.ubicacionActual.geubfech).toLocaleString('es-EC', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        return `
+        <div class="bg-white rounded-lg shadow-sm border-0 overflow-hidden">
+            <!-- Content -->
+            <div class="p-2 space-y-1.5">
+                <!-- Códigos -->
+                <div class="flex items-center space-x-1.5 text-xs">
+                    <svg class="w-2.5 h-2.5 text-gray-400" viewBox="0 0 20 20">
+                      <path
+                        fill="currentColor"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                        d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z"
+                      />
+                    </svg>
+
+                    <span class="text-gray-700 font-medium">${user.codigoVendedor}</span>
+                    <span class="text-gray-400">•</span>
+                    <span class="text-gray-500">${user.codigoVendedorSecundario}</span>
+                </div>
+
+                <!-- Última ubicación -->
+                <div class="flex items-center space-x-1.5 text-xs">
+                    <svg class="w-2.5 h-2.5 text-gray-400" viewBox="0 0 20 20">
+                      <path
+                        fill="currentColor"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                      />
+                    </svg>
+
+                    <span class="text-gray-500">Última ubicación: ${lastUpdate}</span>
+                </div>
+
+                <!-- Geocercas -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-1.5">
+                        <svg class="w-2.5 h-2.5 text-blue-500" viewBox="0 0 20 20">
+                          <path
+                            fill="currentColor"
+                            fill-rule="evenodd"
+                            clip-rule="evenodd"
+                            d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                          />
+                        </svg>
+
+                        <span class="text-xs text-gray-600">Geocercas</span>
+                    </div>
+                    <span class="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full text-xs font-medium">
+                        ${user.totalGeocercas}
+                    </span>
+                </div>
+            </div>
+        </div>
+    `;
     }
 
     showMapFallback(): void {
@@ -514,9 +601,7 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
         if (!this.map) return;
 
         this.selectedUser = null;
-
         this.clearAllGeocercas();
-
         this.map.setView([-0.2298, -78.5249], 13);
         this.clearLocationSearch();
 
@@ -528,8 +613,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     //==========================================================================//
-
-
 
     // ===================== MÉTODOS PARA GEOCERCAS DEL VENDEDOR SELECCIONADO =========================
 
@@ -556,26 +639,15 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
                         opacity: isEditMode ? 0.8 : 0.8
                     }).addTo(this.map!);
 
-                    const popupContent = `
-                <div class="p-3">
-                    <p class="font-semibold mb-2 text-base text-primary-700">${geocerca.geocnom}</p>
-                    <div class="space-y-1">
-                        <p class="text-sm"><span class="font-medium">Código:</span> ${geocerca.geoccod}</p>
-                        <p class="text-sm"><span class="font-medium">Sector:</span> ${geocerca.geocsec}</p>
-                        <p class="text-sm"><span class="font-medium">Ciudad:</span> ${geocerca.geocciud}, ${geocerca.geocprov}</p>
-                        <p class="text-sm"><span class="font-medium">Vendedor:</span> ${user.nombreVendedor}</p>
-                        <p class="text-sm"><span class="font-medium">Prioridad:</span> ${geocerca.geocpri}</p>
-                        <p class="text-sm"><span class="font-medium">Estado:</span> ${geocerca.geocest}</p>
-                        <p class="text-xs text-gray-500 mt-2">
-                            Asignado: ${new Date(geocerca.fechaAsignacion).toLocaleDateString('es-EC')}
-                        </p>
-                    </div>
-                </div>`;
-
-                    polygon.bindPopup(popupContent);
+                    const popupContent = this.createGeocercaPopupContent(geocerca, user);
+                    polygon.bindPopup(popupContent, {
+                        maxWidth: 260,
+                        className: 'custom-geocerca-popup'
+                    });
 
                     const key = `${user.codigoVendedor}-${geocerca.geoccod}`;
                     this.geocercaLayers.set(key, polygon);
+
                     if (!isEditMode) {
                         polygon.on('mouseover', () => {
                             polygon.setStyle({
@@ -605,6 +677,153 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
                 life: 3000
             });
         }
+    }
+
+    private createGeocercaPopupContent(geocerca: any, user: VendedorDto): string {
+        const assignedDate = new Date(geocerca.fechaAsignacion).toLocaleDateString('es-EC', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit'
+        });
+
+        const getStatusColor = (estado: string) => {
+            switch (estado?.toUpperCase()) {
+                case 'A': case 'ACTIVO': return 'bg-green-100 text-green-700';
+                case 'I': case 'INACTIVO': return 'bg-red-100 text-red-700';
+                default: return 'bg-gray-100 text-gray-700';
+            }
+        };
+
+        const getStatusText = (estado: string) => {
+            switch (estado?.toUpperCase()) {
+                case 'A': return 'Activo';
+                case 'I': return 'Inactivo';
+                default: return estado;
+            }
+        };
+
+        return `
+        <div class="bg-white rounded-lg shadow-sm border-0 overflow-hidden">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-1">
+                <div class="flex items-center space-x-1">
+                    <div class="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
+                        <svg class="w-2.5 h-2.5 text-white" viewBox="0 0 20 20">
+                          <path
+                            fill="currentColor"
+                            fill-rule="evenodd"
+                            clip-rule="evenodd"
+                            d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                          />
+                        </svg>
+                    </div>
+                    <h5 class="text-white font-medium text-xs truncate uppercase tracking-wide">${geocerca.geocnom}</h5>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="p-2 space-y-1.5">
+                <!-- Código y Sector -->
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="flex items-center space-x-1">
+                       <svg class="w-2.5 h-2.5 text-gray-400" viewBox="0 0 20 20">
+                          <path
+                            fill="currentColor"
+                            fill-rule="evenodd"
+                            clip-rule="evenodd"
+                            d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z"
+                          />
+                        </svg>
+                        <span class="text-gray-500">Código:</span>
+                        <span class="text-gray-700 font-medium">${geocerca.geoccod}</span>
+                    </div>
+                    <div class="flex items-center space-x-1">
+                        <svg class="w-2.5 h-2.5 text-gray-400" viewBox="0 0 20 20">
+                          <path
+                            fill="currentColor"
+                            fill-rule="evenodd"
+                            clip-rule="evenodd"
+                            d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"
+                          />
+                        </svg>
+
+                        <span class="text-gray-500">Sector:</span>
+                        <span class="text-gray-700 font-medium">${geocerca.geocsec}</span>
+                    </div>
+                </div>
+
+                <!-- Ciudad -->
+                <div class="flex items-center space-x-1.5 text-xs">
+                    <svg class="w-2.5 h-2.5 text-gray-400" viewBox="0 0 20 20">
+                      <path
+                        fill="currentColor"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                        d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                      />
+                    </svg>
+                    <span class="text-gray-500">Ciudad:</span>
+                    <span class="text-gray-700">${geocerca.geocciud}, ${geocerca.geocprov}</span>
+                </div>
+
+                <!-- Vendedor -->
+                <div class="flex items-center space-x-1.5 text-xs">
+                    <svg class="w-2.5 h-2.5 text-gray-400" viewBox="0 0 20 20">
+                      <path
+                        fill="currentColor"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                      />
+                    </svg>
+                    <span class="text-gray-500">Vendedor:</span>
+                    <span class="text-gray-700 font-medium">${user.nombreVendedor}</span>
+                </div>
+
+                <!-- Estado y Prioridad -->
+                <div class="flex items-center justify-between pt-1">
+                    <div class="flex items-center space-x-1.5">
+                        <svg class="w-2.5 h-2.5 text-gray-400" viewBox="0 0 20 20">
+                          <path
+                            fill="currentColor"
+                            fill-rule="evenodd"
+                            clip-rule="evenodd"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <span class="text-xs text-gray-500">Estado:</span>
+                        <span class="px-1.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(geocerca.geocest)}">
+                            ${getStatusText(geocerca.geocest)}
+                        </span>
+                    </div>
+                    <div class="flex items-center space-x-1">
+                        <svg class="w-2.5 h-2.5 text-amber-500" viewBox="0 0 20 20">
+                          <path
+                            fill="currentColor"
+                            d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
+                          />
+                        </svg>
+
+                        <span class="text-xs text-amber-600 font-medium">P${geocerca.geocpri}</span>
+                    </div>
+                </div>
+
+                <!-- Fecha de asignación -->
+                <div class="flex items-center space-x-1.5 text-xs pt-1 border-t border-gray-100">
+                    <svg class="w-2.5 h-2.5 text-gray-400" viewBox="0 0 20 20">
+                      <path
+                        fill="currentColor"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                        d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                      />
+                    </svg>
+                    <span class="text-gray-500">Asignado:</span>
+                    <span class="text-gray-700 font-medium">${assignedDate}</span>
+                </div>
+            </div>
+        </div>
+    `;
     }
 
     /**
@@ -671,10 +890,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
 
     //==========================================================================//
 
-
-
-
-
     // ================== MÉTODOS REUTILIZABLES ===========================
     /**
      * Limpia la selección actual de vendedor y sus geocercas
@@ -693,11 +908,10 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
         this.loading = true;
         this.selectedUser = null;
         this.getAllUsers();
-        this.clearAllGeocercas();
+        this.resetMapView();
     }
 
     //==========================================================================//
-
 
     //============METODOS PARA ELIMINAR/DESACTIVAR/ACTIVAR GEOCERCAS=============================
 
@@ -717,48 +931,73 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
             return;
         }
 
-        // Confirmación con detalles específicos
-        if (confirm(
-            `¿Está seguro de que desea eliminar la geocerca "${geocercaAEliminar.geocnom}"?\n\n` +
-            `Código: ${geocercaAEliminar.geoccod}\n` +
-            `Esta acción no se puede deshacer.`
-        )) {
-            this.loading = true;
+        // ConfirmDialog simple para eliminar
+        this.confirmationService.confirm({
+            message: `¿Está seguro de que desea eliminar la geocerca "${geocercaAEliminar.geocnom}"?\n\nCódigo: ${geocercaAEliminar.geoccod}\n\nEsta acción no se puede deshacer.`,
+            header: 'Delete Geocerca',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Delete',
+            rejectLabel: 'Cancel',
+            acceptButtonStyleClass: 'p-button-danger',
+            rejectButtonStyleClass: 'p-button-outlined',
+            accept: () => {
+                this.ejecutarEliminacionGeocerca(geocercaAEliminar);
+            },
+            reject: () => {
+                this.msgService.add({
+                    severity: 'info',
+                    summary: 'Cancelled',
+                    detail: 'Delete operation was cancelled',
+                    life: 3000
+                });
+            }
+        });
+    }
+    private ejecutarEliminacionGeocerca(geocercaAEliminar: any): void {
+        this.loading = true;
 
-            this.geocercaService.eliminarGeocerca(geocercaAEliminar.geoccod).subscribe({
-                next: () => {
-                    this.loading = false;
-                    this.msgService.add({
-                        severity: 'success',
-                        summary: 'Geocerca eliminada',
-                        detail: `La geocerca "${geocercaAEliminar.geocnom}" fue eliminada correctamente`
-                    });
+        this.geocercaService.eliminarGeocerca(geocercaAEliminar.geoccod).subscribe({
+            next: () => {
+                this.loading = false;
+                this.msgService.add({
+                    severity: 'success',
+                    summary: 'Geocerca eliminada',
+                    detail: `La geocerca "${geocercaAEliminar.geocnom}" fue eliminada correctamente`
+                });
 
-                    // Si estaba en modo edición, cancelar
-                    if (this.editMode && this.editingGeocerca?.geoccod === geocercaAEliminar.geoccod) {
-                        this.cancelarModoEdicion();
-                        this.refreshData();
-                    }
-
-                    // Cerrar dialog si estaba abierto
-                    if (this.geocercaDialog) {
-                        this.cerrarDialogoGeocerca();
-                    }
-
-                    // Refresh de datos
-                    this.refreshData();
-                },
-                error: (error) => {
-                    this.loading = false;
-                    console.error('Error eliminando geocerca:', error);
-                    this.msgService.add({
-                        severity: 'error',
-                        summary: 'Error',
-                        detail: 'No se pudo eliminar la geocerca'
-                    });
+                if (this.editMode && this.editingGeocerca?.geoccod === geocercaAEliminar.geoccod) {
+                    this.cancelarModoEdicion();
                 }
-            });
-        }
+
+                if (this.geocercaDialog) {
+                    this.cerrarDialogoGeocerca();
+                }
+
+                if (this.drawerGeocercasVisible) {
+                    this.actualizarDrawerSiEstaAbierto();
+                }
+                this.refreshRapidoUsuarioActual();
+            },
+            error: (error) => {
+                this.loading = false;
+                console.error('Error eliminando geocerca:', error);
+
+                let mensajeError = 'No se pudo eliminar la geocerca';
+                if (error.status === 404) {
+                    mensajeError = 'La geocerca no existe o ya fue eliminada';
+                } else if (error.status === 403) {
+                    mensajeError = 'No tiene permisos para eliminar esta geocerca';
+                } else if (error.status === 409) {
+                    mensajeError = 'No se puede eliminar la geocerca porque está siendo utilizada';
+                }
+
+                this.msgService.add({
+                    severity: 'error',
+                    summary: 'Error al eliminar',
+                    detail: mensajeError
+                });
+            }
+        });
     }
 
     /**
@@ -810,7 +1049,7 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     /**
-     * Desactiva una geocerca
+     * Desactiva una geocerca con ConfirmDialog
      */
     desactivarGeocerca(geocerca: any): void {
         if (!geocerca) {
@@ -822,7 +1061,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
             return;
         }
 
-        // Verificar si ya está desactivada
         if (geocerca.geocact === false) {
             this.msgService.add({
                 severity: 'info',
@@ -832,41 +1070,59 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
             return;
         }
 
-        // Confirmación para desactivar
-        if (confirm(
-            `¿Está seguro de que desea desactivar la geocerca "${geocerca.geocnom}"?\n\n` +
-            `Esto ocultará la geocerca para el vendedor pero no la eliminará.`
-        )) {
-            this.loading = true;
-
-            this.geocercaService.desactivarGeocerca(geocerca.geoccod).subscribe({
-                next: () => {
-                    this.loading = false;
-                    this.msgService.add({
-                        severity: 'success',
-                        summary: 'Geocerca desactivada',
-                        detail: `La geocerca "${geocerca.geocnom}" fue desactivada correctamente`
-                    });
-
-                    // Refresh de datos para mostrar el cambio
-                    this.refreshData();
-                },
-                error: (error) => {
-                    this.loading = false;
-                    console.error('Error desactivando geocerca:', error);
-                    this.msgService.add({
-                        severity: 'error',
-                        summary: 'Error',
-                        detail: 'No se pudo desactivar la geocerca'
-                    });
-                }
-            });
-        }
+        // ConfirmDialog para desactivar
+        this.confirmationService.confirm({
+            message: `¿Está seguro de que desea desactivar la geocerca "${geocerca.geocnom}"?\n\nEsto ocultará la geocerca para el vendedor pero no la eliminará.`,
+            header: 'Desactivar Geocerca',
+            icon: 'pi pi-question-circle',
+            acceptLabel: 'Sí, Desactivar',
+            rejectLabel: 'Cancelar',
+            acceptButtonStyleClass: 'p-button-warning',
+            rejectButtonStyleClass: 'p-button-outlined',
+            accept: () => {
+                this.ejecutarDesactivacionGeocerca(geocerca);
+            },
+            reject: () => {
+                this.msgService.add({
+                    severity: 'info',
+                    summary: 'Cancelado',
+                    detail: 'La desactivación fue cancelada',
+                    life: 3000
+                });
+            }
+        });
     }
 
     /**
-     * Cambia el estado activo/inactivo de una geocerca (toggle)
+     * Ejecuta la desactivación real de la geocerca
      */
+    private ejecutarDesactivacionGeocerca(geocerca: any): void {
+        this.loading = true;
+
+        this.geocercaService.desactivarGeocerca(geocerca.geoccod).subscribe({
+            next: () => {
+                this.loading = false;
+                this.msgService.add({
+                    severity: 'success',
+                    summary: 'Geocerca desactivada',
+                    detail: `La geocerca "${geocerca.geocnom}" fue desactivada correctamente`
+                });
+
+                // Refresh de datos para mostrar el cambio
+                this.refreshRapidoUsuarioActual();
+            },
+            error: (error) => {
+                this.loading = false;
+                console.error('Error desactivando geocerca:', error);
+                this.msgService.add({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: 'No se pudo desactivar la geocerca'
+                });
+            }
+        });
+    }
+
     toggleEstadoGeocerca(geocerca: any): void {
         if (geocerca.geocact) {
             this.desactivarGeocerca(geocerca);
@@ -876,10 +1132,133 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     //==========================================================================//
 
-
-
-
     // ================== MÉTODOS PARA MODO EDICIÓN ===============================
+    iniciarEdicionDeGeocerca(geocerca: any): void {
+        if (!this.selectedUser) {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Advertencia',
+                detail: 'Seleccione un vendedor primero'
+            });
+            return;
+        }
+        if (!geocerca || !geocerca.geoccod) {
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'Geocerca inválida'
+            });
+            return;
+        }
+        const geocercaDelUsuario = this.selectedUser.geocercas?.find((g) => g.geoccod === geocerca.geoccod);
+        if (!geocercaDelUsuario) {
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'La geocerca no pertenece al vendedor seleccionado'
+            });
+            return;
+        }
+        const key = `${this.selectedUser.codigoVendedor}-${geocerca.geoccod}`;
+        const polygon = this.geocercaLayers.get(key);
+
+        if (!polygon) {
+            console.error('❌ No se encontró la geocerca en el mapa');
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: `No se encontró la geocerca "${geocerca.geocnom}" en el mapa`
+            });
+            return;
+        }
+        this.cerrarDrawerGeocercas();
+
+        if (!this.editMode) {
+            this.activarModoEdicion();
+
+            setTimeout(() => {
+                this.seleccionarGeocercaParaEditar(key, polygon);
+            }, 100);
+        } else {
+            this.seleccionarGeocercaParaEditar(key, polygon);
+        }
+
+        this.centrarMapaEnGeocerca(geocerca);
+    }
+    centrarMapaEnGeocerca(geocerca: any): void {
+        if (!this.map) {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Error',
+                detail: 'El mapa no está disponible'
+            });
+            return;
+        }
+
+        try {
+            const coordinates = JSON.parse(geocerca.geoccoor);
+            if (coordinates && coordinates.length > 0) {
+                const latlngs: [number, number][] = coordinates.map((coord: any) => [coord.lat, coord.lng]);
+                const polygon = L.polygon(latlngs);
+
+                // Centrar el mapa en la geocerca
+                this.map.fitBounds(polygon.getBounds(), {
+                    padding: [30, 30],
+                    maxZoom: 16
+                });
+
+                this.resaltarGeocercaTemporal(geocerca);
+
+                this.msgService.add({
+                    severity: 'success',
+                    summary: 'Mapa centrado',
+                    detail: `Centrando en: ${geocerca.geocnom}`,
+                    life: 2000
+                });
+            }
+        } catch (error) {
+            console.error('Error centrando mapa en geocerca:', error);
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'No se pudo centrar el mapa en la geocerca'
+            });
+        }
+    }
+
+    /**
+     * Resalta temporalmente una geocerca en el mapa
+     */
+    private resaltarGeocercaTemporal(geocerca: any): void {
+        if (!this.selectedUser) return;
+
+        const key = `${this.selectedUser.codigoVendedor}-${geocerca.geoccod}`;
+        const polygon = this.geocercaLayers.get(key);
+
+        if (polygon) {
+            const estiloOriginal = {
+                color: polygon.options.color,
+                weight: polygon.options.weight,
+                opacity: polygon.options.opacity,
+                fillOpacity: polygon.options.fillOpacity
+            };
+
+            polygon.setStyle({
+                color: '#FF6B35',
+                weight: 5,
+                opacity: 1,
+                fillOpacity: 0.4
+            });
+
+            setTimeout(() => {
+                polygon.setStyle(estiloOriginal);
+            }, 2000);
+
+            if (polygon.getPopup()) {
+                polygon.openPopup();
+            }
+        }
+    }
 
     /**
      * Activa el modo edición - hace las geocercas clickeables
@@ -938,7 +1317,7 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
             return;
         }
 
-        const geocercaEncontrada = this.selectedUser.geocercas.find(g => g.geoccod === geocercaCodigo);
+        const geocercaEncontrada = this.selectedUser.geocercas.find((g) => g.geoccod === geocercaCodigo);
 
         if (!geocercaEncontrada) {
             this.msgService.add({
@@ -975,7 +1354,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
         });
     }
 
-
     /**
      * Habilita la edición de vértices de un polígono
      */
@@ -984,7 +1362,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
 
         this.limpiarMarkersEdicion();
         this.isEditingVertices = true;
-
         const latLngs = polygon.getLatLngs()[0] as L.LatLng[];
 
         latLngs.forEach((latLng, index) => {
@@ -1029,7 +1406,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
      * Agrega estilos CSS para los vértices si no existen
      */
     private agregarEstilosVertices(): void {
-        // Verificar si los estilos ya existen
         if (document.querySelector('#vertex-styles')) return;
 
         const style = document.createElement('style');
@@ -1077,7 +1453,7 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
      * Limpia los markers de edición
      */
     limpiarMarkersEdicion(): void {
-        this.editingMarkers.forEach(marker => {
+        this.editingMarkers.forEach((marker) => {
             if (this.map) {
                 this.map.removeLayer(marker);
             }
@@ -1107,7 +1483,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
      * Cancela el modo edición y restaura todo
      */
     cancelarModoEdicion(): void {
-        // Restaurar coordenadas originales si había una geocerca en edición
         if (this.editingPolygon && this.originalCoordinates.length > 0) {
             const latlngs: [number, number][] = this.originalCoordinates.map((coord) => [coord.lat, coord.lng]);
             this.editingPolygon.setLatLngs(latlngs);
@@ -1131,7 +1506,7 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     /**
-     * Continúa con la edición - abre tu dialog existente
+     * Continúa con la edición
      */
     continuarEdicion(): void {
         if (!this.editingGeocerca || !this.editingPolygon) {
@@ -1217,14 +1592,10 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
         }
     }
 
-    /**
-     * Método para cerrar tu dialog (agregar este si no lo tienes)
-     */
+
     cerrarDialogoGeocerca(): void {
         this.geocercaDialog = false;
-
         if (this.editMode && this.editingGeocerca) {
-            // Mantener el modo edición activo para seguir editando
             this.msgService.add({
                 severity: 'info',
                 summary: 'Edición cancelada',
@@ -1265,7 +1636,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         const formData = this.geocercaForm.value;
-
         let centroLat = this.centroGeocerca?.lat || 0;
         let centroLng = this.centroGeocerca?.lng || 0;
 
@@ -1274,17 +1644,9 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
             centroLng = this.coordenadasGeocerca.reduce((sum, coord) => sum + coord.lng, 0) / this.coordenadasGeocerca.length;
         }
 
-        const provinciaString = typeof formData.geocprov === 'object'
-            ? formData.geocprov.provincia
-            : formData.geocprov;
-
-        const ciudadString = typeof formData.geocciud === 'object'
-            ? formData.geocciud.canton
-            : formData.geocciud;
-
-        const sectorString = typeof formData.geocsec === 'object'
-            ? formData.geocsec.parroquia
-            : formData.geocsec;
+        const provinciaString = typeof formData.geocprov === 'object' ? formData.geocprov.provincia : formData.geocprov;
+        const ciudadString = typeof formData.geocciud === 'object' ? formData.geocciud.canton : formData.geocciud;
+        const sectorString = typeof formData.geocsec === 'object' ? formData.geocsec.parroquia : formData.geocsec;
 
         const actualizarGeocercaDto: any = {
             geocnom: formData.geocnom,
@@ -1337,6 +1699,117 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     //==========================================================================//
+
+    // ========== MÉTODOS PARA EL DRAWER ==========
+
+    abrirDrawerGeocercas(): void {
+        if (!this.selectedUser || this.selectedUser.totalGeocercas === 0) {
+            this.msgService.add({
+                severity: 'info',
+                summary: 'Sin geocercas',
+                detail: 'Este vendedor no tiene geocercas asignadas'
+            });
+            return;
+        }
+        this.drawerGeocercasVisible = true;
+        this.inicializarListaGeocercas();
+    }
+
+    /**
+     * Cierra el drawer de geocercas
+     */
+    cerrarDrawerGeocercas(): void {
+        this.drawerGeocercasVisible = false;
+        this.limpiarFiltroGeocerca();
+    }
+
+    /**
+     * Inicializa la lista de geocercas en el drawer
+     */
+    private inicializarListaGeocercas(): void {
+        if (this.selectedUser?.geocercas) {
+            this.geocercasFiltradas = [...this.selectedUser.geocercas];
+            this.filtroGeocerca = '';
+        }
+    }
+
+    /**
+     * Filtra la lista de geocercas según el término de búsqueda
+     */
+    filtrarGeocercasList(): void {
+        if (!this.selectedUser?.geocercas) {
+            this.geocercasFiltradas = [];
+            return;
+        }
+
+        const filtro = this.filtroGeocerca.toLowerCase().trim();
+
+        if (!filtro) {
+            this.geocercasFiltradas = [...this.selectedUser.geocercas];
+            return;
+        }
+
+        this.geocercasFiltradas = this.selectedUser.geocercas.filter(geocerca => {
+            return (
+                geocerca.geocnom?.toLowerCase().includes(filtro) ||
+                geocerca.geoccod?.toLowerCase().includes(filtro) ||
+                geocerca.geocsec?.toLowerCase().includes(filtro) ||
+                geocerca.geocciud?.toLowerCase().includes(filtro) ||
+                geocerca.geocprov?.toLowerCase().includes(filtro)
+            );
+        });
+    }
+
+    /**
+     * Limpia el filtro de geocercas
+     */
+    limpiarFiltroGeocerca(): void {
+        this.filtroGeocerca = '';
+        this.filtrarGeocercasList();
+    }
+
+    /**
+     * Método mejorado para actualizar la lista cuando cambia la selección de usuario
+     */
+    private actualizarDrawerSiEstaAbierto(): void {
+        if (this.drawerGeocercasVisible) {
+            this.inicializarListaGeocercas();
+        }
+    }
+
+    refreshRapidoUsuarioActual(): void {
+        if (!this.selectedUser) return;
+
+        const codigoUsuario = this.selectedUser.codigoVendedor;
+        this.loading = true;
+        this.refreshData();
+
+        setTimeout(() => {
+            const usuarioActualizado = this.users.find(u => u.codigoVendedor === codigoUsuario);
+            if (usuarioActualizado) {
+                this.selectUser(usuarioActualizado);
+                this.msgService.add({
+                    severity: 'info',
+                    summary: 'Datos actualizados',
+                    detail: 'Geocercas actualizadas en tiempo real',
+                    life: 2000
+                });
+            }
+            this.loading = false;
+
+            this.actualizarDrawerSiEstaAbierto();
+        }, 1000);
+    }
+
+
+    //==========================================================================//
+
+
+    // =========== MÉTODOS PARA EL CONFIRM DIALOG ===========
+
+    //==========================================================================//
+
+
 
 
     ngOnDestroy(): void {
