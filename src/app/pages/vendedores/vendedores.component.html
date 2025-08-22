@@ -1,0 +1,644 @@
+<!-- Contenedor principal -->
+<div class="flex flex-col min-h-screen p-2 sm:p-4 gap-2 sm:gap-4">
+    <!-- Cuerpo principal: Panel izquierdo + derecho -->
+    <div class="flex flex-1 flex-col lg:flex-row gap-2 sm:gap-4 overflow-hidden min-h-0">
+        <!-- Panel Izquierdo - Lista de Usuarios -->
+        <div class="w-full lg:w-1/3 flex flex-col">
+            <p-card class="flex flex-col flex-1 overflow-hidden h-full">
+                <!-- Header + Toolbar mejorados -->
+                <div class="p-3 sm:p-4 bg-gradient-to-r from-surface-50 to-white dark:from-surface-900 dark:to-surface-800 rounded-lg">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 flex items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 shadow-sm">
+                            <i class="pi pi-users text-primary-600 dark:text-primary-300 text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-white tracking-tight">
+                                Vendedores y Geocercas
+                            </h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                Visualización y gestión de vendedores
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="relative mt-2">
+                        <p-iconField iconPosition="left" class="w-full">
+                            <p-inputIcon>
+                                <i class="pi pi-search text-primary-400"></i>
+                            </p-inputIcon>
+                            <input
+                                pInputText
+                                type="text"
+                                placeholder="Buscar vendedores..."
+                                (input)="onSearch($event)"
+                                class="w-full py-2.5 text-sm rounded-lg border-2 border-surface-200 hover:border-primary-200 focus:border-primary-500 transition-colors pl-9 shadow-sm dark:bg-surface-800 dark:border-surface-700 dark:hover:border-primary-700">
+                        </p-iconField>
+                        <button
+                            (click)="clearUserSearch()"
+                            [style.display]="searchValue ? 'block' : 'none'"
+                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-400 hover:text-primary-500 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-surface-700"
+                            title="Limpiar búsqueda">
+                            <i class="pi pi-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center text-xs text-surface-600 dark:text-surface-400 px-4 py-2">
+                    <span>
+                        @if (filteredUsers.length > 0) {
+                            Mostrando {{ (first + 1) }} - {{ Math.min(first + itemsPerPage, filteredUsers.length) }} de {{ filteredUsers.length }} vendedores
+                        }
+                    </span>
+                    @if (selectedUser) {
+                        <span class="text-primary-600 dark:text-primary-400 font-medium">
+                            <i class="pi pi-eye text-xs mr-1"></i>
+                            Seleccionado: {{ selectedUser.nombreVendedor }}
+                        </span>
+                    }
+                </div>
+
+
+
+                <!-- Lista de Usuarios con scroll -->
+                <div class="flex-1 overflow-auto min-h-0">
+                    <!-- Loading Skeleton -->
+                    @if (loading) {
+                        <div class="space-y-2 sm:space-y-3 px-1">
+                            @for (item of [1, 2, 3, 4, 5]; track item) {
+                                <div class="border rounded-lg p-3 sm:p-4">
+                                    <div class="flex items-center space-x-3 sm:space-x-4">
+                                        <p-skeleton
+                                            shape="circle"
+                                            size="2.5rem"
+                                            class="sm:!w-12 sm:!h-12">
+                                        </p-skeleton>
+                                        <div class="flex-1 min-w-0">
+                                            <p-skeleton height="1rem" class="mb-2"></p-skeleton>
+                                            <p-skeleton height="0.8rem" width="70%"></p-skeleton>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    <!-- Lista Real de Usuarios -->
+                    @if (!loading) {
+                        <div class="space-y-1 sm:space-y-2 px-1">
+                            @for (user of paginatedUsers; track user) {
+                                <div
+                                    class="border rounded-lg p-3 sm:p-4 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors cursor-pointer"
+                                    [class.border-primary-500]="selectedUser?.codigoVendedor === user.codigoVendedor"
+                                    [class.bg-primary-50]="selectedUser?.codigoVendedor === user.codigoVendedor"
+                                    [class.dark:bg-primary-900]="selectedUser?.codigoVendedor === user.codigoVendedor"
+                                    (click)="selectUser(user)">
+
+                                    <div class="flex items-center space-x-3 sm:space-x-4">
+                                        <!-- Avatar -->
+                                        <div class="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex-shrink-0">
+                                            <i class="pi pi-user text-primary text-lg sm:text-xl"></i>
+                                        </div>
+
+                                        <!-- Info del Usuario -->
+                                        <div class="flex-1 min-w-0">
+                                            <h3 class="font-semibold text-sm sm:text-base text-surface-900 dark:text-surface-0 truncate">
+                                                {{ user.nombreVendedor }}
+                                            </h3>
+                                            <p class="text-xs sm:text-sm text-surface-600 dark:text-surface-400 truncate">
+                                                {{ user.codigoVendedor }} • {{ user.codigoVendedorSecundario }}
+                                            </p>
+
+                                            <!-- Estados y badges mejorados -->
+                                            <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                                @if (user.ubicacionActual) {
+                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                                        <i class="pi pi-map-marker text-xs"></i>
+                                                        <span>{{ user.ubicacionActual.geubfech | date:'shortTime' }}</span>
+                                                    </span>
+                                                }
+
+                                                @if (user.totalGeocercas > 0) {
+                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                                                        <i class="pi pi-map text-xs"></i>
+                                                        <span>{{ user.totalGeocercas }} zona{{ user.totalGeocercas > 1 ? 's' : '' }}</span>
+                                                    </span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <!-- Flecha -->
+                                        <i class="pi pi-chevron-right text-surface-400 flex-shrink-0"></i>
+                                    </div>
+                                </div>
+                            }
+                            <!-- Mensaje si no hay usuarios -->
+                            @if (filteredUsers.length === 0) {
+                                <div class="text-center py-6 sm:py-8">
+                                    <i class="pi pi-users text-3xl sm:text-4xl text-surface-400 mb-3 sm:mb-4"></i>
+                                    <p class="text-sm sm:text-base text-surface-600 dark:text-surface-400">
+                                        No se encontraron usuarios
+                                    </p>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <!-- Paginación -->
+                <ng-template pTemplate="footer">
+                    <div class="pt-3 sm:pt-4">
+                        @if (!loading && filteredUsers.length > 0) {
+                            <p-paginator
+                                [rows]="itemsPerPage"
+                                [totalRecords]="filteredUsers.length"
+                                [first]="first"
+                                (onPageChange)="onPageChange($event)"
+                                [rowsPerPageOptions]="[5,10,20]"
+                                class="text-sm relative">
+                            </p-paginator>
+                        }
+                    </div>
+                </ng-template>
+            </p-card>
+        </div>
+
+        <!-- Panel Derecho - Mapa -->
+        <div class="w-full lg:flex-1 flex flex-col order-1 lg:order-2">
+            <p-card class="flex flex-col flex-1 overflow-hidden h-80 sm:h-96 lg:h-full">
+
+                <!-- Header: Buscador + botones -->
+                <ng-template pTemplate="header">
+                    <div class="flex flex-col gap-3 sm:gap-4 p-3 sm:p-4">
+
+                        <!-- Título, descripción y acciones alineados - Versión mejorada -->
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-surface-50 to-white dark:from-surface-900 dark:to-surface-800 rounded-t-lg border-b border-surface-200 dark:border-surface-700">
+
+                            <!-- Bloque de icono + texto -->
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 shadow-sm">
+                                    <i class="pi pi-map-marker text-primary-600 dark:text-primary-300 text-xl flex-shrink-0"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-white tracking-tight">
+                                        Ubicaciones
+                                    </h2>
+                                    <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-snug mt-0.5">
+                                        Mapa de geolocalización de vendedores activos
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Botones de acción -->
+                            <div class="flex gap-2 flex-shrink-0 items-center">
+                                <button class="flex items-center justify-center h-9 w-9 rounded-full bg-white dark:bg-surface-800 hover:bg-primary-50 dark:hover:bg-primary-900/30 shadow-sm border border-surface-200 dark:border-surface-700 transition-all duration-200"
+                                        (click)="refreshData()"
+                                        pTooltip="Refrescar"
+                                        tooltipPosition="bottom">
+                                    <i class="pi pi-refresh text-primary-500 dark:text-primary-400"></i>
+                                </button>
+
+                                @if (selectedUser) {
+                                    <button class="flex items-center justify-center h-9 w-9 rounded-full bg-white dark:bg-surface-800 hover:bg-red-50 dark:hover:bg-red-900/30 shadow-sm border border-surface-200 dark:border-surface-700 transition-all duration-200"
+                                            (click)="clearUserSelection()"
+                                            pTooltip="Limpiar selección"
+                                            tooltipPosition="bottom">
+                                        <i class="pi pi-times text-red-500 dark:text-red-400"></i>
+                                    </button>
+                                }
+
+                                <!-- Información de geocercas del vendedor seleccionado -->
+                                @if (selectedUser) {
+                                    <div class="hidden sm:flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 rounded-full">
+                                        <i class="pi pi-user text-green-600 dark:text-green-400 text-sm"></i>
+                                        <span class="text-xs text-green-700 dark:text-green-300 font-medium">
+                                            {{ selectedUser.nombreVendedor }}: {{ selectedUser.totalGeocercas }} zona{{ selectedUser.totalGeocercas !== 1 ? 's' : '' }}
+                                        </span>
+                                    </div>
+                                }
+                                <div class="w-px h-6 bg-surface-200 dark:bg-surface-700"></div>
+
+                                @if (selectedUser?.totalGeocercas != null) {
+                                    @if (!editMode) {
+                                        <button class="flex items-center justify-center h-9 w-9 rounded-full bg-white dark:bg-surface-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 shadow-sm border border-surface-200 dark:border-surface-700 transition-all duration-200"
+                                                (click)="activarModoEdicion()"
+                                                pTooltip="Editar geocercas"
+                                                tooltipPosition="bottom">
+                                            <i class="pi pi-pencil text-blue-600 dark:text-blue-400"></i>
+                                        </button>
+                                    } @else {
+                                        <!-- Botones del modo edición -->
+                                        <button class="flex items-center justify-center h-9 w-9 rounded-full bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 shadow-sm border border-red-200 dark:border-red-700 transition-all duration-200"
+                                                (click)="cancelarModoEdicion()"
+                                                pTooltip="Cancelar edición"
+                                                tooltipPosition="bottom">
+                                            <i class="pi pi-times text-red-600 dark:text-red-400"></i>
+                                        </button>
+
+                                        @if (editingGeocerca) {
+                                            <button class="flex items-center justify-center h-9 w-9 rounded-full bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 shadow-sm border border-green-200 dark:border-green-700 transition-all duration-200"
+                                                    (click)="continuarEdicion()"
+                                                    pTooltip="Continuar con edición"
+                                                    tooltipPosition="bottom">
+                                                <i class="pi pi-arrow-right text-green-600 dark:text-green-400"></i>
+                                            </button>
+
+                                            <button class="flex items-center justify-center h-9 w-9 rounded-full bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 shadow-sm border border-red-200 dark:border-red-700 transition-all duration-200"
+                                                    (click)="eliminarGeocerca()"
+                                                    [disabled]="loading"
+                                                    pTooltip="Eliminar geocerca seleccionada"
+                                                    tooltipPosition="bottom">
+                                                <i class="pi pi-trash text-red-600 dark:text-red-400"></i>
+                                            </button>
+
+                                            <!-- Botón Toggle Estado -->
+                                            <button class="flex items-center justify-center h-9 w-9 rounded-full bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 shadow-sm border border-yellow-200 dark:border-yellow-700 transition-all duration-200"
+                                                    (click)="toggleEstadoGeocerca(editingGeocerca)"
+                                                    [disabled]="loading"
+                                                    [pTooltip]="editingGeocerca.geocact ? 'Desactivar geocerca' : 'Activar geocerca'"
+                                                    tooltipPosition="bottom">
+                                                <i [class]="editingGeocerca.geocact ? 'pi pi-eye-slash' : 'pi pi-eye'"
+                                                   class="text-yellow-600 dark:text-yellow-400"></i>
+                                            </button>
+                                        }
+                                    }
+                                }
+
+                                <!-- Información del modo actual -->
+                                @if (editMode) {
+                                    <div class="hidden sm:flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 rounded-full">
+                                        <i class="pi pi-pencil text-blue-600 dark:text-blue-400 text-sm"></i>
+                                        <span class="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                                            @if (editingGeocerca) {
+                                                Editando: {{ editingGeocerca.geocnom }}
+                                            } @else {
+                                                Modo edición activo
+                                            }
+                                        </span>
+                                    </div>
+                                } @else if (selectedUser) {
+                                    <div class="hidden sm:flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 rounded-full">
+                                        <i class="pi pi-user text-green-600 dark:text-green-400 text-sm"></i>
+                                        <span class="text-xs text-green-700 dark:text-green-300 font-medium">
+                                            {{ selectedUser.nombreVendedor }}: {{ selectedUser.totalGeocercas }} zona{{ selectedUser.totalGeocercas !== 1 ? 's' : '' }}
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <!-- Buscador de Ubicaciones -->
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <div class="flex-1 min-w-0">
+                                <p-iconField iconPosition="left" class="w-full">
+                                    <p-inputIcon>
+                                        <i class="pi pi-map-marker"></i>
+                                    </p-inputIcon>
+                                    <input
+                                        pInputText
+                                        type="text"
+                                        placeholder="Buscar ubicación (ej: Quito, Ecuador)"
+                                        [(ngModel)]="searchLocation"
+                                        (keyup.enter)="searchLocationOnMap()"
+                                        class="w-full text-sm"
+                                        #locationInput>
+                                </p-iconField>
+                            </div>
+                            <div class="flex gap-2 flex-shrink-0">
+                                <p-button icon="pi pi-search"
+                                          severity="primary"
+                                          size="small"
+                                          (click)="searchLocationOnMap()"
+                                          [loading]="searchingLocation"
+                                          pTooltip="Buscar ubicación"
+                                          tooltipPosition="bottom">
+                                </p-button>
+                                <p-button icon="pi pi-times"
+                                          severity="secondary"
+                                          size="small"
+                                          [text]="true"
+                                          (click)="clearLocationSearch()"
+                                          pTooltip="Limpiar búsqueda"
+                                          tooltipPosition="bottom">
+                                </p-button>
+                            </div>
+                        </div>
+                        <!-- Resultados de búsqueda -->
+                        @if (searchResults.length > 0) {
+                            <div class="bg-surface-50 dark:bg-surface-800 rounded-lg p-3">
+                                <div class="text-xs sm:text-sm text-surface-600 dark:text-surface-400 mb-2">
+                                    Resultados de búsqueda:
+                                </div>
+                                <div class="space-y-1">
+                                    @for (result of searchResults.slice(0, 3); track result) {
+                                        <div
+                                            class="flex items-center justify-between p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded cursor-pointer transition-colors"
+                                            (click)="selectSearchResult(result)">
+                                            <div class="flex items-center gap-2 min-w-0 flex-1">
+                                                <i class="pi pi-map-marker text-primary text-sm flex-shrink-0"></i>
+                                                <span class="text-xs sm:text-sm text-surface-900 dark:text-surface-0 truncate">{{ result.display_name }}</span>
+                                            </div>
+                                            <i class="pi pi-arrow-right text-surface-400 text-xs flex-shrink-0 ml-2"></i>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </ng-template>
+                <!-- Contenedor del Mapa -->
+                <div class="flex-1 relative overflow-hidden min-h-0">
+                    @if (!map) {
+                        <div class="absolute inset-0 flex items-center justify-center bg-surface-100 dark:bg-surface-800 rounded-lg z-10">
+                            <div class="text-center p-4">
+                                <i class="pi pi-spin pi-spinner text-2xl text-primary mb-2"></i>
+                                <p class="text-sm sm:text-base text-surface-600 dark:text-surface-400">Cargando mapa...</p>
+                            </div>
+                        </div>
+                    }
+                    <!-- Mapa de Leaflet -->
+                    <div #mapContainer
+                         class="w-full h-full rounded-lg"
+                         style="min-height: 700px; height: 100%; width: 100%;">
+                    </div>
+                </div>
+            </p-card>
+        </div>
+    </div>
+</div>
+<!-- Dialog para editar datos de Geocerca -->
+<p-dialog
+    [(visible)]="geocercaDialog"
+    [style]="{ width: '600px' }"
+    header="Editar Geocerca"
+    [modal]="true"
+    class="p-fluid">
+
+    <ng-template pTemplate="content">
+        <!-- Información de la geocerca que se está editando -->
+        @if (editingGeocerca) {
+            <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                <div class="flex items-center gap-3">
+                    <i class="pi pi-pencil text-blue-600 dark:text-blue-400"></i>
+                    <div>
+                        <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                            {{ editingGeocerca.geocnom }}
+                        </h4>
+                        <p class="text-xs text-blue-600 dark:text-blue-400">
+                            Código: {{ editingGeocerca.geoccod }} • Vendedor: {{ selectedUser?.nombreVendedor }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <form [formGroup]="geocercaForm" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <!-- Código de Geocerca -->
+                <div>
+                    <label for="geoccod" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Código de la Geocerca *
+                    </label>
+                    <input
+                        maxlength="5"
+                        id="geoccod"
+                        pInputText
+                        formControlName="geoccod"
+                        placeholder="Ej: GEO001"
+                        class="w-full"
+                        readonly>
+                    <small class="text-surface-500 dark:text-surface-400 text-xs">
+                        El código no se puede modificar
+                    </small>
+                </div>
+
+                <!-- Nombre -->
+                <div>
+                    <label for="geocnom" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Nombre de la Geocerca *
+                    </label>
+                    <input
+                        id="geocnom"
+                        pInputText
+                        formControlName="geocnom"
+                        placeholder="Ej: Zona Norte"
+                        class="w-full">
+                </div>
+
+                <!-- Provincia -->
+                <div>
+                    <label for="geocprov" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Provincia *
+                    </label>
+                    <p-autocomplete
+                        inputId="geocprov"
+                        formControlName="geocprov"
+                        [suggestions]="provinciasFiltradas"
+                        optionLabel="provincia"
+                        placeholder="Buscar provincia..."
+                        (completeMethod)="filtrarProvincias($event)"
+                        (onSelect)="onProvinciaSeleccionada($event)"
+                        (onClear)="onProvinciaLimpiada()"
+                        [dropdown]="true"
+                        class="w-full">
+                    </p-autocomplete>
+                </div>
+
+                <!-- Ciudad -->
+                <div>
+                    <label for="geocciud" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Ciudad *
+                    </label>
+                    <p-autocomplete
+                        inputId="geocciud"
+                        formControlName="geocciud"
+                        [suggestions]="ciudadesFiltradas"
+                        optionLabel="canton"
+                        placeholder="Buscar ciudad/cantón..."
+                        (completeMethod)="filtrarCiudades($event)"
+                        (onSelect)="onCiudadSeleccionada($event)"
+                        (onClear)="onCiudadLimpiada()"
+                        [dropdown]="true"
+                        [disabled]="!provinciaSeleccionada"
+                        class="w-full">
+                    </p-autocomplete>
+                </div>
+
+                <!-- Sector -->
+                <div>
+                    <label for="geocsec" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Sector *
+                    </label>
+                    <p-autocomplete
+                        inputId="geocsec"
+                        formControlName="geocsec"
+                        [suggestions]="sectoresFiltrados"
+                        optionLabel="parroquia"
+                        placeholder="Buscar sector/parroquia..."
+                        (completeMethod)="filtrarSectores($event)"
+                        [dropdown]="true"
+                        [disabled]="!ciudadSeleccionada"
+                        class="w-full">
+                    </p-autocomplete>
+                </div>
+
+                <!-- Dirección de referencia -->
+                <div class="md:col-span-2">
+                    <label for="geocdirre" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Dirección de Referencia *
+                    </label>
+                    <input
+                        id="geocdirre"
+                        pInputText
+                        formControlName="geocdirre"
+                        placeholder="Ej: Av. Principal y Calle 10"
+                        class="w-full">
+                </div>
+
+                <!-- País -->
+                <div>
+                    <label for="geocpais" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        País *
+                    </label>
+                    <input
+                        readonly
+                        id="geocpais"
+                        pInputText
+                        formControlName="geocpais"
+                        value="ECUADOR"
+                        class="w-full">
+                </div>
+
+                <!-- Prioridad -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label for="geocpri" class="text-sm font-medium text-surface-700 dark:text-surface-300">
+                            Prioridad (1-10) *
+                        </label>
+                        <span class="px-2 py-1 text-sm font-bold text-primary-600 bg-primary-50 rounded">
+                            {{ geocercaForm.get('geocpri')?.value || 1 }}
+                        </span>
+                    </div>
+                    <p-slider
+                        id="geocpri"
+                        formControlName="geocpri"
+                        [min]="1"
+                        [max]="10"
+                        [step]="1"
+                        class="w-full">
+                    </p-slider>
+                    <div class="flex justify-between text-xs text-surface-500 mt-1">
+                        <span>Baja</span>
+                        <span>Alta</span>
+                    </div>
+                </div>
+
+                <!-- Estado activo -->
+                <div class="flex items-center gap-2 mt-6">
+                    <p-toggleSwitch
+                        formControlName="geocact"
+                        inputId="geocact">
+                    </p-toggleSwitch>
+                    <label for="geocact" class="text-sm font-medium text-surface-700 dark:text-surface-300">
+                        Geocerca activa
+                    </label>
+                </div>
+
+                <!-- Descripción -->
+                <div class="md:col-span-2">
+                    <label for="geocdesc" class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                        Descripción *
+                    </label>
+                    <textarea
+                        id="geocdesc"
+                        pInputTextarea
+                        formControlName="geocdesc"
+                        placeholder="Descripción detallada de la geocerca"
+                        rows="3"
+                        class="w-full">
+                    </textarea>
+                </div>
+            </div>
+
+            <!-- Resumen de los cambios realizados -->
+            <div class="mt-4 p-3 bg-surface-50 dark:bg-surface-800 rounded border">
+                <h4 class="text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+                    <i class="pi pi-info-circle mr-2"></i>
+                    Resumen de Modificaciones
+                </h4>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <span class="text-surface-600 dark:text-surface-400">Área modificada:</span>
+                        <span class="ml-2 font-medium">{{ coordenadasGeocerca.length > 0 ? 'Sí' : 'No' }}</span>
+                    </div>
+                    <div>
+                        <span class="text-surface-600 dark:text-surface-400">Puntos:</span>
+                        <span class="ml-2 font-medium">{{ coordenadasGeocerca.length }}</span>
+                    </div>
+                    <div>
+                        <span class="text-surface-600 dark:text-surface-400">Centro:</span>
+                        <span class="ml-2 font-medium">{{ centroGeocerca?.lat?.toFixed(6) || 'N/A' }}, {{ centroGeocerca?.lng?.toFixed(6) || 'N/A' }}</span>
+                    </div>
+                    <div>
+                        <span class="text-surface-600 dark:text-surface-400">Usuario:</span>
+                        <span class="ml-2 font-medium">{{ selectedUser?.nombreVendedor }}</span>
+                    </div>
+                </div>
+
+                <!-- Estado de validación -->
+                @if (geocercaForm.valid && coordenadasGeocerca.length > 0) {
+                    <div class="mt-2 flex items-center gap-2 text-green-600 dark:text-green-400">
+                        <i class="pi pi-check-circle text-sm"></i>
+                        <span class="text-xs">Todos los datos están completos</span>
+                    </div>
+                } @else {
+                    <div class="mt-2 flex items-center gap-2 text-orange-600 dark:text-orange-400">
+                        <i class="pi pi-exclamation-triangle text-sm"></i>
+                        <span class="text-xs">Complete todos los campos requeridos</span>
+                    </div>
+                }
+            </div>
+
+            <!-- Información sobre las coordenadas -->
+            @if (editingGeocerca && coordenadasGeocerca.length > 0) {
+                <div class="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
+                    <div class="flex items-center gap-2 text-green-700 dark:text-green-300">
+                        <i class="pi pi-map text-sm"></i>
+                        <span class="text-xs">
+                            La forma de la geocerca fue modificada en el mapa. Los nuevos límites se guardarán al actualizar.
+                        </span>
+                    </div>
+                </div>
+            }
+        </form>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+        <div class="flex justify-between items-center">
+            <!-- Información adicional -->
+            <div class="text-xs text-surface-600 dark:text-surface-400">
+                @if (editingGeocerca) {
+                    Editando geocerca desde: {{ editingGeocerca.fechaAsignacion | date:'short' }}
+                }
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="flex gap-2">
+                <p-button
+                    label="Cancelar"
+                    icon="pi pi-times"
+                    severity="secondary"
+                    [text]="true"
+                    (click)="cerrarDialogoGeocerca()">
+                </p-button>
+
+                <p-button
+                    label="Actualizar Geocerca"
+                    icon="pi pi-save"
+                    severity="primary"
+                    [disabled]="geocercaForm.invalid"
+                    [loading]="loading"
+                    (click)="guardarGeocerca()">
+                </p-button>
+            </div>
+        </div>
+    </ng-template>
+</p-dialog>
+

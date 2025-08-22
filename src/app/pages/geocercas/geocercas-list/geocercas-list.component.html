@@ -1,0 +1,262 @@
+<!-- Contenedor principal -->
+<div class="flex flex-col min-h-screen p-2 sm:p-4 gap-2 sm:gap-4">
+    <!-- Cuerpo principal: Panel izquierdo + derecho -->
+    <div class="flex flex-1 flex-col lg:flex-row gap-2 sm:gap-4 overflow-hidden min-h-0">
+        <!-- Panel Izquierdo - Lista de Usuarios -->
+        <div class="w-full lg:w-1/3 flex flex-col">
+            <p-card class="flex flex-col flex-1 overflow-hidden h-full">
+                <!-- Header + Toolbar mejorados -->
+                <div class="p-3 sm:p-4 bg-gradient-to-r from-surface-50 to-white dark:from-surface-900 dark:to-surface-800 rounded-lg">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 flex items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 shadow-sm">
+                            <i class="pi pi-users text-primary-600 dark:text-primary-300 text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-white tracking-tight">
+                                Lista de Vendedores
+                            </h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                Visualización y gestión de vendedores
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="relative mt-2">
+                        <p-iconField iconPosition="left" class="w-full">
+                            <p-inputIcon>
+                                <i class="pi pi-search text-primary-400"></i>
+                            </p-inputIcon>
+                            <input
+                                pInputText
+                                type="text"
+                                placeholder="Buscar vendedores..."
+                                (input)="onSearch($event)"
+                                class="w-full py-2.5 text-sm rounded-lg border-2 border-surface-200 hover:border-primary-200 focus:border-primary-500 transition-colors pl-9 shadow-sm dark:bg-surface-800 dark:border-surface-700 dark:hover:border-primary-700">
+                        </p-iconField>
+                        <button
+                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-400 hover:text-primary-500 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-surface-700"
+                            title="Limpiar búsqueda">
+                            <i class="pi pi-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+
+
+                <!-- Lista de Usuarios con scroll -->
+                <div class="flex-1 overflow-auto min-h-0">
+                    <!-- Loading Skeleton -->
+                    @if (loading) {
+                        <div class="space-y-2 sm:space-y-3 px-1">
+                            @for (item of [1, 2, 3, 4, 5]; track item) {
+                                <div class="border rounded-lg p-3 sm:p-4">
+                                    <div class="flex items-center space-x-3 sm:space-x-4">
+                                        <p-skeleton
+                                            shape="circle"
+                                            size="2.5rem"
+                                            class="sm:!w-12 sm:!h-12">
+                                        </p-skeleton>
+                                        <div class="flex-1 min-w-0">
+                                            <p-skeleton height="1rem" class="mb-2"></p-skeleton>
+                                            <p-skeleton height="0.8rem" width="70%"></p-skeleton>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    <!-- Lista Real de Usuarios -->
+                    @if (!loading) {
+                        <div class="space-y-1 sm:space-y-2 px-1">
+                            @for (user of paginatedUsers; track user) {
+                                <div
+                                    class="border rounded-lg p-3 sm:p-4 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors cursor-pointer"
+                                    [class.border-primary-500]="selectedUser?.usucodv === user.usucodv"
+                                    [class.bg-primary-50]="selectedUser?.usucodv === user.usucodv"
+                                    [class.dark:bg-primary-900]="selectedUser?.usucodv === user.usucodv"
+                                    (click)="selectUser(user)">
+
+                                    <div class="flex items-center space-x-3 sm:space-x-4">
+                                        <!-- Avatar -->
+                                        <div class="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex-shrink-0">
+                                            <i class="pi pi-user text-primary text-lg sm:text-xl"></i>
+                                        </div>
+
+                                        <!-- Info del Usuario -->
+                                        <div class="flex-1 min-w-0">
+                                            <h3 class="font-semibold text-sm sm:text-base text-surface-900 dark:text-surface-0 truncate">
+                                                {{ user.usunombre }}
+                                            </h3>
+                                            <p class="text-xs sm:text-sm text-surface-600 dark:text-surface-400 truncate">
+                                                {{ user.usucod }} • {{ user.usucodv }}
+                                            </p>
+                                            <div class="flex space-x-1">
+                                                @if (user.ubicacion) {
+                                                    <i class="pi pi-map-marker text-green-500 text-xs" title="Con ubicación"></i>
+                                                }
+                                            </div>
+                                        </div>
+                                        <!-- Flecha -->
+                                        <i class="pi pi-chevron-right text-surface-400 flex-shrink-0"></i>
+                                    </div>
+                                </div>
+                            }
+                            <!-- Mensaje si no hay usuarios -->
+                            @if (filteredUsers.length === 0) {
+                                <div class="text-center py-6 sm:py-8">
+                                    <i class="pi pi-users text-3xl sm:text-4xl text-surface-400 mb-3 sm:mb-4"></i>
+                                    <p class="text-sm sm:text-base text-surface-600 dark:text-surface-400">
+                                        No se encontraron usuarios
+                                    </p>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <!-- Paginación -->
+                <ng-template pTemplate="footer">
+                    <div class="pt-3 sm:pt-4">
+                        @if (!loading && filteredUsers.length > 0) {
+                            <p-paginator
+                                [rows]="itemsPerPage"
+                                [totalRecords]="filteredUsers.length"
+                                [first]="first"
+                                (onPageChange)="onPageChange($event)"
+                                [rowsPerPageOptions]="[5,10,20]"
+                                class="text-sm relative">
+                            </p-paginator>
+                        }
+                    </div>
+                </ng-template>
+            </p-card>
+        </div>
+
+        <!-- Panel Derecho - Mapa -->
+        <div class="w-full lg:flex-1 flex flex-col order-1 lg:order-2">
+            <p-card class="flex flex-col flex-1 overflow-hidden h-80 sm:h-96 lg:h-full">
+
+                <!-- Header: Buscador + botones -->
+                <ng-template pTemplate="header">
+                    <div class="flex flex-col gap-3 sm:gap-4 p-3 sm:p-4">
+
+                        <!-- Título, descripción y acciones alineados - Versión mejorada -->
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-surface-50 to-white dark:from-surface-900 dark:to-surface-800 rounded-t-lg border-b border-surface-200 dark:border-surface-700">
+
+                            <!-- Bloque de icono + texto -->
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 shadow-sm">
+                                    <i class="pi pi-map-marker text-primary-600 dark:text-primary-300 text-xl flex-shrink-0"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-white tracking-tight">
+                                        Ubicaciones
+                                    </h2>
+                                    <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-snug mt-0.5">
+                                        Mapa de geolocalización de vendedores activos
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Botones de acción -->
+                            <div class="flex gap-2 flex-shrink-0 items-center">
+                                <button class="flex items-center justify-center h-9 w-9 rounded-full bg-white dark:bg-surface-800 hover:bg-primary-50 dark:hover:bg-primary-900/30 shadow-sm border border-surface-200 dark:border-surface-700 transition-all duration-200"
+                                        (click)="resetMapView()"
+                                        pTooltip="Restablecer vista"
+                                        tooltipPosition="bottom">
+                                    <i class="pi pi-refresh text-primary-500 dark:text-primary-400"></i>
+                                </button>
+
+                                <!-- Puedes añadir más botones de acción si es necesario -->
+                                <button class="flex items-center justify-center h-9 w-9 rounded-full bg-white dark:bg-surface-800 hover:bg-primary-50 dark:hover:bg-primary-900/30 shadow-sm border border-surface-200 dark:border-surface-700 transition-all duration-200"
+                                        pTooltip="Ver en pantalla completa"
+                                        tooltipPosition="bottom">
+                                    <i class="pi pi-expand text-primary-500 dark:text-primary-400"></i>
+                                </button>
+                            </div>
+                        </div>
+
+
+                        <!-- Buscador de Ubicaciones -->
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <div class="flex-1 min-w-0">
+                                <p-iconField iconPosition="left" class="w-full">
+                                    <p-inputIcon>
+                                        <i class="pi pi-map-marker"></i>
+                                    </p-inputIcon>
+                                    <input
+                                        pInputText
+                                        type="text"
+                                        placeholder="Buscar ubicación (ej: Quito, Ecuador)"
+                                        [(ngModel)]="searchLocation"
+                                        (keyup.enter)="searchLocationOnMap()"
+                                        class="w-full text-sm"
+                                        #locationInput>
+                                </p-iconField>
+                            </div>
+                            <div class="flex gap-2 flex-shrink-0">
+                                <p-button icon="pi pi-search"
+                                          severity="primary"
+                                          size="small"
+                                          (click)="searchLocationOnMap()"
+                                          [loading]="searchingLocation"
+                                          pTooltip="Buscar ubicación"
+                                          tooltipPosition="bottom">
+                                </p-button>
+                                <p-button icon="pi pi-times"
+                                          severity="secondary"
+                                          size="small"
+                                          [text]="true"
+                                          (click)="clearLocationSearch()"
+                                          pTooltip="Limpiar búsqueda"
+                                          tooltipPosition="bottom">
+                                </p-button>
+                            </div>
+                        </div>
+
+                        <!-- Resultados de búsqueda -->
+                        @if (searchResults.length > 0) {
+                            <div class="bg-surface-50 dark:bg-surface-800 rounded-lg p-3">
+                                <div class="text-xs sm:text-sm text-surface-600 dark:text-surface-400 mb-2">
+                                    Resultados de búsqueda:
+                                </div>
+                                <div class="space-y-1">
+                                    @for (result of searchResults.slice(0, 3); track result) {
+                                        <div
+                                            class="flex items-center justify-between p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded cursor-pointer transition-colors"
+                                            (click)="selectSearchResult(result)">
+                                            <div class="flex items-center gap-2 min-w-0 flex-1">
+                                                <i class="pi pi-map-marker text-primary text-sm flex-shrink-0"></i>
+                                                <span class="text-xs sm:text-sm text-surface-900 dark:text-surface-0 truncate">{{ result.display_name }}</span>
+                                            </div>
+                                            <i class="pi pi-arrow-right text-surface-400 text-xs flex-shrink-0 ml-2"></i>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                    </div>
+                </ng-template>
+                <!-- Contenedor del Mapa -->
+                <div class="flex-1 relative overflow-hidden min-h-0">
+                    <!-- Loading del mapa -->
+                    @if (!map) {
+                        <div class="absolute inset-0 flex items-center justify-center bg-surface-100 dark:bg-surface-800 rounded-lg z-10">
+                            <div class="text-center p-4">
+                                <i class="pi pi-spin pi-spinner text-2xl text-primary mb-2"></i>
+                                <p class="text-sm sm:text-base text-surface-600 dark:text-surface-400">Cargando mapa...</p>
+                            </div>
+                        </div>
+                    }
+                    <!-- Mapa de Leaflet -->
+                    <div #mapContainer
+                         class="w-full h-full rounded-lg"
+                         style="min-height: 700px; height: 100%; width: 100%;">
+                    </div>
+                </div>
+
+            </p-card>
+        </div>
+    </div>
+</div>
