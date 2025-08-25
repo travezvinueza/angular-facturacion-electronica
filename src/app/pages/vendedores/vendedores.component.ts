@@ -569,7 +569,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
 
         const lat = parseFloat(result.lat);
         const lon = parseFloat(result.lon);
-
         this.map.setView([lat, lon], 15);
 
         if (this.searchMarker) {
@@ -577,7 +576,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         this.searchMarker = L.marker([lat, lon]).addTo(this.map).bindPopup(`<b>${result.display_name}</b><br><small>Resultado de búsqueda</small>`).openPopup();
-
         this.searchResults = [];
 
         this.msgService.add({
@@ -614,7 +612,7 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
 
     //==========================================================================//
 
-    // ===================== MÉTODOS PARA GEOCERCAS DEL VENDEDOR SELECCIONADO =========================
+    // ===================== MÉTODOS PARA GEOCERCAS DEL VENDEDOR SELECCIONADO =========================//
 
     /**
      * Muestra solo las geocercas del vendedor seleccionado
@@ -694,6 +692,24 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
             }
         };
 
+        const formatArea = (areaMeters: number): string => {
+            if (areaMeters >= 1000000) {
+                return `${(areaMeters / 1000000).toFixed(2)} km²`;
+            } else if (areaMeters >= 10000) {
+                return `${(areaMeters / 10000).toFixed(2)} hectáreas`;
+            } else {
+                return `${areaMeters.toLocaleString('es-EC')} m²`;
+            }
+        };
+
+        const formatPerimeter = (perimeterMeters: number): string => {
+            if (perimeterMeters >= 1000) {
+                return `${(perimeterMeters / 1000).toFixed(2)} km`;
+            } else {
+                return `${Math.round(perimeterMeters).toLocaleString('es-EC')} m`;
+            }
+        };
+
         const getStatusText = (estado: string) => {
             switch (estado?.toUpperCase()) {
                 case 'A': return 'Activo';
@@ -723,6 +739,44 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
 
             <!-- Content -->
             <div class="p-2 space-y-1.5">
+            <!-- Área y Perímetro - Sección destacada -->
+            <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-2 border border-blue-100">
+                    <div class="flex items-center justify-between">
+                        <!-- Área -->
+                        <div class="flex items-center space-x-2">
+                            <div class="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center">
+                                <svg class="w-3.5 h-3.5 text-blue-600" viewBox="0 0 24 24">
+                                  <path
+                                    fill="currentColor"
+                                    d="M3 3h6v6H3V3zm8 0h6v6h-6V3zm8 0h2v2h-2V3zm0 4h2v6h-2V7zM3 11h6v6H3v-6zm8 0h6v6h-6v-6zm8 4h2v6h-2v-6zM3 19h6v2H3v-2zm8 0h6v2h-6v-2z"/>
+                                </svg>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-xs text-blue-600 font-medium">Área</span>
+                                <span class="text-sm text-blue-700 font-bold">${formatArea(geocerca.geocarm)}</span>
+                            </div>
+                        </div>
+
+                        <!-- Separador -->
+                        <div class="w-px h-8 bg-gradient-to-b from-blue-200 to-purple-200"></div>
+
+                        <!-- Perímetro -->
+                        <div class="flex items-center space-x-2">
+                            <div class="w-7 h-7 bg-purple-100 rounded-full flex items-center justify-center">
+                                <svg class="w-3.5 h-3.5 text-purple-600" viewBox="0 0 24 24">
+                                  <path
+                                    fill="currentColor"
+                                    d="M12 2C6.48 2 2 6.48 2 10s4.48 8 10 8 10-3.58 10-8-4.48-8-10-8zm-1 13.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 11v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V4h2c2.76 0 5.26 1.79 6.9 4.39z" />
+                                </svg>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-xs text-purple-600 font-medium">Perímetro</span>
+                                <span class="text-sm text-purple-700 font-bold">${formatPerimeter(geocerca.geocperm)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Código y Sector -->
                 <div class="grid grid-cols-2 gap-2 text-xs">
                     <div class="flex items-center space-x-1">
@@ -1200,8 +1254,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
             if (coordinates && coordinates.length > 0) {
                 const latlngs: [number, number][] = coordinates.map((coord: any) => [coord.lat, coord.lng]);
                 const polygon = L.polygon(latlngs);
-
-                // Centrar el mapa en la geocerca
                 this.map.fitBounds(polygon.getBounds(), {
                     padding: [30, 30],
                     maxZoom: 16
