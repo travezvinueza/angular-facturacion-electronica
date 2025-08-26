@@ -211,7 +211,8 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
 
             this.map = L.map(container, {
                 center: [-0.2298, -78.5249],
-                zoom: 13
+                zoom: 13,
+                zoomControl: false
             });
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

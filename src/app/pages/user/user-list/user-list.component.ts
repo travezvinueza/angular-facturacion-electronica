@@ -98,9 +98,7 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Mapa
     map: L.Map | null = null;
-    currentTileLayer: L.TileLayer | null = null;
-
-    // Buscador de ubicaciones
+// Buscador de ubicaciones
     userMarkers: Map<string, L.Marker> = new Map();
     markerClusterGroup: L.MarkerClusterGroup | null = null;
     searchLocation: string = '';
@@ -204,16 +202,15 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
             });
 
             this.map = L.map(container, {
-                center: [-0.2298, -78.5249], // Coordenadas de Quito
+                center: [-0.2298, -78.5249],
                 zoom: 13,
                 zoomControl: false
             });
 
-            this.currentTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '© OpenStreetMap contributors'
-            });
-            this.currentTileLayer.addTo(this.map);
+            }).addTo(this.map);
 
             const marker = L.marker([-0.2298, -78.5249]).addTo(this.map);
             marker.bindPopup('<b>Quito, Ecuador</b><br>Ubicación principal').openPopup();
@@ -599,12 +596,18 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
                 const customIcon = L.divIcon({
                     html: `
                     <div class="relative">
-                        <div class="w-8 h-8 bg-green-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
-                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                        <div class="w-8 h-8 bg-blue-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+                            <svg class="w-4 h-4 text-white" viewBox="0 0 20 20">
+                              <path
+                                fill="currentColor"
+                                fill-rule="evenodd"
+                                clip-rule="evenodd"
+                                d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                              />
                             </svg>
+
                         </div>
-                        <div class="absolute -top-1 -right-1 w-3 h-3 bg-blue-400 border border-white rounded-full"></div>
+                        <div class="absolute -top-1 -right-1 w-3 h-3 bg-green-400 border border-white rounded-full"></div>
                     </div>
                 `,
                     className: 'custom-user-marker',
@@ -643,19 +646,31 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
             <div class="p-2 space-y-1.5">
                 <!-- Códigos -->
                 <div class="flex items-center space-x-1.5 text-xs">
-                    <svg class="w-2.5 h-2.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                    <svg class="w-2.5 h-2.5 text-gray-400" viewBox="0 0 20 20">
+                      <path
+                        fill="currentColor"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                        d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z"
+                      />
                     </svg>
-                    <span class="text-gray-700 font-medium">${user.usucod}</span>
+
+                    <span class="text-gray-700 font-medium">${user.codigoVendedor}</span>
                     <span class="text-gray-400">•</span>
-                    <span class="text-gray-500">${user.usucodv}</span>
+                    <span class="text-gray-500">${user.codigoVendedorSecundario}</span>
                 </div>
 
                 <!-- Última ubicación -->
                 <div class="flex items-center space-x-1.5 text-xs">
-                    <svg class="w-2.5 h-2.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                    <svg class="w-2.5 h-2.5 text-gray-400" viewBox="0 0 20 20">
+                      <path
+                        fill="currentColor"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                      />
                     </svg>
+
                     <span class="text-gray-500">Última ubicación: ${lastUpdate}</span>
                 </div>
 
