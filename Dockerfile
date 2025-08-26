@@ -38,12 +38,6 @@ COPY nginx/nginx.conf /etc/nginx/nginx.conf
 # PASO 3: Copiar archivos de Angular
 COPY --from=build-stage /app/dist/sakai-ng /usr/share/nginx/html
 
-# PASO 4: Verificar que todo se copió correctamente
-RUN ls -la /usr/share/nginx/html/
-RUN echo "=== Checking for index.html ==="
-RUN test -f /usr/share/nginx/html/index.html && echo "✅ Angular index.html found" || echo "❌ Angular index.html NOT found"
-RUN echo "=== Checking nginx conf.d directory is empty ==="
-RUN ls -la /etc/nginx/conf.d/ || echo "conf.d directory cleaned"
 
 # Exponer puerto
 EXPOSE 80

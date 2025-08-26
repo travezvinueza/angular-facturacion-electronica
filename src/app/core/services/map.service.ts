@@ -17,6 +17,18 @@ export interface SearchResult {
     lon: string;
     display_name: string;
 }
+export interface UserRange {
+    center: [number, number];
+    northEast: [number, number];  // Coordenada superior derecha
+    southWest: [number, number];  // Coordenada inferior izquierda
+    radius: number;              // Radio en metros
+}
+
+export interface RangeDisplayInfo {
+    user: UserDto;
+    range: UserRange;
+    bounds: L.LatLngBounds;
+}
 
 @Injectable({
     providedIn: 'root'
@@ -26,6 +38,12 @@ export class MapService {
     private userMarkers: Map<string, L.Marker> = new Map();
     private markerClusterGroup: L.MarkerClusterGroup | null = null;
     private searchMarker: L.Marker | null = null;
+
+    private userRangeLayer: L.LayerGroup | null = null;
+    private currentUserRange: RangeDisplayInfo | null = null;
+
+    // Observable para el rango actual
+    private userRange$ = new BehaviorSubject<RangeDisplayInfo | null>(null);
 
     // Configuración por defecto
     private readonly defaultConfig: MapConfig = {
@@ -44,6 +62,189 @@ export class MapService {
         private msgService: MessageService
     ) {
         this.configureLeafletIcons();
+    }
+
+    get currentUserRange$(): Observable<RangeDisplayInfo | null> {
+        return this.userRange$.asObservable();
+    }
+
+    focusOnUserWithRange(user: UserDto, radiusMeters: number = 1000): RangeDisplayInfo | null {
+        if (!this.map || !user.ubicacion) return null;
+
+        const centerLat = user.ubicacion.geublat;
+        const centerLng = user.ubicacion.geublon;
+
+        // Centrar el mapa
+        this.map.setView([centerLat, centerLng], 16);
+
+        // Calcular el rango
+        const userRange = this.calculateUserRange(centerLat, centerLng, radiusMeters);
+
+        // Crear información del rango
+        const rangeInfo: RangeDisplayInfo = {
+            user,
+            range: userRange,
+            bounds: L.latLngBounds(
+                [userRange.southWest[0], userRange.southWest[1]],
+                [userRange.northEast[0], userRange.northEast[1]]
+            )
+        };
+
+        // Mostrar el rango en el mapa
+        this.displayUserRange(rangeInfo);
+
+        // Actualizar el observable
+        this.currentUserRange = rangeInfo;
+        this.userRange$.next(rangeInfo);
+
+        // Abrir popup del usuario
+        const marker = this.userMarkers.get(user.usucod);
+        if (marker) {
+            marker.openPopup();
+        }
+
+        return rangeInfo;
+    }
+
+    private calculateUserRange(lat: number, lng: number, radiusMeters: number): UserRange {
+        // Convertir radio de metros a grados (aproximación)
+        const earthRadius = 6371000; // Radio de la Tierra en metros
+        const latDelta = (radiusMeters / earthRadius) * (180 / Math.PI);
+        const lngDelta = latDelta / Math.cos(lat * Math.PI / 180);
+
+        const northEast: [number, number] = [
+            lat + latDelta,    // Latitud norte (superior)
+            lng + lngDelta     // Longitud este (derecha)
+        ];
+
+        const southWest: [number, number] = [
+            lat - latDelta,    // Latitud sur (inferior)
+            lng - lngDelta     // Longitud oeste (izquierda)
+        ];
+
+        return {
+            center: [lat, lng],
+            northEast,
+            southWest,
+            radius: radiusMeters
+        };
+    }
+
+
+    private displayUserRange(rangeInfo: RangeDisplayInfo): void {
+        if (!this.map) return;
+
+        // Limpiar rango anterior
+        this.clearUserRange();
+
+        // Crear nuevo grupo de capas para el rango
+        this.userRangeLayer = L.layerGroup().addTo(this.map);
+
+        const { range } = rangeInfo;
+
+        // Crear círculo para mostrar el área de cobertura
+        const circle = L.circle([range.center[0], range.center[1]], {
+            radius: range.radius,
+            color: '#3b82f6',        // Azul
+            fillColor: '#3b82f6',
+            fillOpacity: 0.1,
+            weight: 2,
+            dashArray: '5, 5'        // Línea discontinua
+        });
+
+        // Crear rectángulo para mostrar los bounds exactos
+        const rectangle = L.rectangle([
+            [range.southWest[0], range.southWest[1]],
+            [range.northEast[0], range.northEast[1]]
+        ], {
+            color: '#ef4444',        // Rojo
+            fillColor: '#ef4444',
+            fillOpacity: 0.05,
+            weight: 1,
+            dashArray: '3, 3'
+        });
+
+        // Agregar al grupo de capas
+        this.userRangeLayer.addLayer(circle);
+        this.userRangeLayer.addLayer(rectangle);
+
+        // Crear marcadores en las esquinas con información
+        this.addCornerMarkers(range);
+    }
+
+    private addCornerMarkers(range: UserRange): void {
+        if (!this.userRangeLayer) return;
+
+        // Marcador esquina superior derecha (NorthEast)
+        const neMarker = L.circleMarker([range.northEast[0], range.northEast[1]], {
+            radius: 6,
+            color: '#ef4444',
+            fillColor: '#ffffff',
+            fillOpacity: 1,
+            weight: 2
+        });
+
+        neMarker.bindTooltip(`
+            <div class="font-semibold text-xs">
+                <div class="text-red-600">Límite Superior Derecho</div>
+                <div class="mt-1">
+                    <div>Lat: ${range.northEast[0].toFixed(6)}</div>
+                    <div>Lng: ${range.northEast[1].toFixed(6)}</div>
+                </div>
+            </div>
+        `, {
+            permanent: false,
+            direction: 'top',
+            className: 'range-tooltip'
+        });
+
+        // Marcador esquina inferior izquierda (SouthWest)
+        const swMarker = L.circleMarker([range.southWest[0], range.southWest[1]], {
+            radius: 6,
+            color: '#ef4444',
+            fillColor: '#ffffff',
+            fillOpacity: 1,
+            weight: 2
+        });
+
+        swMarker.bindTooltip(`
+            <div class="font-semibold text-xs">
+                <div class="text-red-600">Límite Inferior Izquierdo</div>
+                <div class="mt-1">
+                    <div>Lat: ${range.southWest[0].toFixed(6)}</div>
+                    <div>Lng: ${range.southWest[1].toFixed(6)}</div>
+                </div>
+            </div>
+        `, {
+            permanent: false,
+            direction: 'bottom',
+            className: 'range-tooltip'
+        });
+
+        // Agregar marcadores al grupo
+        this.userRangeLayer.addLayer(neMarker);
+        this.userRangeLayer.addLayer(swMarker);
+    }
+
+    clearUserRange(): void {
+        if (this.userRangeLayer && this.map) {
+            this.map.removeLayer(this.userRangeLayer);
+            this.userRangeLayer = null;
+        }
+
+        this.currentUserRange = null;
+        this.userRange$.next(null);
+    }
+
+    getCurrentRangeInfo(): string | null {
+        if (!this.currentUserRange) return null;
+
+        const { user, range } = this.currentUserRange;
+
+        return `Usuario ${user.usunombre} (${user.usucod}) tiene un rango de:
+        • Coordenada Superior Derecha: ${range.northEast[0].toFixed(6)}, ${range.northEast[1].toFixed(6)}
+        • Coordenada Inferior Izquierda: ${range.southWest[0].toFixed(6)}, ${range.southWest[1].toFixed(6)}
+        • Radio de cobertura: ${range.radius} metros`;
     }
 
     // Getters para observables
@@ -325,6 +526,8 @@ export class MapService {
         if (marker) {
             marker.openPopup();
         }
+        this.focusOnUserWithRange(user, 1000);
+
     }
 
     /**
@@ -335,6 +538,8 @@ export class MapService {
 
         this.map.setView(this.defaultConfig.center, this.defaultConfig.zoom);
         this.clearSearchMarker();
+        this.clearUserRange(); // Limpiar rango de usuario
+
         this.searchResults$.next([]);
 
         this.msgService.add({
@@ -387,6 +592,8 @@ export class MapService {
     destroyMap(): void {
         this.clearSearchMarker();
         this.clearUserMarkers();
+        this.clearUserRange(); // Limpiar rango
+
 
         if (this.map) {
             this.map.remove();
@@ -394,6 +601,8 @@ export class MapService {
         }
 
         this.mapInitialized$.next(false);
+        this.userRange$.complete(); // Completar observable
+
     }
 
 }

@@ -22,8 +22,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Subject, takeUntil } from 'rxjs';
 import { UserDto } from '@/core/models/UserDto';
 import { UserService } from '@/core/services/user.service';
-import { MapService, SearchResult } from '@/core/services/map.service';
-import { map } from 'rxjs/operators';
+import { MapService, RangeDisplayInfo, SearchResult } from '@/core/services/map.service';
+import * as L from 'leaflet';
+import { Drawer } from 'primeng/drawer';
 @Component({
     selector: 'app-geocercas',
     imports: [
@@ -46,6 +47,7 @@ import { map } from 'rxjs/operators';
         PaginatorModule,
         SkeletonModule,
         Tooltip,
+        Drawer
     ],
     standalone: true,
     templateUrl: './geocercas-list.component.html',
@@ -73,6 +75,15 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     searchingLocation: boolean = false;
     searchResults: SearchResult[] = [];
     mapInitialized: boolean = false;
+    map: L.Map | null = null;
+
+    // Nuevas propiedades para el drawer
+    showRangeDrawer: boolean = false;
+    userRange: RangeDisplayInfo | null = null;
+    showRangeDialog: boolean = false;
+    defaultRadius: number = 1000;
+    customRadius: number = 1000;
+    showRangeInfo: boolean = false;
 
     constructor(
         private readonly userService: UserService,
@@ -83,7 +94,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     ngOnInit(): void {
         this.getAllUsers();
         this.subscribeToMapService();
-
     }
 
     ngAfterViewInit(): void {
@@ -97,22 +107,27 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
      */
     private subscribeToMapService(): void {
         // Estado de inicialización del mapa
-        this.mapService.isMapInitialized$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(initialized => {
-                this.mapInitialized = initialized;
-            });
-        this.mapService.isSearchingLocation$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(searching => {
-                this.searchingLocation = searching;
-            });
+        this.mapService.isMapInitialized$.pipe(takeUntil(this.destroy$)).subscribe((initialized) => {
+            this.mapInitialized = initialized;
+        });
+        this.mapService.isSearchingLocation$.pipe(takeUntil(this.destroy$)).subscribe((searching) => {
+            this.searchingLocation = searching;
+        });
 
-        this.mapService.searchResultsList$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(results => {
-                this.searchResults = results;
-            });
+        this.mapService.searchResultsList$.pipe(takeUntil(this.destroy$)).subscribe((results) => {
+            this.searchResults = results;
+        });
+
+        this.mapService.currentUserRange$.pipe(takeUntil(this.destroy$)).subscribe((range) => {
+            this.userRange = range;
+
+            if (range) {
+                this.showRangeDrawer = true;
+                this.showRangeNotification(range);
+            } else {
+                this.showRangeDrawer = false;
+            }
+        });
     }
 
     getAllUsers(): void {
@@ -162,7 +177,143 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
 
     selectUser(user: UserDto): void {
         this.selectedUser = user;
-        this.mapService.focusOnUser(user);
+
+        // Usar el nuevo método con rango
+        const rangeInfo = this.mapService.focusOnUserWithRange(user, this.defaultRadius);
+
+        if (rangeInfo) {
+            console.log('Rango del usuario:', rangeInfo);
+        }
+    }
+
+    openRangeConfigDialog(): void {
+        if (this.selectedUser) {
+            this.customRadius = this.defaultRadius;
+            this.showRangeDialog = true;
+        } else {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Sin selección',
+                detail: 'Selecciona un usuario primero',
+                life: 3000
+            });
+        }
+    }
+
+    /**
+     * Aplica el radio personalizado
+     */
+    applyCustomRadius(): void {
+        if (this.selectedUser && this.customRadius > 0) {
+            this.defaultRadius = this.customRadius;
+
+            // Recalcular el rango con el nuevo radio
+            const rangeInfo = this.mapService.focusOnUserWithRange(this.selectedUser, this.customRadius);
+
+            this.showRangeDialog = false;
+
+            if (rangeInfo) {
+                // Mantener el drawer abierto para mostrar los cambios
+                this.showRangeDrawer = true;
+
+                this.msgService.add({
+                    severity: 'success',
+                    summary: 'Radio actualizado',
+                    detail: `Nuevo radio aplicado: ${this.customRadius} metros`,
+                    life: 4000
+                });
+            }
+        }
+    }
+    cancelRangeConfig(): void {
+        this.showRangeDialog = false;
+        this.customRadius = this.defaultRadius;
+    }
+
+    toggleRangeDrawer(): void {
+        if (this.hasUserRange) {
+            this.showRangeDrawer = !this.showRangeDrawer;
+        } else {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Sin rango',
+                detail: 'Selecciona un usuario para ver su rango',
+                life: 3000
+            });
+        }
+    }
+
+    closeRangeDrawer(): void {
+        this.showRangeDrawer = false;
+    }
+    openRangeDrawer(): void {
+        if (this.hasUserRange) {
+            this.showRangeDrawer = true;
+        }
+    }
+
+    get hasUserRange(): boolean {
+        return this.userRange !== null;
+    }
+
+    get rangeCoordinatesText(): string {
+        if (!this.userRange) return '';
+
+        const { range } = this.userRange;
+        return `Sup. Der.: ${range.northEast[0].toFixed(6)}, ${range.northEast[1].toFixed(6)} | Inf. Izq.: ${range.southWest[0].toFixed(6)}, ${range.southWest[1].toFixed(6)}`;
+    }
+
+    get rangeRadiusText(): string {
+        return this.userRange ? `${this.userRange.range.radius}m` : '';
+    }
+
+    getRangeDisplayText(): string {
+        return this.mapService.getCurrentRangeInfo() || '';
+    }
+
+    clearUserRange(): void {
+        this.mapService.clearUserRange();
+        this.userRange = null;
+        this.showRangeInfo = false;
+    }
+
+    async copyRangeToClipboard(): Promise<void> {
+        if (!this.userRange) return;
+
+        const { user, range } = this.userRange;
+        const text = `Usuario: ${user.usunombre} (${user.usucod})
+            Centro: ${range.center[0].toFixed(6)}, ${range.center[1].toFixed(6)}
+            Superior Derecho: ${range.northEast[0].toFixed(6)}, ${range.northEast[1].toFixed(6)}
+            Inferior Izquierdo: ${range.southWest[0].toFixed(6)}, ${range.southWest[1].toFixed(6)}
+            Radio: ${range.radius} metros`;
+
+        try {
+            await navigator.clipboard.writeText(text);
+            this.msgService.add({
+                severity: 'success',
+                summary: 'Copiado',
+                detail: 'Coordenadas copiadas al portapapeles',
+                life: 3000
+            });
+        } catch (error) {
+            console.error('Error al copiar:', error);
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'No se pudo copiar al portapapeles'
+            });
+        }
+    }
+
+    private showRangeNotification(rangeInfo: RangeDisplayInfo): void {
+        const { user, range } = rangeInfo;
+
+        this.msgService.add({
+            severity: 'info',
+            summary: `Rango de ${user.usunombre}`,
+            detail: `Radio: ${range.radius}m | Superior: ${range.northEast[0].toFixed(4)}, ${range.northEast[1].toFixed(4)} | Inferior: ${range.southWest[0].toFixed(4)}, ${range.southWest[1].toFixed(4)}`,
+            life: 8000
+        });
     }
 
     async initializeMap(): Promise<void> {
@@ -213,19 +364,41 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
 
     resetMapView(): void {
         this.mapService.resetMapView();
+        this.selectedUser = null;
+        this.userRange = null;
+        this.showRangeDrawer = false;
+        this.showRangeDialog = false;
     }
-
     refreshData(): void {
         this.loading = true;
         this.selectedUser = null;
+        this.userRange = null;
+        this.showRangeDrawer = false;
+        this.showRangeDialog = false;
         this.getAllUsers();
         this.resetMapView();
+
+        this.msgService.add({
+            severity: 'info',
+            summary: 'Datos actualizados',
+            detail: 'La vista del mapa y usuarios ha sido restablecida',
+            life: 3000
+        });
+    }
+
+    onRangeDrawerHide(): void {
+        this.showRangeDrawer = false;
+        // No limpiar el rango, solo cerrar el drawer
+        // El usuario puede volver a abrirlo si lo necesita
     }
 
     ngOnDestroy(): void {
         this.destroy$.next();
         this.destroy$.complete();
         this.mapService.destroyMap();
+
+        this.showRangeDrawer = false;
+        this.showRangeDialog = false;
+        this.userRange = null;
     }
-    protected readonly map = map;
 }
