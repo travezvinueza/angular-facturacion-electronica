@@ -4,8 +4,7 @@ import { environment } from 'src/environments/environment';
 import { UserDto } from '../models/UserDto';
 import { Observable } from 'rxjs';
 import { AuthService } from '@/core/services/auth.service';
-import { VendedorDto, VendedoresQueryParams, VendedoresResponse } from '@/core/models/VendedorDto';
-import { map } from 'rxjs/operators';
+import { VendedoresQueryParams, VendedoresResponse } from '@/core/models/VendedorDto';
 
 @Injectable({
     providedIn: 'root'
@@ -43,7 +42,6 @@ export class UserService {
         } else {
             httpParams = httpParams.set('pageSize', '10');
         }
-
 
         if (params?.busqueda) {
             httpParams = httpParams.set('busqueda', params.busqueda);

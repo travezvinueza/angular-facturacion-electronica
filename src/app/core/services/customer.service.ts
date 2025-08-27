@@ -1,0 +1,28 @@
+import { inject, Injectable } from '@angular/core';
+import { environment } from '../../../environments/environment';
+import { AuthService } from '@/core/services/auth.service';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { CustomerResponseDto } from '@/core/models/CustomerResponseDto';
+import { Observable } from 'rxjs';
+import { CustomerAreaRequestDto } from '@/core/models/CustomerAreaRequestDto';
+
+@Injectable({
+    providedIn: 'root'
+})
+export class CustomerService {
+    private readonly baseUrl = environment.apiUrl;
+    private readonly authService = inject(AuthService);
+
+    constructor(private readonly http: HttpClient) { }
+
+    getCustomersByVendorAndArea(requestDto: CustomerAreaRequestDto ): Observable<CustomerResponseDto[]> {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+        return this.http.post<CustomerResponseDto[]>(`${this.baseUrl}/geolocalizacion/webclientezona`, requestDto, { headers });
+    }
+
+
+}

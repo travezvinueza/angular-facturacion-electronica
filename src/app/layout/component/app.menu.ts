@@ -36,7 +36,7 @@ export class AppMenu {
                 ]
             },
             {
-                label: 'Geolocalización',
+                label: 'Maestro',
                 items: [
                     {
                         label: 'Configuración',

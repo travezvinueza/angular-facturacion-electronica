@@ -1,4 +1,3 @@
-<!-- Template actualizado con Drawer -->
 <!-- Contenedor principal -->
 <div class="flex flex-col min-h-screen p-2 sm:p-4 gap-2 sm:gap-4">
     <!-- Cuerpo principal: Panel izquierdo + derecho -->
@@ -6,7 +5,7 @@
         <!-- Panel Izquierdo - Lista de Usuarios -->
         <div class="w-full lg:w-1/3 flex flex-col">
             <p-card class="flex flex-col flex-1 overflow-hidden h-full">
-                <!-- Header + Toolbar mejorados -->
+                <!-- Header + Toolbar -->
                 <div class="p-3 sm:p-4 bg-gradient-to-r from-surface-50 to-white dark:from-surface-900 dark:to-surface-800 rounded-lg">
                     <div class="flex items-center gap-3 mb-3">
                         <div class="w-10 h-10 flex items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 shadow-sm">
@@ -173,7 +172,7 @@
                                 </div>
                             </div>
 
-                            <!-- Botones de acción ACTUALIZADOS -->
+                            <!-- Botones de acción -->
                             <div class="flex gap-2 flex-shrink-0 items-center">
                                 @if (hasUserRange) {
                                     <button
@@ -191,7 +190,6 @@
                                         <i class="pi pi-cog text-indigo-600 dark:text-indigo-400"></i>
                                     </button>
                                 }
-
                                 <button
                                     class="flex items-center justify-center h-9 w-9 rounded-full bg-white dark:bg-surface-800 hover:bg-primary-50 dark:hover:bg-primary-900/30 shadow-sm border border-surface-200 dark:border-surface-700 transition-all duration-200"
                                     (click)="refreshData()"
@@ -293,8 +291,7 @@
     [style]="{ width: '28rem' }"
     [modal]="false"
     [dismissible]="true"
-    [closeOnEscape]="true"
-    header="Información del Rango">
+    [closeOnEscape]="true">
 
     <!-- Header personalizado del drawer -->
     <ng-template pTemplate="header">
@@ -314,133 +311,208 @@
     </ng-template>
 
     <!-- Contenido del drawer -->
-    <div class="space-y-4" *ngIf="userRange">
-
-        <!-- Información del usuario -->
-        <div class="bg-surface-50 dark:bg-surface-800 border-round p-4 border border-surface-200 dark:border-surface-700">
-            <div class="flex align-items-center gap-2 mb-3">
-                <i class="pi pi-user text-blue-600 dark:text-blue-400"></i>
-                <span class="font-semibold text-blue-800 dark:text-blue-200">Usuario Seleccionado</span>
-            </div>
-            <div class="space-y-3 text-sm">
-                <div class="flex justify-content-between align-items-center">
-                    <span class="font-medium text-surface-700 dark:text-surface-300">Nombre:</span>
-                    <span class="text-surface-900 dark:text-surface-100 font-semibold">{{ userRange.user.usunombre }}</span>
+    @if (userRange)
+    {
+        <div class="space-y-4">
+            <!-- Información del usuario -->
+            <div class="bg-surface-50 dark:bg-surface-800 border-round p-4 border border-surface-200 dark:border-surface-700">
+                <div class="flex align-items-center gap-2 mb-3">
+                    <i class="pi pi-user text-blue-600 dark:text-blue-400"></i>
+                    <span class="font-semibold text-blue-800 dark:text-blue-200">Usuario Seleccionado</span>
                 </div>
-                <div class="flex justify-content-between align-items-center">
-                    <span class="font-medium text-surface-700 dark:text-surface-300">Código:</span>
-                    <p-tag [value]="userRange.user.usucod" severity="info" class="text-xs"></p-tag>
-                </div>
-                <div class="flex justify-content-between align-items-start">
-                    <span class="font-medium text-surface-700 dark:text-surface-300">Email:</span>
-                    <span class="text-surface-900 dark:text-surface-100 text-right">{{ userRange.user.usuemail || 'No disponible' }}</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Centro del rango -->
-        <div class="bg-green-50 dark:bg-green-900/20 border-round p-4 border border-green-200 dark:border-green-800">
-            <div class="flex align-items-center gap-2 mb-3">
-                <i class="pi pi-map-marker text-green-600 dark:text-green-400"></i>
-                <span class="font-semibold text-green-800 dark:text-green-200">Centro del Rango</span>
-            </div>
-            <div class="space-y-2 text-sm">
-                <div class="bg-white dark:bg-surface-800 p-3 rounded border">
-                    <div class="flex justify-content-between align-items-center mb-2">
-                        <span class="font-medium text-surface-700 dark:text-surface-300">Latitud:</span>
-                        <span class="font-mono text-surface-900 dark:text-surface-100">{{ userRange.range.center[0].toFixed(6) }}</span>
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-content-between align-items-center">
+                        <span class="font-medium text-surface-700 dark:text-surface-300">Nombre:</span>
+                        <span class="text-surface-900 dark:text-surface-100 font-semibold">{{ userRange.user.usunombre }}</span>
                     </div>
                     <div class="flex justify-content-between align-items-center">
-                        <span class="font-medium text-surface-700 dark:text-surface-300">Longitud:</span>
-                        <span class="font-mono text-surface-900 dark:text-surface-100">{{ userRange.range.center[1].toFixed(6) }}</span>
+                        <span class="font-medium text-surface-700 dark:text-surface-300">Código:</span>
+                        <p-tag [value]="userRange.user.usucod" severity="info" class="text-xs"></p-tag>
                     </div>
-                </div>
-                <div class="flex justify-content-between align-items-center">
-                    <span class="font-medium text-surface-700 dark:text-surface-300">Radio:</span>
-                    <p-tag [value]="rangeRadiusText" severity="success"></p-tag>
-                </div>
-            </div>
-        </div>
-
-        <!-- Límites del área -->
-        <div class="bg-orange-50 dark:bg-orange-900/20 border-round p-4 border border-orange-200 dark:border-orange-800">
-            <div class="flex align-items-center gap-2 mb-3">
-                <i class="pi pi-th-large text-orange-600 dark:text-orange-400"></i>
-                <span class="font-semibold text-orange-800 dark:text-orange-200">Límites del Área</span>
-            </div>
-
-            <div class="space-y-3 text-sm">
-                <!-- Superior Derecho -->
-                <div>
-                    <div class="flex align-items-center gap-2 mb-2">
-                        <i class="pi pi-arrow-up-right text-red-500 text-xs"></i>
-                        <span class="font-medium text-red-700 dark:text-red-300">Superior Derecho</span>
-                    </div>
-                    <div class="bg-white dark:bg-surface-800 p-2 rounded border font-mono text-xs">
-                        {{ userRange.range.northEast[0].toFixed(6) }}, {{ userRange.range.northEast[1].toFixed(6) }}
-                    </div>
-                </div>
-
-                <!-- Inferior Izquierdo -->
-                <div>
-                    <div class="flex align-items-center gap-2 mb-2">
-                        <i class="pi pi-arrow-down-left text-blue-500 text-xs"></i>
-                        <span class="font-medium text-blue-700 dark:text-blue-300">Inferior Izquierdo</span>
-                    </div>
-                    <div class="bg-white dark:bg-surface-800 p-2 rounded border font-mono text-xs">
-                        {{ userRange.range.southWest[0].toFixed(6) }}, {{ userRange.range.southWest[1].toFixed(6) }}
+                    <div class="flex justify-content-between align-items-start">
+                        <span class="font-medium text-surface-700 dark:text-surface-300">Email:</span>
+                        <span class="text-surface-900 dark:text-surface-100 text-right">{{ userRange.user.usuemail || 'No disponible' }}</span>
                     </div>
                 </div>
             </div>
+
+            <!-- Centro del rango -->
+            <div class="bg-green-50 dark:bg-green-900/20 border-round p-4 border border-green-200 dark:border-green-800">
+                <div class="flex align-items-center gap-2 mb-3">
+                    <i class="pi pi-map-marker text-green-600 dark:text-green-400"></i>
+                    <span class="font-semibold text-green-800 dark:text-green-200">Centro del Rango</span>
+                </div>
+                <div class="space-y-2 text-sm">
+                    <div class="bg-white dark:bg-surface-800 p-3 rounded border">
+                        <div class="flex justify-content-between align-items-center mb-2">
+                            <span class="font-medium text-surface-700 dark:text-surface-300">Latitud:</span>
+                            <span class="font-mono text-surface-900 dark:text-surface-100">{{ userRange.range.center[0].toFixed(6) }}</span>
+                        </div>
+                        <div class="flex justify-content-between align-items-center">
+                            <span class="font-medium text-surface-700 dark:text-surface-300">Longitud:</span>
+                            <span class="font-mono text-surface-900 dark:text-surface-100">{{ userRange.range.center[1].toFixed(6) }}</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-content-between align-items-center">
+                        <span class="font-medium text-surface-700 dark:text-surface-300">Radio:</span>
+                        <p-tag [value]="rangeRadiusText" severity="success"></p-tag>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Lista de clientes -->
+            <div class="bg-purple-50 dark:bg-purple-900/20 border-round p-4 border border-purple-200 dark:border-purple-800">
+                <div class="flex align-items-center justify-content-between gap-2 mb-4">
+                    <div class="flex align-items-center gap-2">
+                        <i class="pi pi-users text-purple-600 dark:text-purple-400"></i>
+                        <span class="font-semibold text-purple-800 dark:text-purple-200">Clientes en el Área</span>
+                    </div>
+                    @if (loadingCustomers) {
+                        <i class="pi pi-spin pi-spinner text-purple-600"></i>
+                    }
+                </div>
+
+                @if (customers.length > 0) {
+                    <div class="space-y-4">
+                        <!-- Resumen y buscador -->
+                        <div class="space-y-3">
+                            <div class="flex justify-content-between align-items-center">
+                                <span class="text-sm text-surface-600 dark:text-surface-400">Total encontrados:</span>
+                                <p-tag [value]="filteredCustomers.length + ' / ' + customers.length" severity="info"></p-tag>
+                            </div>
+
+                            <!-- Buscador de clientes -->
+                            <div class="relative">
+                                <p-iconField iconPosition="left" class="w-full">
+                                    <p-inputIcon>
+                                        <i class="pi pi-search"></i>
+                                    </p-inputIcon>
+                                    <input
+                                        pInputText
+                                        [(ngModel)]="customerSearchTerm"
+                                        (input)="filterCustomers()"
+                                        placeholder="Buscar cliente..."
+                                        class="w-full text-sm"
+                                        size="small">
+                                </p-iconField>
+                            </div>
+                        </div>
+
+                        <!-- Lista de clientes con scroll mejorado -->
+                        <div class="max-h-80 overflow-y-auto space-y-3 pr-2" style="scrollbar-width: thin;">
+                            @for (customer of filteredCustomers; track customer.dirclave) {
+                                <div class="bg-white dark:bg-surface-800 p-4 rounded-lg border hover:shadow-md transition-shadow duration-200">
+                                    <!-- Header del cliente -->
+                                    <div class="flex justify-content-between align-items-start mb-3">
+                                        <div class="flex-1 pr-2">
+                                            <h6 class="font-semibold text-surface-900 dark:text-surface-100 text-sm m-0 leading-tight">
+                                                {{ customer.dirnombre }}
+                                            </h6>
+                                        </div>
+                                        <p-tag
+                                            [value]="customer.asignado ? 'Asignado' : 'No asignado'"
+                                            [severity]="customer.asignado ? 'success' : 'warning'"
+                                            class="text-xs">
+                                        </p-tag>
+                                    </div>
+
+                                    <!-- Información del cliente -->
+                                    <div class="space-y-2 mb-3">
+                                        <div class="flex align-items-center gap-2 text-xs text-surface-600 dark:text-surface-400">
+                                            <i class="pi pi-id-card w-3"></i>
+                                            <span class="font-mono">{{ customer.dirruc }}</span>
+                                        </div>
+                                        <div class="flex align-items-start gap-2 text-xs text-surface-600 dark:text-surface-400">
+                                            <i class="pi pi-map-marker w-3 mt-0.5"></i>
+                                            <span class="leading-relaxed">{{ customer.dirdirec }}</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Botón centrar -->
+                                    <div class="flex justify-content-end">
+                                        <p-button
+                                            label="Centrar en mapa"
+                                            icon="pi pi-eye"
+                                            size="small"
+                                            severity="info"
+                                            [outlined]="true"
+                                            class="text-xs"
+                                            (click)="focusCustomerOnMap(customer)">
+                                        </p-button>
+                                    </div>
+                                </div>
+                            } @empty {
+                                <div class="text-center text-surface-500 dark:text-surface-400 text-sm py-6">
+                                    <i class="pi pi-search text-2xl mb-2 block"></i>
+                                    No se encontraron clientes que coincidan con "{{ customerSearchTerm }}"
+                                </div>
+                            }
+                        </div>
+                    </div>
+                } @else if (!loadingCustomers) {
+                    <div class="text-center text-surface-500 dark:text-surface-400 text-sm py-6">
+                        <i class="pi pi-info-circle text-2xl mb-2 block"></i>
+                        No se encontraron clientes en esta área
+                    </div>
+                } @else {
+                    <div class="text-center text-surface-500 dark:text-surface-400 text-sm py-6">
+                        <i class="pi pi-spin pi-spinner text-xl mb-2 block"></i>
+                        Buscando clientes...
+                    </div>
+                }
+            </div>
+
+            <!-- Acciones -->
+            <div class="flex flex-column gap-3 pt-2">
+                <p-button
+                    label="Configurar Radio"
+                    icon="pi pi-cog"
+                    severity="info"
+                    size="small"
+                    [outlined]="true"
+                    class="w-full"
+                    (click)="openRangeConfigDialog()">
+                </p-button>
+
+                <p-button
+                    label="Copiar Coordenadas"
+                    icon="pi pi-copy"
+                    severity="success"
+                    size="small"
+                    [outlined]="true"
+                    class="w-full"
+                    (click)="copyRangeToClipboard()">
+                </p-button>
+
+                <p-button
+                    label="Limpiar Rango"
+                    icon="pi pi-trash"
+                    severity="danger"
+                    size="small"
+                    [outlined]="true"
+                    class="w-full"
+                    (click)="clearUserRange()">
+                </p-button>
+            </div>
         </div>
+    }
 
-        <!-- Acciones -->
-        <div class="flex flex-column gap-3 pt-2">
-            <p-button
-                label="Configurar Radio"
-                icon="pi pi-cog"
-                severity="info"
-                size="small"
-                [outlined]="true"
-                class="w-full"
-                (click)="openRangeConfigDialog()">
-            </p-button>
-
-            <p-button
-                label="Copiar Coordenadas"
-                icon="pi pi-copy"
-                severity="success"
-                size="small"
-                [outlined]="true"
-                class="w-full"
-                (click)="copyRangeToClipboard()">
-            </p-button>
-
-            <p-button
-                label="Limpiar Rango"
-                icon="pi pi-trash"
-                severity="danger"
-                size="small"
-                [outlined]="true"
-                class="w-full"
-                (click)="clearUserRange()">
-            </p-button>
-        </div>
-    </div>
 </p-drawer>
 
-<!-- Diálogo para configurar radio personalizado (sin cambios) -->
+<!-- Diálogo para configurar radio personalizado -->
 <p-dialog
     [(visible)]="showRangeDialog"
     [modal]="true"
     [closable]="true"
     [draggable]="false"
     header="Configurar Radio del Rango"
-    [style]="{ width: '90vw', maxWidth: '500px' }">
+    [style]="{ width: '90vw', maxWidth: '700px' }">
 
-    <div class="flex flex-column gap-4">
-        <div>
-            <label for="customRadius" class="block text-sm font-medium mb-2 text-surface-900 dark:text-surface-100">
+    <div class="flex gap-6 align-items-start">
+        <!-- Sección de configuración -->
+        <div class="flex-1">
+            <label for="customRadius" class="block text-sm font-medium mb-3 text-surface-900 dark:text-surface-100">
                 Radio en metros:
             </label>
             <p-inputNumber
@@ -454,57 +526,54 @@
                 mode="decimal"
                 class="w-full">
             </p-inputNumber>
-            <small class="text-surface-600 dark:text-surface-400 mt-1 block">
+            <small class="text-surface-600 dark:text-surface-400 mt-2 block">
                 El radio determina el área de cobertura alrededor del usuario (100m - 10km)
             </small>
         </div>
 
-        <div class="bg-blue-50 dark:bg-blue-900/20 border-round p-3 border border-blue-200 dark:border-blue-800">
-            <div class="flex align-items-center gap-2 mb-3">
+        <!-- Sección de valores sugeridos -->
+        <div class="flex-1 bg-blue-50 dark:bg-blue-900/20 border-round p-4 border border-blue-200 dark:border-blue-800">
+            <div class="flex align-items-center gap-2 mb-4">
                 <i class="pi pi-info-circle text-blue-600 dark:text-blue-400"></i>
                 <span class="font-semibold text-blue-800 dark:text-blue-200">Valores sugeridos:</span>
             </div>
-            <div class="grid text-sm gap-2">
-                <div class="col-6">
-                    <p-button
-                        label="500m - Zona urbana"
-                        severity="info"
-                        size="small"
-                        [text]="true"
-                        class="w-full justify-content-start text-left p-2"
-                        (click)="customRadius = 500">
-                    </p-button>
-                </div>
-                <div class="col-6">
-                    <p-button
-                        label="1000m - Estándar"
-                        severity="info"
-                        size="small"
-                        [text]="true"
-                        class="w-full justify-content-start text-left p-2"
-                        (click)="customRadius = 1000">
-                    </p-button>
-                </div>
-                <div class="col-6">
-                    <p-button
-                        label="2000m - Área extensa"
-                        severity="info"
-                        size="small"
-                        [text]="true"
-                        class="w-full justify-content-start text-left p-2"
-                        (click)="customRadius = 2000">
-                    </p-button>
-                </div>
-                <div class="col-6">
-                    <p-button
-                        label="5000m - Zona rural"
-                        severity="info"
-                        size="small"
-                        [text]="true"
-                        class="w-full justify-content-start text-left p-2"
-                        (click)="customRadius = 5000">
-                    </p-button>
-                </div>
+
+            <div class="flex flex-column gap-2">
+                <p-button
+                    label="500m - Zona urbana"
+                    severity="info"
+                    size="small"
+                    [text]="true"
+                    class="w-full justify-content-start text-left"
+                    (click)="customRadius = 500">
+                </p-button>
+
+                <p-button
+                    label="1000m - Estándar"
+                    severity="info"
+                    size="small"
+                    [text]="true"
+                    class="w-full justify-content-start text-left"
+                    (click)="customRadius = 1000">
+                </p-button>
+
+                <p-button
+                    label="2000m - Área extensa"
+                    severity="info"
+                    size="small"
+                    [text]="true"
+                    class="w-full justify-content-start text-left"
+                    (click)="customRadius = 2000">
+                </p-button>
+
+                <p-button
+                    label="5000m - Zona rural"
+                    severity="info"
+                    size="small"
+                    [text]="true"
+                    class="w-full justify-content-start text-left"
+                    (click)="customRadius = 5000">
+                </p-button>
             </div>
         </div>
     </div>
