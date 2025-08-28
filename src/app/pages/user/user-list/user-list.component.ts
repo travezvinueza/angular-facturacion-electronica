@@ -32,6 +32,8 @@ import 'leaflet.markercluster';
 import { Canton, Parroquia, Provincia } from '@/core/models/ProvinciaDto';
 import { AutoComplete } from 'primeng/autocomplete';
 import { ProvinceService } from '@/core/services/province.service';
+import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
+import { GeocercaValidationResponse } from '@/core/models/GeocercaValidationResponseDto';
 
 @Component({
     selector: 'app-user-list',
@@ -66,6 +68,13 @@ import { ProvinceService } from '@/core/services/province.service';
 })
 export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
     @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
+
+
+    validatingCode: boolean = false;
+    codeValidationResult: 'valid' | 'invalid' | 'pending' | null = null;
+    codeValidationMessage: string = '';
+    private codeValidationSubject = new Subject<string>();
+    private destroy$ = new Subject<void>();
 
 
     // Propiedades para AutoComplete de provincias
@@ -146,6 +155,7 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
         this.initializeForm();
         this.initializeGeocercaForm();
         this.inicializarProvincias();
+        this.setupCodeValidation();
     }
 
     ngAfterViewInit(): void {
@@ -240,6 +250,120 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     //================================================================================
+
+
+    //MÉTODOS PRIVADOS//
+    private setupCodeValidation(): void {
+        // Configurar debounce para validación de código
+        this.codeValidationSubject
+            .pipe(
+                debounceTime(500), // Esperar 500ms después de que el usuario deje de escribir
+                distinctUntilChanged(),
+                takeUntil(this.destroy$)
+            )
+            .subscribe(code => {
+                if (code && code.length >= 3) {
+                    this.validateGeocercaCode(code);
+                } else {
+                    this.resetCodeValidation();
+                }
+            });
+
+        // Suscribirse a cambios en el campo de código
+        this.geocercaForm.get('geoccod')?.valueChanges
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(value => {
+                if (value) {
+                    this.codeValidationResult = 'pending';
+                    this.codeValidationSubject.next(value);
+                } else {
+                    this.resetCodeValidation();
+                }
+            });
+    }
+    private validateGeocercaCode(code: string): void {
+        this.validatingCode = true;
+        this.codeValidationResult = 'pending';
+
+        this.geocercaService.validarCodigoGeocerca(code)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+                next: (response: any) => {
+                    // Si llega aquí, el código está disponible (respuesta 200)
+                    this.validatingCode = false;
+                    this.codeValidationResult = 'valid';
+                    this.codeValidationMessage = 'Código disponible';
+                },
+                error: (error: HttpErrorResponse) => {
+                    this.validatingCode = false;
+
+                    // Verificar si es un error 400 (código ya existe)
+                    if (error.status === 400 && error.error) {
+                        const errorResponse: GeocercaValidationResponse = error.error;
+
+                        // Verificar si el error es específicamente por código duplicado
+                        if (errorResponse.errorCode === 'BAD_REQUEST' &&
+                            errorResponse.message?.includes('ya existe')) {
+
+                            this.codeValidationResult = 'invalid';
+                            this.codeValidationMessage = this.extractCodeExistsMessage(errorResponse.message);
+                        } else {
+                            // Otro tipo de error 400
+                            this.codeValidationResult = 'invalid';
+                            this.codeValidationMessage = errorResponse.message || 'Código inválido';
+                        }
+                    } else {
+                        // Error de conexión o servidor
+                        console.error('Error validando código:', error);
+                        this.codeValidationResult = 'invalid';
+                        this.codeValidationMessage = 'Error al validar el código. Intente nuevamente.';
+                    }
+                }
+            });
+    }
+
+    private extractCodeExistsMessage(fullMessage: string): string {
+
+
+        const match = fullMessage.match(/'([^']+)'/);
+        if (match) {
+            const code = match[1];
+            return `Código '${code}' ya está en uso`;
+        }
+
+        return 'Este código ya está en uso';
+    }
+
+    private resetCodeValidation(): void {
+        this.validatingCode = false;
+        this.codeValidationResult = null;
+        this.codeValidationMessage = '';
+    }
+
+    getCodeInputClass(): string {
+        const baseClass = 'w-full';
+
+        if (this.codeValidationResult === 'valid') {
+            return `${baseClass} border-green-300 focus:border-green-500 focus:ring-green-200`;
+        } else if (this.codeValidationResult === 'invalid') {
+            return `${baseClass} border-red-300 focus:border-red-500 focus:ring-red-200`;
+        }
+
+        return baseClass;
+    }
+
+    getValidationMessageClass(): string {
+        if (this.codeValidationResult === 'valid') {
+            return 'text-xs text-green-600 flex items-center gap-1';
+        } else if (this.codeValidationResult === 'invalid') {
+            return 'text-xs text-red-600 flex items-center gap-1';
+        }
+
+        return 'text-xs text-surface-500';
+    }
+
+
+
 
 
     //FUNCIONES PARA OBTENER LOS USUARIOS/MANEJO DEL PANEL IZQUIERDO EN EL COMPONENTE
@@ -655,9 +779,9 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
                       />
                     </svg>
 
-                    <span class="text-gray-700 font-medium">${user.codigoVendedor}</span>
+                    <span class="text-gray-700 font-medium">${user.usucod}</span>
                     <span class="text-gray-400">•</span>
-                    <span class="text-gray-500">${user.codigoVendedorSecundario}</span>
+                    <span class="text-gray-500">${user.usucodv}</span>
                 </div>
 
                 <!-- Última ubicación -->
@@ -926,6 +1050,15 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
             return;
         }
 
+        if (this.codeValidationResult !== 'valid') {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Código inválido',
+                detail: 'Debe usar un código de geocerca válido'
+            });
+            return;
+        }
+
         const formData = this.geocercaForm.value;
         const usuario = this.authService.getUsuarioFromToken() || 'SUPERVISOR';
         const empresa = this.authService.getEmpresa()?.nomempresa || 'PC-ADMIN';
@@ -1121,5 +1254,6 @@ export class UserListComponent implements OnInit, AfterViewInit, OnDestroy {
             this.map.remove();
             this.map = null;
         }
+
     }
 }

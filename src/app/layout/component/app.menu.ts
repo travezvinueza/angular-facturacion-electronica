@@ -29,13 +29,6 @@ export class AppMenu {
     ngOnInit() {
         this.model = [
             {
-                label: 'Home',
-                items: [
-                    { label: 'Dashboard', isAuthenticated: true, icon: 'pi pi-fw pi-home', routerLink: ['/dashboard'] },
-
-                ]
-            },
-            {
                 label: 'Maestro',
                 items: [
                     {
@@ -55,12 +48,7 @@ export class AppMenu {
                     { label: 'Lista de Vendedores', isAuthenticated: true, icon: 'pi pi-fw pi-id-card', routerLink: ['/pages/vendedores'] },
                 ]
             },
-            {
-                label: 'Reportes',
-                items: [
-                    { label: 'Detalles Registro', isAuthenticated: true, icon: 'pi pi-objects-column', routerLink: ['/pages/transactions-list'] },
-                ]
-            },
+
             {
                 label: 'Cerrar Sesión',
                 items: [

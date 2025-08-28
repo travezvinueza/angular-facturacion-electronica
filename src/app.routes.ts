@@ -6,6 +6,7 @@ import { Landing } from './app/pages/landing/landing';
 import { Notfound } from './app/pages/notfound/notfound';
 import { authGuard } from '@/core/guards/auth.guard';
 import { Login } from '@/pages/auth/login';
+import { GeocercasListComponent } from '@/pages/geocercas/geocercas-list/geocercas-list.component';
 
 export const appRoutes: Routes = [
 
@@ -18,6 +19,7 @@ export const appRoutes: Routes = [
         canActivate: [authGuard],
         children: [
             { path: 'dashboard', component: Dashboard },
+            { path: 'vendedores', component: GeocercasListComponent },
             { path: 'uikit', loadChildren: () => import('./app/pages/uikit/uikit.routes') },
             { path: 'documentation', component: Documentation },
             { path: 'pages', loadChildren: () => import('./app/pages/pages.routes') }

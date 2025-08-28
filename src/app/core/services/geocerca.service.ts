@@ -14,6 +14,16 @@ export class GeocercaService {
 
     constructor(private readonly http: HttpClient) { }
 
+
+    validarCodigoGeocerca(codigoGeocerca: string): Observable<boolean> {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+
+        return this.http.get<boolean>(`${this.baseUrl}/validar-codigo-geocerca/${codigoGeocerca}`, { headers });
+    }
     /** Crear una nueva geocerca */
     crearGeocerca(geocerca: CrearGeocercaDto): Observable<GeocercaResponseDto> {
         const token = this.authService.getToken();

@@ -203,7 +203,7 @@ export class Login {
                 });
 
                 // Redirigir al dashboard
-                this.router.navigate(['/dashboard']);
+                this.router.navigate(['/vendedores']);
             },
             error: (error) => {
                 this.cargandoLogin.set(false);

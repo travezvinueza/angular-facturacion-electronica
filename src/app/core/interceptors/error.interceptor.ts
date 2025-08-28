@@ -5,7 +5,7 @@ import { catchError, throwError } from 'rxjs';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const msgService = inject(MessageService);
-  
+
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status === 0) {
@@ -13,9 +13,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       } else if (error.error?.Message) {
         msgService.add({severity: 'error', summary: 'Error en el servidor.', detail:error.error.Message});
       } else {
-        msgService.add({ severity: 'error', summary: 'Error', detail: 'Ocurrió un error inesperado.' });
+        msgService.add({ severity: 'error', summary: 'Error', detail: 'Error de validación.' });
       }
-      return throwError(() => error); 
+      return throwError(() => error);
     })
   );
 };
