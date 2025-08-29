@@ -4,7 +4,7 @@ import { environment } from 'src/environments/environment';
 import { UserDto } from '../models/UserDto';
 import { Observable } from 'rxjs';
 import { AuthService } from '@/core/services/auth.service';
-import { VendedoresQueryParams, VendedoresResponse } from '@/core/models/VendedorDto';
+import { VendedoresQueryParams, VendedoresResponse } from '@/core/models/Geocercas/VendedorDto';
 
 @Injectable({
     providedIn: 'root'

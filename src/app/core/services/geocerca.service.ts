@@ -1,9 +1,10 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { ActualizarGeocercaDto, CrearGeocercaDto, GeocercaResponseDto } from '../models/GeocercaDto';
+import { ActualizarGeocercaDto, CrearGeocercaDto, GeocercaResponseDto } from '../models/Geocercas/GeocercaDto';
 import { AuthService } from './auth.service';
 import { environment } from '../../../environments/environment';
+import { GeocercaValidationResponse } from '@/core/models/Geocercas/GeocercaValidationResponseDto';
 
 @Injectable({
     providedIn: 'root'
@@ -13,6 +14,32 @@ export class GeocercaService {
     private readonly authService = inject(AuthService);
 
     constructor(private readonly http: HttpClient) { }
+
+    getOnlyGeocercasByEnterpriseName(
+        enterpriseName: string,
+        pageNumber: number = 1,
+        pageSize: number = 10,
+        activo: boolean = true
+    ): Observable<GeocercaValidationResponse> {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+
+        const params = new HttpParams()
+            .set('pageNumber', pageNumber)
+            .set('pageSize', pageSize)
+            .set('activo', activo);
+
+        return this.http.get<GeocercaValidationResponse>(
+            `${this.baseUrl}/getListGeofenceByEnterprise/${enterpriseName}`,
+            { headers, params }
+        );
+    }
+
+
+
 
 
     validarCodigoGeocerca(codigoGeocerca: string): Observable<boolean> {

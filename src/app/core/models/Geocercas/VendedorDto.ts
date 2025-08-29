@@ -17,6 +17,7 @@ export interface GeocercaDto {
     geocarm: number;
     geocperm: number;
     geoclat: number;
+    geocfcre: string;
     geoclon: number;
     fechaAsignacion: string;
     geoccoor: string;

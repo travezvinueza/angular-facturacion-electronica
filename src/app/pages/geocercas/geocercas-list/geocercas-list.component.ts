@@ -25,10 +25,10 @@ import { UserService } from '@/core/services/user.service';
 import { MapService, RangeDisplayInfo, SearchResult } from '@/core/services/map.service';
 import * as L from 'leaflet';
 import { Drawer } from 'primeng/drawer';
-import { CustomerResponseDto } from '@/core/models/CustomerResponseDto';
+import { CustomerResponseDto } from '@/core/models/Customer/CustomerResponseDto';
 import { CustomerService } from '@/core/services/customer.service';
-import { CustomerAreaRequestDto } from '@/core/models/CustomerAreaRequestDto';
-import { GeocercaDto, VendedorDto, VendedoresQueryParams, VendedoresResponse } from '@/core/models/VendedorDto';
+import { CustomerAreaRequestDto } from '@/core/models/Customer/CustomerAreaRequestDto';
+import { GeocercaDto, VendedorDto, VendedoresQueryParams, VendedoresResponse } from '@/core/models/Geocercas/VendedorDto';
 @Component({
     selector: 'app-geocercas',
     imports: [

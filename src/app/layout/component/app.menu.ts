@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { AppMenuitem } from './app.menuitem';
 import { AuthService } from '@/core/services/auth.service';
-import { CustomMenuItem } from '@/core/models/CustomMenuItem';
+import { CustomMenuItem } from '@/core/models/Auth/CustomMenuItem';
 
 @Component({
     selector: 'app-menu',
@@ -37,6 +37,7 @@ export class AppMenu {
                         icon: 'pi pi-fw pi-cog',
                         items: [
                             { label: 'Crear Geocercas', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/geocercas'] },
+                            { label: 'Crear Geocercas 2', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/only-geocercas'] },
                             { label: 'Geocercas y Vendedores', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/geocercas-vendedores'] },
                         ]
                     },

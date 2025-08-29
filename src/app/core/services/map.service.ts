@@ -1,12 +1,13 @@
-import { Injectable, ElementRef } from '@angular/core';
+import { ElementRef, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import * as L from 'leaflet';
 import 'leaflet.markercluster';
 import { UserDto } from '@/core/models/UserDto';
-import { CustomerResponseDto } from '@/core/models/CustomerResponseDto';
-import { GeocercaDto } from '@/core/models/VendedorDto';
+import { CustomerResponseDto } from '@/core/models/Customer/CustomerResponseDto';
+import { GeocercaDto } from '@/core/models/Geocercas/VendedorDto';
+import { GeofenceDto } from '@/core/models/Geocercas/GeocercaValidationResponseDto';
 
 
 //===== INTERFACES =====//
@@ -14,6 +15,7 @@ export interface MapConfig {
     center: [number, number];
     zoom: number;
     defaultLocation: string;
+
 }
 
 export interface SearchResult {
@@ -40,14 +42,12 @@ export interface RangeDisplayInfo {
 })
 export class MapService {
 
-
     private geocercasLayer: L.FeatureGroup | null = null;
     private geocercasMarkers: Map<string, L.Layer> = new Map();
 
     // Propiedades para customers
     private customerMarkers: Map<string, L.Marker> = new Map();
     private customerClusterGroup: L.MarkerClusterGroup | null = null;
-
 
     private map: L.Map | null = null;
     private userMarkers: Map<string, L.Marker> = new Map();
@@ -89,7 +89,7 @@ export class MapService {
         this.clearGeocercas();
         this.geocercasLayer = L.featureGroup().addTo(this.map);
 
-        geocercas.forEach(geocerca => {
+        geocercas.forEach((geocerca) => {
             if (geocerca.geocact) {
                 const layer = this.createGeocercaLayer(geocerca);
                 if (layer) {
@@ -115,7 +115,7 @@ export class MapService {
             }
 
             // Convertir a formato Leaflet
-            const latLngs: [number, number][] = coordinates.map(coord => [coord.lat, coord.lng]);
+            const latLngs: [number, number][] = coordinates.map((coord) => [coord.lat, coord.lng]);
 
             // Crear polígono
             const polygon = L.polygon(latLngs, {
@@ -147,10 +147,9 @@ export class MapService {
             });
 
             // Crear grupo con polígono y marcador central
-            const group = L.layerGroup([polygon, centerMarker]);
 
-            return group;
 
+            return L.layerGroup([polygon, centerMarker]);
         } catch (error) {
             console.error('Error al crear geocerca:', error);
             return null;
@@ -210,16 +209,27 @@ export class MapService {
      * Ajusta la vista para mostrar todas las geocercas
      */
     private fitGeocercasBounds(): void {
-        if (!this.map || !this.geocercasLayer) return;
+        if (!this.map || this.geocercasMarkers.size === 0) return;
 
-        const group = this.geocercasLayer;
-        const bounds = group.getBounds();
+        const bounds = L.latLngBounds([]);
+
+        // Iterar sobre las geocercas y expandir los bounds
+        this.geocercasMarkers.forEach(layer => {
+            if (layer instanceof L.Polygon) {
+                bounds.extend(layer.getBounds());
+            } else if (layer instanceof L.LayerGroup) {
+                layer.eachLayer(subLayer => {
+                    if (subLayer instanceof L.Polygon) {
+                        bounds.extend(subLayer.getBounds());
+                    }
+                });
+            }
+        });
 
         if (bounds.isValid()) {
             this.map.fitBounds(bounds, { padding: [20, 20] });
         }
     }
-
     /**
      * Limpia las geocercas del mapa
      */
@@ -230,7 +240,6 @@ export class MapService {
         }
         this.geocercasMarkers.clear();
     }
-
 
     /**
      * Agrega marcadores de clientes al mapa
@@ -256,7 +265,6 @@ export class MapService {
             this.map?.invalidateSize();
         }, 100);
     }
-
 
     /**
      * Inicializa el cluster de clientes
@@ -396,7 +404,6 @@ export class MapService {
         this.customerMarkers.clear();
     }
 
-
     focusOnUserWithRange(user: UserDto, radiusMeters: number = 1000): RangeDisplayInfo | null {
         if (!this.map || !user.ubicacion) return null;
 
@@ -428,15 +435,9 @@ export class MapService {
         const latDelta = (radiusMeters / earthRadius) * (180 / Math.PI);
         const lngDelta = latDelta / Math.cos((lat * Math.PI) / 180);
 
-        const northEast: [number, number] = [
-            lat + latDelta,
-            lng + lngDelta
-        ];
+        const northEast: [number, number] = [lat + latDelta, lng + lngDelta];
 
-        const southWest: [number, number] = [
-            lat - latDelta,
-            lng - lngDelta
-        ];
+        const southWest: [number, number] = [lat - latDelta, lng - lngDelta];
 
         return {
             center: [lat, lng],
@@ -561,7 +562,6 @@ export class MapService {
     get searchResultsList$(): Observable<SearchResult[]> {
         return this.searchResults$.asObservable();
     }
-
 
     /**
      * Inicializa el mapa en el contenedor especificado
@@ -820,7 +820,6 @@ export class MapService {
         }
     }
 
-
     /**
      * Limpia los marcadores de usuarios
      */
@@ -855,6 +854,236 @@ export class MapService {
         </div>
       </div>
     `;
+    }
+
+    /**
+     * Agrega marcadores de geocercas al mapa
+     */
+    addGeocercaMarkers(geocercas: GeofenceDto[]): void {
+        if (!this.map) return;
+
+        this.clearGeocercas();
+        this.geocercasLayer = L.featureGroup().addTo(this.map);
+
+        geocercas.forEach((geocerca) => {
+            if (geocerca.geocact && geocerca.geoclat && geocerca.geoclon) {
+                try {
+                    const layer = this.createGeocercaResponseLayer(geocerca);
+                    if (layer) {
+                        this.geocercasMarkers.set(geocerca.geoccod, layer);
+                        this.geocercasLayer?.addLayer(layer);
+                    }
+                } catch (error) {
+                    console.error('Error al agregar marcador de geocerca:', error);
+                }
+            }
+        });
+
+        // Auto-fit bounds si hay geocercas
+        if (geocercas.length > 0) {
+            this.fitGeocercasBounds();
+        }
+
+        setTimeout(() => {
+            this.map?.invalidateSize();
+        }, 100);
+    }
+
+    /**
+     * Crea la capa visual para una geocerca del tipo GeocercaResponseDto
+     */
+    private createGeocercaResponseLayer(geocerca: GeofenceDto): L.Layer | null {
+        try {
+            const layers: L.Layer[] = [];
+
+            // Crear polígono si tiene coordenadas
+            if (geocerca.geoccoor) {
+                const coordinates = JSON.parse(geocerca.geoccoor);
+
+                if (Array.isArray(coordinates) && coordinates.length > 0) {
+                    const latLngs: [number, number][] = coordinates.map((coord) => [coord.lat, coord.lng]);
+
+                    const polygon = L.polygon(latLngs, {
+                        color: '#8b5cf6',
+                        fillColor: '#8b5cf6',
+                        fillOpacity: 0.15,
+                        weight: 2,
+                        opacity: 0.8
+                    });
+
+                    polygon.bindPopup(this.createGeocercaResponsePopup(geocerca), {
+                        maxWidth: 280,
+                        className: 'geocerca-response-popup'
+                    });
+
+                    layers.push(polygon);
+                }
+            }
+
+            // Crear marcador central
+            const centerMarker = L.circleMarker([geocerca.geoclat, geocerca.geoclon], {
+                radius: 8,
+                color: '#8b5cf6',
+                fillColor: '#ffffff',
+                fillOpacity: 1,
+                weight: 3
+            });
+
+            centerMarker.bindTooltip(`${geocerca.geocnom}`, {
+                permanent: false,
+                direction: 'top',
+                className: 'geocerca-tooltip'
+            });
+
+            centerMarker.bindPopup(this.createGeocercaResponsePopup(geocerca), {
+                maxWidth: 280,
+                className: 'geocerca-response-popup'
+            });
+
+            layers.push(centerMarker);
+
+            // Retornar grupo con todas las capas
+            return layers.length > 1 ? L.layerGroup(layers) : layers[0];
+        } catch (error) {
+            console.error('Error al crear geocerca:', error);
+
+            // Fallback: solo marcador central
+            const fallbackMarker = L.circleMarker([geocerca.geoclat, geocerca.geoclon], {
+                radius: 6,
+                color: '#ef4444',
+                fillColor: '#ffffff',
+                fillOpacity: 1,
+                weight: 2
+            });
+
+            fallbackMarker.bindPopup(this.createGeocercaResponsePopup(geocerca));
+            return fallbackMarker;
+        }
+    }
+
+    /**
+     * Crea popup para geocerca del tipo GeocercaResponseDto
+     */
+    private createGeocercaResponsePopup(geocerca: GeofenceDto): string {
+        const fechaCreacion = new Date(geocerca.geocfcre).toLocaleDateString('es-EC', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+
+        const statusColor = geocerca.geocact ? 'text-green-600' : 'text-red-600';
+        const statusText = geocerca.geocact ? 'Activa' : 'Inactiva';
+        const statusIcon = geocerca.geocact ? 'bg-green-400' : 'bg-red-400';
+
+        return `
+        <div class="bg-white rounded-lg shadow-sm border-0 overflow-hidden">
+            <div class="bg-purple-500 text-white px-3 py-2">
+                <h3 class="font-semibold text-sm">${geocerca.geocnom}</h3>
+                <span class="text-xs opacity-90">${geocerca.geoccod}</span>
+            </div>
+            <div class="p-3 space-y-2">
+                <div class="flex items-center space-x-2 text-xs">
+                    <svg class="w-3 h-3 text-gray-400" viewBox="0 0 20 20">
+                        <path fill="currentColor" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"/>
+                    </svg>
+                    <span class="text-gray-700">${geocerca.geocsec}</span>
+                </div>
+                <div class="flex items-center space-x-2 text-xs">
+                    <svg class="w-3 h-3 text-gray-400" viewBox="0 0 20 20">
+                        <path fill="currentColor" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4z"/>
+                    </svg>
+                    <span class="text-gray-600">${geocerca.geocciud}, ${geocerca.geocprov}</span>
+                </div>
+                <div class="flex items-center space-x-2 text-xs">
+                    <svg class="w-3 h-3 text-gray-400" viewBox="0 0 20 20">
+                        <path fill="currentColor" d="M9 12a1 1 0 102 0V8a1 1 0 10-2 0v4zm1-7a1 1 0 100 2 1 1 0 000-2z M10 18a8 8 0 100-16 8 8 0 000 16z"/>
+                    </svg>
+                    <span class="text-gray-600">País: ${geocerca.geocpais}</span>
+                </div>
+                <div class="flex items-center space-x-2 text-xs">
+                    <svg class="w-3 h-3 text-gray-400" viewBox="0 0 20 20">
+                        <path fill="currentColor" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zM4 8h12v8H4V8z"/>
+                    </svg>
+                    <span class="text-gray-600">Creada: ${fechaCreacion}</span>
+                </div>
+                <div class="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
+                    <div class="flex items-center space-x-1">
+                        <div class="w-2 h-2 ${statusIcon} rounded-full"></div>
+                        <span class="text-xs ${statusColor} font-medium">${statusText}</span>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-gray-500">Prioridad: ${geocerca.geocpri}</div>
+                        ${geocerca.geocarm ? `<div class="text-xs text-gray-500">Área: ${geocerca.geocarm}m²</div>` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    }
+
+    /**
+     * Centra el mapa en una geocerca específica
+     */
+    focusOnGeocerca(geocerca: GeofenceDto): void {
+        if (!this.map || !geocerca.geoclat || !geocerca.geoclon) return;
+
+        // Centrar en la geocerca con zoom apropiado
+        this.map.setView([geocerca.geoclat, geocerca.geoclon], 16);
+
+        // Abrir popup del marcador si existe
+        const marker = this.geocercasMarkers.get(geocerca.geoccod);
+        if (marker) {
+            // Si es un LayerGroup, buscar el marcador que tiene popup
+            if ('getLayers' in marker) {
+                const layers = (marker as L.LayerGroup).getLayers();
+                const markerWithPopup = layers.find((layer) => 'openPopup' in layer && '_popup' in layer) as L.Layer & { openPopup(): void };
+
+                if (markerWithPopup) {
+                    markerWithPopup.openPopup();
+                }
+            } else if ('openPopup' in marker) {
+                (marker as any).openPopup();
+            }
+        }
+
+        // Mensaje de confirmación
+        this.msgService.add({
+            severity: 'info',
+            summary: 'Geocerca seleccionada',
+            detail: `Mostrando: ${geocerca.geocnom}`,
+            life: 1000
+        });
+    }
+
+    /**
+     * Resetea la vista del mapa a la configuración inicial
+     */
+    resetMapView(): void {
+        if (!this.map) return;
+
+        // Restablecer vista a la configuración por defecto
+        this.map.setView(this.defaultConfig.center, this.defaultConfig.zoom);
+
+        // Limpiar marcadores de búsqueda
+        this.clearSearchMarker();
+
+        // Limpiar rangos de usuario si existen
+        this.clearUserRange();
+
+        // Resetear resultados de búsqueda
+        this.searchResults$.next([]);
+
+        // Mensaje de confirmación
+        this.msgService.add({
+            severity: 'info',
+            summary: 'Vista restablecida',
+            detail: 'El mapa ha vuelto a la vista inicial'
+        });
+
+        // Invalidar tamaño para asegurar renderizado correcto
+        setTimeout(() => {
+            this.map?.invalidateSize();
+        }, 100);
     }
 
     /**

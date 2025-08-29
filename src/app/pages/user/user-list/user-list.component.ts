@@ -1,7 +1,7 @@
 import { UserDto } from '@/core/models/UserDto';
 import { UserService } from '@/core/services/user.service';
 import { GeocercaService } from '@/core/services/geocerca.service';
-import { CrearGeocercaDto, CoordenadaDto } from '@/core/models/GeocercaDto';
+import { CrearGeocercaDto, CoordenadaDto } from '@/core/models/Geocercas/GeocercaDto';
 import { AuthService } from '@/core/services/auth.service';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse, HttpClient } from '@angular/common/http';
@@ -33,7 +33,7 @@ import { Canton, Parroquia, Provincia } from '@/core/models/ProvinciaDto';
 import { AutoComplete } from 'primeng/autocomplete';
 import { ProvinceService } from '@/core/services/province.service';
 import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
-import { GeocercaValidationResponse } from '@/core/models/GeocercaValidationResponseDto';
+import { GeocercaValidationResponse } from '@/core/models/Geocercas/GeocercaValidationResponseDto';
 
 @Component({
     selector: 'app-user-list',

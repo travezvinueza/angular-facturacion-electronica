@@ -2,9 +2,9 @@ import { inject, Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '@/core/services/auth.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { CustomerResponseDto } from '@/core/models/CustomerResponseDto';
+import { CustomerResponseDto } from '@/core/models/Customer/CustomerResponseDto';
 import { Observable } from 'rxjs';
-import { CustomerAreaRequestDto } from '@/core/models/CustomerAreaRequestDto';
+import { CustomerAreaRequestDto } from '@/core/models/Customer/CustomerAreaRequestDto';
 
 @Injectable({
     providedIn: 'root'
