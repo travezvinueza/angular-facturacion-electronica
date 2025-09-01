@@ -390,20 +390,10 @@ export class GeocercaDrawingService {
      */
     finalizarGeocerca(nombre: string = 'Nueva Geocerca'): GeocercaDrawing | null {
         if (!this.estadoDibujo.creando || !this.estadoDibujo.centro) {
-            this.msgService.add({
-                severity: 'warn',
-                summary: 'Advertencia',
-                detail: 'No hay una geocerca en proceso de creación'
-            });
             return null;
         }
 
         if (this.estadoDibujo.tipo === 'poligono' && this.estadoDibujo.coordenadas.length < 3) {
-            this.msgService.add({
-                severity: 'warn',
-                summary: 'Advertencia',
-                detail: 'Un polígono necesita al menos 3 puntos'
-            });
             return null;
         }
 
@@ -423,16 +413,20 @@ export class GeocercaDrawingService {
         this.geocercasCreadas.set(geocerca.id, geocerca);
         this.geocercaDrawing$.next(Array.from(this.geocercasCreadas.values()));
 
-        // Limpiar estado de dibujo
-        this.cancelarCreacion();
-
-        this.msgService.add({
-            severity: 'success',
-            summary: 'Geocerca creada',
-            detail: `Geocerca ${geocerca.tipo} con área de ${(geocerca.area / 10000).toFixed(2)} hectáreas`
-        });
+        // CAMBIO: NO limpiar automáticamente
+        // this.cancelarCreacion(); // ← Comentar esta línea
 
         return geocerca;
+    }
+
+// Agregar método público para limpiar cuando sea necesario
+    finalizarYLimpiar(): void {
+        this.cancelarCreacion();
+        this.msgService.add({
+            severity: 'success',
+            summary: 'Geocerca completada',
+            detail: 'La geocerca se ha procesado correctamente'
+        });
     }
 
     /**

@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { ActualizarGeocercaDto, CrearGeocercaDto, GeocercaResponseDto } from '../models/Geocercas/GeocercaDto';
 import { AuthService } from './auth.service';
 import { environment } from '../../../environments/environment';
-import { GeocercaValidationResponse } from '@/core/models/Geocercas/GeocercaValidationResponseDto';
+import { CreateGeofenceDto, GeocercaValidationResponse, GeofenceDto } from '@/core/models/Geocercas/GeocercaValidationResponseDto';
 
 @Injectable({
     providedIn: 'root'
@@ -37,6 +37,17 @@ export class GeocercaService {
             { headers, params }
         );
     }
+
+    createOnlyGeocerca(geocerca: CreateGeofenceDto): Observable<CreateGeofenceDto> {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+
+        return this.http.post<CreateGeofenceDto>(`${this.baseUrl}/crear-geocercas`, geocerca, { headers });
+    }
+
 
 
 

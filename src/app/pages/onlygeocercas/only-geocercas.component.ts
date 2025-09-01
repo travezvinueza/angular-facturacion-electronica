@@ -33,6 +33,7 @@ import { GeocercaDrawing, GeocercaDrawingState } from '@/core/models/Draw/Drawin
 import { Canton, Parroquia, Provincia } from '@/core/models/ProvinciaDto';
 import { AutoComplete } from 'primeng/autocomplete';
 import { ToggleSwitch } from 'primeng/toggleswitch';
+import { AdditionalGeocercaData, GeocercaMapper } from '@/core/models/helpers/geocerca-mapper.helper';
 
 interface TipoGeocercaOption {
     label: string;
@@ -175,6 +176,23 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
 
 
     //============== MÉTODOS DE INICIALIZACIÓN ===================
+
+    async initializeMap(): Promise<void> {
+        try {
+            await this.mapService.initializeMap(this.mapContainer, {
+                center: [-0.2298, -78.5249],
+                zoom: 13,
+                defaultLocation: 'Quito, Ecuador'
+            });
+
+            if (!this.loading && this.geocercas.length > 0) {
+                this.mapService.addGeocercaMarkers(this.geocercas);
+            }
+        } catch (error) {
+            console.error('Error al inicializar el mapa:', error);
+        }
+    }
+
 
     ngOnInit(): void {
         this.initializeEnterpriseName();
@@ -514,7 +532,8 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
         this.msgService.add({
             severity: 'info',
             summary: 'Modo creación activado',
-            detail: `Haga clic en el mapa para crear una geocerca ${this.tipoGeocerca}`
+            detail: `Haga clic en el mapa para crear una geocerca ${this.tipoGeocerca}`,
+            life: 2000
         });
     }
 
@@ -640,12 +659,127 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
         this.resetCodeValidation();
     }
 
-    /**
-     * Guardar nueva geocerca
-     */
     async guardarGeocerca(): Promise<void> {
+        if (this.codeValidationResult !== 'valid') {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Código inválido',
+                detail: 'Debe usar un código de geocerca válido'
+            });
+            return;
+        }
 
+        if (this.geocercaForm.invalid || !this.centroGeocerca) {
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error de validación',
+                detail: 'Complete todos los campos requeridos'
+            });
+            return;
+        }
+
+        try {
+            // CAMBIO: No llamar finalizarGeocerca todavía, solo validar
+            if (!this.drawingState?.creando || !this.drawingState.centro) {
+                this.msgService.add({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: 'No hay una geocerca en proceso de creación'
+                });
+                return;
+            }
+
+            if (this.drawingState.tipo === 'poligono' && this.drawingState.coordenadas.length < 3) {
+                this.msgService.add({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: 'Un polígono necesita al menos 3 puntos'
+                });
+                return;
+            }
+
+            // USAR DATOS DEL DRAWING STATE DIRECTAMENTE
+            const area = GeocercaMapper.calculateArea(this.drawingState.coordenadas);
+            const perimetro = GeocercaMapper.calculatePerimeter(this.drawingState.coordenadas);
+
+            const additionalData: AdditionalGeocercaData = {
+                centroGeocerca: this.drawingState.centro, // USAR DEL DRAWING STATE
+                coordenadasParaCalculo: GeocercaMapper.formatCoordinatesForBackend(this.drawingState.coordenadas),
+                area: area,
+                perimetro: perimetro,
+                usuario: this.authService.getUsuarioFromToken() || 'SUPERVISOR',
+                empresa: this.enterpriseName,
+                tipoGeocerca: this.drawingState.tipo!,
+                radio: this.drawingState.tipo === 'circular' ? this.radioGeocerca : undefined
+            };
+
+            // Debug para ver qué está pasando
+            console.log('Centro:', additionalData.centroGeocerca);
+            console.log('Área calculada:', area);
+            console.log('Coordenadas:', this.drawingState.coordenadas.length);
+
+            const validationErrors = GeocercaMapper.validate(this.geocercaForm.value, additionalData);
+
+            if (validationErrors.length > 0) {
+                this.msgService.add({
+                    severity: 'warn',
+                    summary: 'Datos inválidos',
+                    detail: validationErrors.join(', ')
+                });
+                return;
+            }
+
+            const geocercaDto = GeocercaMapper.mapToDto(this.geocercaForm.value, additionalData);
+
+            this.msgService.add({
+                severity: 'info',
+                summary: 'Guardando',
+                detail: 'Creando geocerca...'
+            });
+
+            this.geocercaService.createOnlyGeocerca(geocercaDto)
+                .pipe(takeUntil(this.destroy$))
+                .subscribe({
+                    next: (response) => {
+                        if (response) {
+                            // AHORA SÍ finalizar y limpiar
+                            this.geocercaDrawing.finalizarGeocerca(geocercaDto.geocnom);
+
+                            this.geocercaDialog = false;
+                            this.msgService.add({
+                                severity: 'success',
+                                summary: 'Geocerca creada',
+                                detail: `La geocerca "${geocercaDto.geocnom}" se ha creado exitosamente`
+                            });
+                            this.refreshData();
+                        } else {
+                            this.msgService.add({
+                                severity: 'error',
+                                summary: 'Error del servidor',
+                                detail:  'No se pudo crear la geocerca'
+                            });
+                        }
+                    },
+                    error: (error: any) => {
+                        console.error('Error al guardar geocerca:', error);
+                        this.msgService.add({
+                            severity: 'error',
+                            summary: 'Error al guardar',
+                            detail: error?.error?.message || 'No se pudo crear la geocerca'
+                        });
+                    }
+                });
+
+        } catch (error: any) {
+            console.error('Error al guardar geocerca:', error);
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error al guardar',
+                detail: 'No se pudo crear la geocerca'
+            });
+        }
     }
+
 
     //=================================================================//
 
@@ -723,21 +857,6 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
         this.mapService.addGeocercaMarkers([geocerca]);
     }
 
-    async initializeMap(): Promise<void> {
-        try {
-            await this.mapService.initializeMap(this.mapContainer, {
-                center: [-0.2298, -78.5249],
-                zoom: 13,
-                defaultLocation: 'Quito, Ecuador'
-            });
-
-            if (!this.loading && this.geocercas.length > 0) {
-                this.mapService.addGeocercaMarkers(this.geocercas);
-            }
-        } catch (error) {
-            console.error('Error al inicializar el mapa:', error);
-        }
-    }
 
     searchLocationOnMap(): void {
         if (!this.searchLocation.trim()) return;
