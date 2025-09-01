@@ -14,6 +14,7 @@ export interface GeofenceDto {
     geoccod: string;
     geocnom: string;
     geocsec: string;
+    geocdirre: string;
     geocciud: string;
     geocprov: string;
     geocpais: string;
@@ -26,4 +27,7 @@ export interface GeofenceDto {
     geocact: boolean;
     geocpri: number;
     geocfcre: string;
+    geocdesc: string;
+    "geocuscre": string;
+    "geoceqcre": string;
 }

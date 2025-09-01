@@ -920,28 +920,6 @@ export class MapService {
                 }
             }
 
-            // Crear marcador central
-            const centerMarker = L.circleMarker([geocerca.geoclat, geocerca.geoclon], {
-                radius: 8,
-                color: '#8b5cf6',
-                fillColor: '#ffffff',
-                fillOpacity: 1,
-                weight: 3
-            });
-
-            centerMarker.bindTooltip(`${geocerca.geocnom}`, {
-                permanent: false,
-                direction: 'top',
-                className: 'geocerca-tooltip'
-            });
-
-            centerMarker.bindPopup(this.createGeocercaResponsePopup(geocerca), {
-                maxWidth: 280,
-                className: 'geocerca-response-popup'
-            });
-
-            layers.push(centerMarker);
-
             // Retornar grupo con todas las capas
             return layers.length > 1 ? L.layerGroup(layers) : layers[0];
         } catch (error) {

@@ -1,26 +1,22 @@
-export interface DrawingCoordinate {
+export interface GeocercaCoordinate {
     lat: number;
     lng: number;
 }
 
-export interface GeocercaDrawingData {
-    tipo: 'circular' | 'poligonal';
-    nombre?: string;
-    coordenadas: DrawingCoordinate[];
-    centro?: DrawingCoordinate;
-    radio?: number; // Solo para círculos
+export interface GeocercaDrawing {
+    id: string;
+    tipo: 'circular' | 'poligono';
+    coordenadas: GeocercaCoordinate[];
+    centro: GeocercaCoordinate;
     area: number;
-    perimetro: number;
+    radio?: number; // Para círculos
+    activa: boolean;
+    fechaCreacion: Date;
 }
 
-export interface DrawingState {
-    isActive: boolean;
-    mode: 'circular' | 'poligonal' | null;
-    isDrawing: boolean;
-    currentData: GeocercaDrawingData | null;
-}
-
-export enum DrawingMode {
-    CIRCULAR = 'circular',
-    POLIGONAL = 'poligonal'
+export interface GeocercaDrawingState {
+    creando: boolean;
+    tipo: 'circular' | 'poligono' | null;
+    coordenadas: GeocercaCoordinate[];
+    centro: GeocercaCoordinate | null;
 }
