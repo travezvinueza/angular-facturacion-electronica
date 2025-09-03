@@ -388,7 +388,7 @@ export class GeocercaDrawingService {
     /**
      * Finalizar y guardar geocerca
      */
-    finalizarGeocerca(nombre: string = 'Nueva Geocerca'): GeocercaDrawing | null {
+    finalizarGeocerca(): GeocercaDrawing | null {
         if (!this.estadoDibujo.creando || !this.estadoDibujo.centro) {
             return null;
         }
@@ -411,28 +411,35 @@ export class GeocercaDrawingService {
 
         // Guardar geocerca
         this.geocercasCreadas.set(geocerca.id, geocerca);
-        this.geocercaDrawing$.next(Array.from(this.geocercasCreadas.values()));
-
-        // CAMBIO: NO limpiar automáticamente
-        // this.cancelarCreacion(); // ← Comentar esta línea
+        this.geocercaDrawing$.next(Array.from(this.geocercasCreadas.values()))
 
         return geocerca;
     }
 
-// Agregar método público para limpiar cuando sea necesario
-    finalizarYLimpiar(): void {
-        this.cancelarCreacion();
-        this.msgService.add({
-            severity: 'success',
-            summary: 'Geocerca completada',
-            detail: 'La geocerca se ha procesado correctamente'
-        });
-    }
 
     /**
      * Cancelar creación actual
      */
     cancelarCreacion(): void {
+        // Limpiar eventos del mapa
+        if (this.map) {
+            this.map.off('click');
+        }
+
+        // Limpiar elementos temporales
+        this.limpiarElementosTemporales();
+
+        // Resetear estado
+        this.estadoDibujo = {
+            creando: false,
+            tipo: null,
+            coordenadas: [],
+            centro: null
+        };
+
+        this.drawing$.next(this.estadoDibujo);
+    }
+    cancelarEdicion(): void {
         // Limpiar eventos del mapa
         if (this.map) {
             this.map.off('click');
@@ -523,17 +530,223 @@ export class GeocercaDrawingService {
         return Array.from(this.geocercasCreadas.values());
     }
 
+
+    /**
+     * Cargar geocerca existente para edición
+     */
+    cargarGeocercaParaEdicion(
+        tipo: 'circular' | 'poligono',
+        coordenadas: Array<{lat: number, lng: number}>,
+        centro: {lat: number, lng: number},
+        radio?: number
+    ): void {
+        if (!this.map) return;
+
+        // Limpiar estado actual
+        this.cancelarCreacion();
+
+        // Configurar estado para edición
+        this.estadoDibujo = {
+            creando: true,
+            tipo: tipo,
+            coordenadas: [...coordenadas],
+            centro: { ...centro }
+        };
+
+        // Configurar eventos del mapa
+        this.configurarEventosMapa(tipo);
+
+        // Si es circular, configurar radio
+        if (tipo === 'circular' && radio) {
+            this.radioGeocerca = radio;
+        }
+
+        // Dibujar geocerca existente en el mapa
+        this.dibujarGeocercaExistente();
+
+        // Actualizar estado reactivo
+        this.drawing$.next(this.estadoDibujo);
+    }
+
+    private dibujarGeocercaExistente(): void
+    {
+        if (!this.map || !this.estadoDibujo.coordenadas.length) return;
+
+        this.limpiarElementosTemporales();
+
+        if (this.estadoDibujo.tipo === 'circular') {
+            this.dibujarCirculoExistente();
+
+        }else{
+            this.dibujarPoligonoExistente();
+
+        }
+    }
+
+    private dibujarCirculoExistente(): void
+    {
+        if (!this.estadoDibujo.centro || !this.dibujoLayer) return;
+
+        this.formaActual = L.circle([this.estadoDibujo.centro.lat, this.estadoDibujo.centro.lng], {
+            radius: this.radioGeocerca,
+            color: '#3b82f6',
+            fillColor: '#3b82f6',
+            fillOpacity: 0.2
+        });
+        this.dibujoLayer.addLayer(this.formaActual);
+    }
+
+    private dibujarPoligonoExistente(): void
+    {
+        this.estadoDibujo.coordenadas.forEach((coord, index) => {
+            this.agregarMarcadorPunto(coord.lat, coord.lng, index + 1);
+        });
+        this.actualizarPoligono();
+
+    }
+
+    /**
+     * Actualizar coordenadas de un punto específico (para drag & drop)
+     */
+    actualizarPuntoCoordenas(indice: number, nuevaLat: number, nuevaLng: number): void {
+        if (indice >= 0 && indice < this.estadoDibujo.coordenadas.length) {
+            this.estadoDibujo.coordenadas[indice] = {
+                lat: nuevaLat,
+                lng: nuevaLng
+            };
+
+            // Recalcular centro si es polígono
+            if (this.estadoDibujo.tipo === 'poligono') {
+                this.calcularCentroPoligono();
+            }
+
+            // Actualizar visualización
+            this.actualizarPoligono();
+
+            // Actualizar estado reactivo
+            this.drawing$.next(this.estadoDibujo);
+        }
+    }
+
+    agregarPuntoAPoligono(lat: number, lng: number): void {
+        if (this.estadoDibujo.tipo !== 'poligono') return;
+
+        this.estadoDibujo.coordenadas.push({ lat, lng });
+        this.agregarMarcadorPunto(lat, lng, this.estadoDibujo.coordenadas.length);
+        this.actualizarPoligono();
+        this.drawing$.next(this.estadoDibujo);
+    }
+
+    /**
+     * Eliminar punto de polígono
+     */
+    eliminarPuntoDePoligono(indice: number): void {
+        if (this.estadoDibujo.tipo !== 'poligono' || indice < 0 || indice >= this.estadoDibujo.coordenadas.length) {
+            return;
+        }
+
+        if (this.estadoDibujo.coordenadas.length <= 3) {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Advertencia',
+                detail: 'Un polígono debe tener al menos 3 puntos'
+            });
+            return;
+        }
+
+        // Eliminar coordenada
+        this.estadoDibujo.coordenadas.splice(indice, 1);
+
+        // Eliminar marcador correspondiente
+        if (this.marcadoresPuntos[indice] && this.dibujoLayer) {
+            this.dibujoLayer.removeLayer(this.marcadoresPuntos[indice]);
+            this.marcadoresPuntos.splice(indice, 1);
+        }
+
+        // Recrear marcadores con numeración actualizada
+        this.recrearMarcadoresNumerados();
+
+        // Actualizar visualización
+        this.actualizarPoligono();
+        this.drawing$.next(this.estadoDibujo);
+    }
+
+
+    /**
+     * Recrear marcadores con numeración correcta después de eliminar puntos
+     */
+    private recrearMarcadoresNumerados(): void {
+        // Limpiar todos los marcadores
+        this.marcadoresPuntos.forEach(marcador => {
+            if (this.dibujoLayer) {
+                this.dibujoLayer.removeLayer(marcador);
+            }
+        });
+        this.marcadoresPuntos = [];
+
+        // Recrear marcadores con numeración correcta
+        this.estadoDibujo.coordenadas.forEach((coord, index) => {
+            this.agregarMarcadorPunto(coord.lat, coord.lng, index + 1);
+        });
+    }
+
+    /**
+     * Actualizar radio del círculo en modo edición
+     */
+    actualizarRadioEnEdicion(nuevoRadio: number): void {
+        if (this.estadoDibujo.tipo === 'circular' && this.estadoDibujo.centro) {
+            this.radioGeocerca = nuevoRadio;
+
+            // Regenerar coordenadas del círculo
+            this.generarCoordenadasCirculo(
+                this.estadoDibujo.centro.lat,
+                this.estadoDibujo.centro.lng,
+                nuevoRadio
+            );
+
+            // Actualizar visualización
+            if (this.formaActual && this.dibujoLayer) {
+                this.dibujoLayer.removeLayer(this.formaActual);
+                this.dibujarCirculoExistente();
+            }
+
+            this.drawing$.next(this.estadoDibujo);
+        }
+    }
+
+
+
+
     /**
      * Destruir el servicio
      */
     destroy(): void {
         this.cancelarCreacion();
 
+        // Limpiar capa de dibujo del mapa
         if (this.dibujoLayer && this.map) {
             this.map.removeLayer(this.dibujoLayer);
+            this.dibujoLayer = null;
         }
+
+        // Limpiar colecciones y mapas
+        this.geocercasCreadas.clear();
+        this.marcadoresPuntos = [];
+        this.lineasTemporales = [];
+        this.formaActual = null;
+
+        // Resetear estado
+        this.estadoDibujo = {
+            creando: false,
+            tipo: null,
+            coordenadas: [],
+            centro: null
+        };
 
         this.drawing$.complete();
         this.geocercaDrawing$.complete();
+
+        this.map = null;
+
     }
 }

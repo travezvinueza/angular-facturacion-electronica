@@ -21,7 +21,7 @@ import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
 import { MapService, SearchResult } from '@/core/services/map.service';
 import { GeocercaService } from '@/core/services/geocerca.service';
 import { AuthService } from '@/core/services/auth.service';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { HttpErrorResponse } from '@angular/common/http';
 import { GeocercaValidationResponse, GeofenceDto } from '@/core/models/Geocercas/GeocercaValidationResponseDto';
 import * as L from 'leaflet';
@@ -34,6 +34,7 @@ import { Canton, Parroquia, Provincia } from '@/core/models/ProvinciaDto';
 import { AutoComplete } from 'primeng/autocomplete';
 import { ToggleSwitch } from 'primeng/toggleswitch';
 import { AdditionalGeocercaData, GeocercaMapper } from '@/core/models/helpers/geocerca-mapper.helper';
+import { ActualizarGeocercaDto, CoordenadaDto } from '@/core/models/Geocercas/GeocercaDto';
 
 interface TipoGeocercaOption {
     label: string;
@@ -105,6 +106,18 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
 
     //===========================================================//
 
+    // =================== PROPIEDADES PARA ELIMINACIÓN MÚLTIPLE ===================
+    modoEliminacion: boolean = false;
+    geocercasSeleccionadas: Set<string> = new Set(); // Set con códigos de geocercas seleccionadas
+    todasSeleccionadas: boolean = false;
+
+    // ===================  PROPIEDADES PARA EDICION DE GEOCERCAS ===================
+
+    editandoGeocerca: boolean = false;
+    modoEdicion: boolean = false;
+    geocercaOriginal: GeofenceDto | null = null;
+
+
 
     // ===================  PROPIEDADES PARA CREACIÓN DE GEOCERCAS ===================
     creandoGeocerca: boolean = false;
@@ -171,7 +184,8 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
         private readonly msgService: MessageService,
         private readonly mapService: MapService,
         private readonly provinceService: ProvinceService,
-        private readonly geocercaDrawing: GeocercaDrawingService
+        private readonly geocercaDrawing: GeocercaDrawingService,
+        private readonly confirmationService: ConfirmationService
     ) {}
 
 
@@ -313,7 +327,7 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
         // Configurar debounce para validación de código
         this.codeValidationSubject
             .pipe(
-                debounceTime(500), // Esperar 500ms después de que el usuario deje de escribir
+                debounceTime(1000), // Esperar 500ms después de que el usuario deje de escribir
                 distinctUntilChanged(),
                 takeUntil(this.destroy$)
             )
@@ -324,7 +338,6 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
                     this.resetCodeValidation();
                 }
             });
-
         // Suscribirse a cambios en el campo de código
         this.geocercaForm.get('geoccod')?.valueChanges
             .pipe(takeUntil(this.destroy$))
@@ -336,6 +349,7 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
                     this.resetCodeValidation();
                 }
             });
+
     }
 
     /**
@@ -349,50 +363,24 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
             .pipe(takeUntil(this.destroy$))
             .subscribe({
                 next: () => {
-                    // Si llega aquí, el código está disponible (respuesta 200)
+                    // Código válido y disponible
                     this.validatingCode = false;
                     this.codeValidationResult = 'valid';
                     this.codeValidationMessage = 'Código disponible';
                 },
                 error: (error: HttpErrorResponse) => {
-                    this.validatingCode = false;
+                    // Cualquier error = código inválido
 
-                    // Verificar si es un error 400 (código ya existe)
-                    if (error.status === 400 && error.error) {
-                        const errorResponse: GeocercaValidationResponse = error.error;
-
-                        // Verificar si el error es específicamente por código duplicado
-                        if (errorResponse.errorCode === 'BAD_REQUEST' &&
-                            errorResponse.message?.includes('ya existe')) {
-
-                            this.codeValidationResult = 'invalid';
-                            this.codeValidationMessage = this.extractCodeExistsMessage(errorResponse.message);
-                        } else {
-                            // Otro tipo de error 400
-                            this.codeValidationResult = 'invalid';
-                            this.codeValidationMessage = errorResponse.message || 'Código inválido';
-                        }
+                    // Mensaje simplificado basado en el status
+                    if (error.status === 400) {
+                        this.codeValidationMessage = 'El código ya existe o no es válido';
                     } else {
-                        // Error de conexión o servidor
-                        console.error('Error validando código:', error);
-                        this.codeValidationResult = 'invalid';
                         this.codeValidationMessage = 'Error al validar el código. Intente nuevamente.';
                     }
                 }
             });
     }
 
-    /**
-     * Extraer mensaje de código existente
-     */
-    private extractCodeExistsMessage(fullMessage: string): string {
-        const match = fullMessage.match(/'([^']+)'/);
-        if (match) {
-            const code = match[1];
-            return `Código '${code}' ya está en uso`;
-        }
-        return 'Este código ya está en uso';
-    }
 
     /**
      * Resetear validación de código
@@ -501,6 +489,248 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
 
     // ==============================================================================
 
+
+    /**
+     * Iniciar edición de geocerca existente
+     */
+    editarGeocerca(geocerca: GeofenceDto): void {
+
+
+        if (!this.mapInitialized) {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Advertencia',
+                detail: 'Espere a que el mapa se inicialice completamente'
+            });
+            return;
+        }
+
+        // Guardar copia original para comparar cambios
+        this.geocercaOriginal = { ...geocerca };
+        this.modoEdicion = true;
+        this.editandoGeocerca = true;
+        this.selectedGeocerca = geocerca;
+
+        // Cargar datos existentes en el formulario
+        this.cargarGeocercaParaEdicion(geocerca);
+
+        // Iniciar drawing service en modo edición
+        this.iniciarEdicionEnMapa(geocerca);
+        this.geocercaDialog = true;
+
+        this.msgService.add({
+            severity: 'info',
+            summary: 'Modo edición activado',
+            detail: `Editando geocerca: ${geocerca.geocnom}`
+        });
+    }
+    /**
+     * Cargar datos de geocerca existente en el formulario
+     */
+    private cargarGeocercaParaEdicion(geocerca: GeofenceDto): void {
+        // Extraer coordenadas
+        let coordenadas: CoordenadaDto[] = [];
+        try {
+            coordenadas = JSON.parse(geocerca.geoccoor);
+        } catch (error) {
+            console.error('Error parseando coordenadas:', error);
+        }
+
+        // Determinar tipo de geocerca y configurar estado
+        this.tipoGeocerca = this.determinarTipoGeocerca(coordenadas);
+        this.coordenadasGeocerca = coordenadas;
+        this.centroGeocerca = { lat: geocerca.geoclat, lng: geocerca.geoclon };
+
+        // Si es circular, calcular radio aproximado
+        if (this.tipoGeocerca === 'circular' && coordenadas.length > 0) {
+            this.radioGeocerca = this.calcularRadioDesdeArea(geocerca.geocarm);
+        }
+
+        // Cargar datos en el formulario
+        this.geocercaForm.patchValue({
+            geoccod: geocerca.geoccod,
+            geocnom: geocerca.geocnom,
+            geocprov: geocerca.geocprov,
+            geocciud: geocerca.geocciud,
+            geocsec: geocerca.geocsec,
+            geocdirre: geocerca.geocdirre,
+            geocpais: geocerca.geocpais,
+            geocpri: geocerca.geocpri,
+            geocact: geocerca.geocact,
+            geocdesc: geocerca.geocdesc
+        });
+
+        // Deshabilitar código en modo edición
+        this.geocercaForm.get('geoccod')?.disable();
+        this.codeValidationResult = 'valid'; // El código existente siempre es válido
+    }
+
+    /**
+     * Determinar tipo de geocerca basado en coordenadas
+     */
+    private determinarTipoGeocerca(coordenadas: CoordenadaDto[]): 'circular' | 'poligono' {
+        if (coordenadas.length === 32) {
+            const esCircular = this.verificarSiEsCircular(coordenadas);
+            return esCircular ? 'circular' : 'poligono';
+        }
+        return 'poligono';
+    }
+
+    /**
+     * Verificar si las coordenadas forman un círculo
+     */
+    private verificarSiEsCircular(coordenadas: CoordenadaDto[]): boolean {
+        if (coordenadas.length !== 32) return false;
+
+        const centro = this.centroGeocerca;
+        if (!centro) return false;
+
+        const distancias = coordenadas.map(coord =>
+            Math.sqrt(Math.pow(coord.lat - centro.lat, 2) + Math.pow(coord.lng - centro.lng, 2))
+        );
+
+        const distanciaPromedio = distancias.reduce((sum, d) => sum + d, 0) / distancias.length;
+        const tolerancia = distanciaPromedio * 0.05;
+
+        return distancias.every(d => Math.abs(d - distanciaPromedio) < tolerancia);
+    }
+
+    /**
+     * Calcular radio aproximado desde el área
+     */
+    private calcularRadioDesdeArea(area: number): number {
+        const radio = Math.sqrt(area / Math.PI);
+        return Math.max(50, Math.min(2000, Math.round(radio)));
+    }
+
+    /**
+     * Abrir diálogo de edición
+     */
+    abrirDialogoEdicion(): void {
+        this.geocercaDialog = true;
+    }
+
+    /**
+     * Actualizar geocerca existente
+     */
+    async actualizarGeocerca(): Promise<void> {
+        if (!this.modoEdicion || !this.geocercaOriginal) {
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'No hay una geocerca en modo de edición'
+            });
+            return;
+        }
+
+        if (this.geocercaForm.invalid || !this.centroGeocerca) {
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error de validación',
+                detail: 'Complete todos los campos requeridos'
+            });
+            return;
+        }
+
+        try {
+            const area = GeocercaMapper.calculateArea(this.drawingState?.coordenadas || this.coordenadasGeocerca);
+            const perimetro = GeocercaMapper.calculatePerimeter(this.drawingState?.coordenadas || this.coordenadasGeocerca);
+
+            const updateDto: ActualizarGeocercaDto = {
+                geocnom: this.geocercaForm.get('geocnom')?.value,
+                geocsec: this.extractFormValue('geocsec', 'parroquia'),
+                geocdirre: this.geocercaForm.get('geocdirre')?.value,
+                geocciud: this.extractFormValue('geocciud', 'canton'),
+                geocprov: this.extractFormValue('geocprov', 'provincia'),
+                geocpais: this.geocercaForm.get('geocpais')?.value || 'ECUADOR',
+                geoclat: this.centroGeocerca.lat,
+                geoclon: this.centroGeocerca.lng,
+                geoccoor: this.formatCoordinatesForUpdate(),
+                geocarm: Math.round(area),
+                geocperm: Math.round(perimetro),
+                geocest: this.geocercaOriginal.geocest,
+                geocact: this.geocercaForm.get('geocact')?.value,
+                geocpri: this.geocercaForm.get('geocpri')?.value,
+                geocdesc: this.geocercaForm.get('geocdesc')?.value,
+                geocusedi: this.authService.getUsuarioFromToken() || 'SUPERVISOR',
+                geoceqedi: this.enterpriseName
+            };
+
+            const response = await this.geocercaService.actualizarGeocerca(
+                this.geocercaOriginal.geoccod,
+                updateDto
+            ).toPromise();
+
+            if (response && response.success) {
+                this.geocercaDialog = false;
+                this.cancelarEdicion();
+
+                this.msgService.add({
+                    severity: 'success',
+                    summary: 'Geocerca actualizada',
+                    detail: `La geocerca "${updateDto.geocnom}" se ha actualizado exitosamente`
+                });
+
+                this.refreshData();
+            }
+
+        } catch (error: any) {
+            console.error('Error al actualizar geocerca:', error);
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error al actualizar',
+                detail: 'No se pudo actualizar la geocerca'
+            });
+        }
+    }
+
+    /**
+     * Extraer valor de campo que puede ser string u objeto
+     */
+    private extractFormValue(fieldName: string, property: string): string {
+        const value = this.geocercaForm.get(fieldName)?.value;
+
+        if (typeof value === 'string') {
+            return value;
+        }
+
+        if (typeof value === 'object' && value[property]) {
+            return value[property];
+        }
+
+        return '';
+    }
+
+    /**
+     * Formatear coordenadas para actualización
+     */
+    private formatCoordinatesForUpdate(): CoordenadaDto[] {
+        const coordinates = this.drawingState?.coordenadas || this.coordenadasGeocerca;
+        return coordinates.map(coord => ({
+            lat: Math.round(coord.lat * 1000000) / 1000000,
+            lng: Math.round(coord.lng * 1000000) / 1000000
+        }));
+    }
+
+    /**
+     * Cancelar edición
+     */
+    cancelarEdicion(): void {
+        this.modoEdicion = false;
+        this.editandoGeocerca = false;
+        this.geocercaOriginal = null;
+
+        this.geocercaDrawing.cancelarCreacion();
+        this.geocercaForm.get('geoccod')?.enable();
+        this.resetCodeValidation();
+
+        this.msgService.add({
+            severity: 'info',
+            summary: 'Edición cancelada',
+            detail: 'Se ha cancelado la edición de la geocerca'
+        });
+    }
+
     //MÉTODO PARA CREAR GEOCERCAS//
 
     /**
@@ -508,6 +738,30 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
      */
     get puedeFinalizarGeocerca(): boolean {
         return !!this.centroGeocerca && (this.tipoGeocerca === 'circular' || (this.tipoGeocerca === 'poligono' && this.coordenadasGeocerca.length >= 3));
+    }
+
+    // En OnlyGeocercasComponent - Método iniciarEdicionEnMapa()
+    private iniciarEdicionEnMapa(geocerca: GeofenceDto): void {
+        // Limpiar estado actual del drawing service
+        this.geocercaDrawing.cancelarCreacion();
+
+        // Extraer coordenadas de la geocerca
+        let coordenadas: CoordenadaDto[] = [];
+        try {
+            coordenadas = JSON.parse(geocerca.geoccoor);
+        } catch (error) {
+            console.error('Error parseando coordenadas:', error);
+        }
+
+        // Configurar estado inicial para edición usando el nuevo método
+        setTimeout(() => {
+            this.geocercaDrawing.cargarGeocercaParaEdicion(  // ← AQUÍ SE USA
+                this.tipoGeocerca,
+                coordenadas,
+                { lat: geocerca.geoclat, lng: geocerca.geoclon },
+                this.tipoGeocerca === 'circular' ? this.radioGeocerca : undefined
+            );
+        }, 500);
     }
 
     /**
@@ -588,7 +842,17 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
      * Limpiar dibujo actual
      */
     limpiarDibujo(): void {
+        // Delegar la limpieza del mapa al servicio de dibujo
         this.geocercaDrawing.cancelarCreacion();
+        this.geocercaDrawing.cancelarEdicion();
+
+        // IMPORTANTE: Resetear también las variables del componente
+        this.coordenadasGeocerca = [];
+        this.radioGeocerca = 100;
+        this.tipoGeocerca = 'circular';
+
+        // NO resetear creandoGeocerca/editandoGeocerca/modoEdicion aquí
+        // Solo limpiar el dibujo, mantener el modo activo
 
         this.msgService.add({
             severity: 'info',
@@ -597,18 +861,50 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
         });
     }
 
-    /**
-     * Cancelar creación de geocerca
-     */
-    cancelarCreacionGeocerca(): void {
+// Función separada para cancelar completamente (cerrar el panel)
+    cancelarGestionGeocerca(): void {
+        // Primero limpiar el dibujo
         this.geocercaDrawing.cancelarCreacion();
+        this.geocercaDrawing.cancelarEdicion();
+
+        // Luego resetear TODAS las variables de estado
+        this.creandoGeocerca = false;
+        this.editandoGeocerca = false;
+        this.modoEdicion = false;  // Resetear también esta variable
+        this.coordenadasGeocerca = [];
+        this.radioGeocerca = 100;
+        this.tipoGeocerca = 'circular';
+
+        // Limpiar la geocerca original si estaba editando
+        this.geocercaOriginal = null;
 
         this.msgService.add({
             severity: 'info',
-            summary: 'Creación cancelada',
-            detail: 'Se ha cancelado la creación de la geocerca'
+            summary: 'Cancelado',
+            detail: 'Operación cancelada'
         });
     }
+
+// Aliases para mantener compatibilidad
+    cancelarCreacionGeocerca(): void {
+        this.cancelarGestionGeocerca();
+    }
+
+    cancelarEdicionGeocerca(): void {
+        this.cancelarGestionGeocerca();
+    }
+
+// Getter actualizado para el template
+    get estaGestionandoGeocerca(): boolean {
+        return this.creandoGeocerca || this.editandoGeocerca || this.modoEdicion;
+    }
+
+    get modoGeocerca(): string {
+        if (this.editandoGeocerca || this.modoEdicion) return 'Editando Geocerca';
+        if (this.creandoGeocerca) return 'Creando Geocerca';
+        return '';
+    }
+
 
     /**
      * Abrir diálogo para configurar y guardar geocerca
@@ -679,7 +975,6 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
         }
 
         try {
-            // CAMBIO: No llamar finalizarGeocerca todavía, solo validar
             if (!this.drawingState?.creando || !this.drawingState.centro) {
                 this.msgService.add({
                     severity: 'error',
@@ -713,10 +1008,6 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
                 radio: this.drawingState.tipo === 'circular' ? this.radioGeocerca : undefined
             };
 
-            // Debug para ver qué está pasando
-            console.log('Centro:', additionalData.centroGeocerca);
-            console.log('Área calculada:', area);
-            console.log('Coordenadas:', this.drawingState.coordenadas.length);
 
             const validationErrors = GeocercaMapper.validate(this.geocercaForm.value, additionalData);
 
@@ -742,8 +1033,7 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
                 .subscribe({
                     next: (response) => {
                         if (response) {
-                            // AHORA SÍ finalizar y limpiar
-                            this.geocercaDrawing.finalizarGeocerca(geocercaDto.geocnom);
+                            this.geocercaDrawing.finalizarGeocerca();
 
                             this.geocercaDialog = false;
                             this.msgService.add({
@@ -858,6 +1148,78 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
     }
 
 
+    // Manejo de clics diferenciado por modo
+    handleItemClick(geocerca: GeofenceDto): void {
+        if (this.modoEliminacion) {
+            this.toggleSeleccionGeocerca(geocerca.geoccod);
+        } else if (!this.editandoGeocerca) {
+            this.selectGeocerca(geocerca);
+        }
+    }
+
+// Edición rápida (previene propagación)
+    quickEditGeocerca(geocerca: GeofenceDto, event: Event): void {
+        event.stopPropagation();
+        this.editarGeocerca(geocerca);
+    }
+
+// Clases dinámicas para el avatar
+    getAvatarClasses(geocerca: GeofenceDto): string {
+        if (this.editandoGeocerca && this.selectedGeocerca?.geoccod === geocerca.geoccod) {
+            return 'bg-orange-100 dark:bg-orange-900/30';
+        }
+        if (this.selectedGeocerca?.geoccod === geocerca.geoccod) {
+            return 'bg-primary-100 dark:bg-primary-900/30';
+        }
+        return 'bg-surface-100 dark:bg-surface-800';
+    }
+
+// Icono del avatar según estado
+    getAvatarIcon(geocerca: GeofenceDto): string {
+        const baseIcon = 'pi pi-map-marker text-lg sm:text-xl';
+
+        if (this.editandoGeocerca && this.selectedGeocerca?.geoccod === geocerca.geoccod) {
+            return `${baseIcon} text-orange-600 dark:text-orange-400`;
+        }
+        if (this.selectedGeocerca?.geoccod === geocerca.geoccod) {
+            return `${baseIcon} text-primary-600 dark:text-primary-400`;
+        }
+        return `${baseIcon} text-surface-600 dark:text-surface-400`;
+    }
+
+// Clases del botón de editar
+    getEditButtonClasses(geocerca: GeofenceDto): string {
+        const isDisabled = this.getEditButtonDisabled(geocerca);
+        const isEditing = this.editandoGeocerca && this.selectedGeocerca?.geoccod === geocerca.geoccod;
+
+        if (isDisabled) {
+            return 'bg-surface-100 dark:bg-surface-700 border-surface-200 dark:border-surface-600 cursor-not-allowed';
+        }
+        if (isEditing) {
+            return 'bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700 hover:bg-orange-100 dark:hover:bg-orange-900/50';
+        }
+        return 'bg-white dark:bg-surface-800 border-surface-200 dark:border-surface-700 hover:bg-orange-50 dark:hover:bg-orange-900/30 hover:border-orange-300 dark:hover:border-orange-600';
+    }
+
+// Estado disabled del botón
+    getEditButtonDisabled(geocerca: GeofenceDto): boolean {
+        return !this.mapInitialized ||
+            this.creandoGeocerca ||
+            (this.editandoGeocerca && this.selectedGeocerca?.geoccod !== geocerca.geoccod);
+    }
+
+// Clases del icono de editar
+    getEditIconClasses(geocerca: GeofenceDto): string {
+        if (this.getEditButtonDisabled(geocerca)) {
+            return 'text-surface-300 dark:text-surface-600';
+        }
+        if (this.editandoGeocerca && this.selectedGeocerca?.geoccod === geocerca.geoccod) {
+            return 'text-orange-600 dark:text-orange-400';
+        }
+        return 'text-surface-600 dark:text-surface-400 hover:text-orange-600 dark:hover:text-orange-400';
+    }
+
+
     searchLocationOnMap(): void {
         if (!this.searchLocation.trim()) return;
 
@@ -934,6 +1296,176 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
     }
 
     //=================================================================//
+
+    // =================== MÉTODOS PARA ELIMINACIÓN MÚLTIPLE ===================
+
+    /**
+     * Activar/desactivar modo eliminación
+     */
+    toggleModoEliminacion(): void {
+        this.modoEliminacion = !this.modoEliminacion;
+
+        if (!this.modoEliminacion) {
+            // Al desactivar, limpiar selecciones
+            this.limpiarSelecciones();
+        }
+
+        this.msgService.add({
+            severity: this.modoEliminacion ? 'info' : 'success',
+            summary: this.modoEliminacion ? 'Modo eliminación activado' : 'Modo eliminación desactivado',
+            detail: this.modoEliminacion ? 'Seleccione las geocercas que desea eliminar' : 'Selección cancelada',
+            life: 2000
+        });
+    }
+
+    /**
+     * Seleccionar/deseleccionar geocerca individual
+     */
+    toggleSeleccionGeocerca(geoccod: string): void {
+        if (this.geocercasSeleccionadas.has(geoccod)) {
+            this.geocercasSeleccionadas.delete(geoccod);
+        } else {
+            this.geocercasSeleccionadas.add(geoccod);
+        }
+
+        // Actualizar estado de "todas seleccionadas"
+        this.actualizarEstadoTodasSeleccionadas();
+    }
+
+    /**
+     * Seleccionar/deseleccionar todas las geocercas visibles
+     */
+    toggleSeleccionarTodas(): void {
+        if (this.todasSeleccionadas) {
+            // Deseleccionar todas
+            this.limpiarSelecciones();
+        } else {
+            // Seleccionar todas las visibles
+            this.paginatedGeocercas.forEach(geocerca => {
+                this.geocercasSeleccionadas.add(geocerca.geoccod);
+            });
+        }
+
+        this.actualizarEstadoTodasSeleccionadas();
+    }
+
+    /**
+     * Actualizar estado de todas seleccionadas
+     */
+    private actualizarEstadoTodasSeleccionadas(): void {
+        const totalVisibles = this.paginatedGeocercas.length;
+        const seleccionadasVisibles = this.paginatedGeocercas.filter(
+            geocerca => this.geocercasSeleccionadas.has(geocerca.geoccod)
+        ).length;
+
+        this.todasSeleccionadas = totalVisibles > 0 && seleccionadasVisibles === totalVisibles;
+    }
+
+    /**
+     * Verificar si una geocerca está seleccionada
+     */
+    estaSeleccionada(geoccod: string): boolean {
+        return this.geocercasSeleccionadas.has(geoccod);
+    }
+
+    /**
+     * Limpiar todas las selecciones
+     */
+    private limpiarSelecciones(): void {
+        this.geocercasSeleccionadas.clear();
+        this.todasSeleccionadas = false;
+    }
+
+    /**
+     * Confirmar eliminación de geocercas seleccionadas
+     */
+    confirmarEliminacion(): void {
+        if (this.geocercasSeleccionadas.size === 0) {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Sin selección',
+                detail: 'Debe seleccionar al menos una geocerca para eliminar'
+            });
+            return;
+        }
+
+        // Obtener nombres de las geocercas seleccionadas para mostrar en el diálogo
+        const nombresSeleccionadas = this.geocercas
+            .filter(g => this.geocercasSeleccionadas.has(g.geoccod))
+            .map(g => `${g.geocnom} (${g.geoccod})`)
+            .join(', ');
+
+        this.confirmationService.confirm({
+            message: `¿Está seguro que desea eliminar ${this.geocercasSeleccionadas.size} geocerca(s)?<br><br><strong>Geocercas seleccionadas:</strong><br>${nombresSeleccionadas}`,
+            header: 'Confirmar Eliminación',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Eliminar',
+            rejectLabel: 'Cancelar',
+            acceptButtonStyleClass: 'p-button-danger',
+            accept: () => {
+                this.eliminarGeocercasSeleccionadas();
+            }
+        });
+    }
+
+    /**
+     * Eliminar geocercas seleccionadas
+     */
+    private async eliminarGeocercasSeleccionadas(): Promise<void> {
+        const codigosSeleccionados = Array.from(this.geocercasSeleccionadas);
+        const totalSeleccionadas = codigosSeleccionados.length;
+        let eliminadas = 0;
+        let errores = 0;
+
+        // Mostrar mensaje de progreso
+        this.msgService.add({
+            severity: 'info',
+            summary: 'Eliminando geocercas',
+            detail: `Eliminando ${totalSeleccionadas} geocerca(s)...`
+        });
+
+        // Eliminar cada geocerca
+        for (const codigo of codigosSeleccionados) {
+            try {
+                await this.geocercaService.eliminarGeocerca(codigo).toPromise();
+                eliminadas++;
+            } catch (error) {
+                console.error(`Error al eliminar geocerca ${codigo}:`, error);
+                errores++;
+            }
+        }
+
+        // Mostrar resultado
+        if (eliminadas > 0) {
+            this.msgService.add({
+                severity: eliminadas === totalSeleccionadas ? 'success' : 'warn',
+                summary: `${eliminadas} geocerca(s) eliminada(s)`,
+                detail: errores > 0 ? `${errores} geocerca(s) no pudieron eliminarse` : 'Eliminación completada exitosamente'
+            });
+        }
+
+        if (errores > 0 && eliminadas === 0) {
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error en eliminación',
+                detail: 'No se pudo eliminar ninguna geocerca'
+            });
+        }
+
+        // Limpiar selecciones y desactivar modo eliminación
+        this.limpiarSelecciones();
+        this.modoEliminacion = false;
+
+        // Recargar datos
+        this.refreshData();
+    }
+
+    /**
+     * Getter para verificar si hay geocercas seleccionadas
+     */
+    get tieneSelecciones(): boolean {
+        return this.geocercasSeleccionadas.size > 0;
+    }
 
 
     ngOnDestroy(): void {

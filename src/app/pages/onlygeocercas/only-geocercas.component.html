@@ -21,25 +21,75 @@
                         </div>
                     </div>
 
-                    <div class="relative mt-2">
-                        <p-iconField iconPosition="left" class="w-full">
-                            <p-inputIcon>
-                                <i class="pi pi-search text-primary-400"></i>
-                            </p-inputIcon>
-                            <input
-                                pInputText
-                                type="text"
-                                placeholder="Buscar geocercas..."
-                                (input)="onSearch($event)"
-                                class="w-full py-2.5 text-sm rounded-lg border-2 border-surface-200 hover:border-primary-200 focus:border-primary-500 transition-colors pl-9 shadow-sm dark:bg-surface-800 dark:border-surface-700 dark:hover:border-primary-700">
-                        </p-iconField>
-                        <button
-                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-400 hover:text-primary-500 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-surface-700"
-                            title="Limpiar búsqueda">
-                            <i class="pi pi-times"></i>
-                        </button>
+                    <div class="flex gap-2 items-center mt-2">
+                        <!-- Buscador existente -->
+                        <div class="flex-1">
+                            <p-iconField iconPosition="left" class="w-full">
+                                <p-inputIcon>
+                                    <i class="pi pi-search text-primary-400"></i>
+                                </p-inputIcon>
+                                <input
+                                    pInputText
+                                    type="text"
+                                    placeholder="Buscar geocercas..."
+                                    (input)="onSearch($event)"
+                                    [disabled]="modoEliminacion"
+                                    class="w-full py-2.5 text-sm rounded-lg border-2 border-surface-200 hover:border-primary-200 focus:border-primary-500 transition-colors pl-9 shadow-sm dark:bg-surface-800 dark:border-surface-700 dark:hover:border-primary-700">
+                            </p-iconField>
+                        </div>
+
+                        <!-- Botón de modo eliminación -->
+                        <p-button
+                            [icon]="modoEliminacion ? 'pi pi-times' : 'pi pi-trash'"
+                            [severity]="modoEliminacion ? 'danger' : 'secondary'"
+                            size="small"
+                            [text]="true"
+                            [rounded]="true"
+                            (click)="toggleModoEliminacion()"
+                            [disabled]="loading || creandoGeocerca || editandoGeocerca"
+                            [pTooltip]="modoEliminacion ? 'Cancelar eliminación' : 'Eliminar geocercas'"
+                            tooltipPosition="bottom"
+                            class="flex-shrink-0">
+                        </p-button>
                     </div>
+                    <!-- BARRA DE ACCIONES PARA MODO ELIMINACIÓN -->
+                    @if (modoEliminacion) {
+                        <div class="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            id="selectAll"
+                                            [checked]="todasSeleccionadas"
+                                            (change)="toggleSeleccionarTodas()"
+                                            class="w-4 h-4 text-red-600 bg-surface-100 border-surface-300 rounded focus:ring-red-500">
+                                        <label for="selectAll" class="ml-2 text-sm font-medium text-red-700 dark:text-red-300">
+                                            Seleccionar todas
+                                        </label>
+                                    </div>
+
+                                    @if (tieneSelecciones) {
+                                        <span class="text-xs text-red-600 dark:text-red-400 font-medium">
+                                            {{ geocercasSeleccionadas.size }} seleccionada(s)
+                                        </span>
+                                    }
+                                </div>
+
+                                <!-- Botón eliminar seleccionadas -->
+                                <p-button
+                                    label="Eliminar Seleccionadas"
+                                    icon="pi pi-trash"
+                                    severity="danger"
+                                    size="small"
+                                    [disabled]="!tieneSelecciones"
+                                    (click)="confirmarEliminacion()">
+                                </p-button>
+                            </div>
+                        </div>
+                    }
                 </div>
+
 
                 <!-- Lista de Geocercas con scroll -->
                 <div class="flex-1 overflow-auto min-h-0 max-h-[500px] sm:max-h-[600px] lg:max-h-[700px]">
@@ -65,20 +115,46 @@
                     }
 
                     <!-- Lista Real de Geocercas -->
+                    <!-- Lista Real de Geocercas Mejorada -->
                     @if (!loading) {
                         <div class="space-y-1 sm:space-y-2 px-1">
                             @for (geocerca of paginatedGeocercas; track geocerca) {
                                 <div
-                                    class="border rounded-lg p-3 sm:p-4 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors cursor-pointer"
-                                    [class.border-primary-500]="selectedGeocerca?.geoccod === geocerca.geoccod"
-                                    [class.bg-primary-50]="selectedGeocerca?.geoccod === geocerca.geoccod"
-                                    [class.dark:bg-primary-900]="selectedGeocerca?.geoccod === geocerca.geoccod"
-                                    (click)="selectGeocerca(geocerca)">
+                                    class="group border rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800 transition-all duration-200 overflow-hidden"
+                                    [class.border-primary-200]="selectedGeocerca?.geoccod === geocerca.geoccod && !modoEliminacion"
+                                    [class.bg-primary-50]="selectedGeocerca?.geoccod === geocerca.geoccod && !modoEliminacion"
+                                    [class.dark:border-primary-700]="selectedGeocerca?.geoccod === geocerca.geoccod && !modoEliminacion"
+                                    [class.dark:bg-primary-900]="selectedGeocerca?.geoccod === geocerca.geoccod && !modoEliminacion"
+                                    [class.border-orange-200]="editandoGeocerca && selectedGeocerca?.geoccod === geocerca.geoccod"
+                                    [class.bg-orange-50]="editandoGeocerca && selectedGeocerca?.geoccod === geocerca.geoccod"
+                                    [class.dark:border-orange-700]="editandoGeocerca && selectedGeocerca?.geoccod === geocerca.geoccod"
+                                    [class.dark:bg-orange-900]="editandoGeocerca && selectedGeocerca?.geoccod === geocerca.geoccod"
+                                    [class.border-red-300]="modoEliminacion && estaSeleccionada(geocerca.geoccod)"
+                                    [class.bg-red-50]="modoEliminacion && estaSeleccionada(geocerca.geoccod)"
+                                    [class.dark:border-red-600]="modoEliminacion && estaSeleccionada(geocerca.geoccod)"
+                                    [class.dark:bg-red-900]="modoEliminacion && estaSeleccionada(geocerca.geoccod)"
+                                    [class.cursor-pointer]="!modoEliminacion && !editandoGeocerca">
 
-                                    <div class="flex items-center space-x-3 sm:space-x-4">
-                                        <!-- Avatar/Icon -->
-                                        <div class="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex-shrink-0">
-                                            <i class="pi pi-map-marker text-primary text-lg sm:text-xl"></i>
+                                    <!-- Contenido principal del item -->
+                                    <div class="flex items-center p-3 sm:p-4"
+                                         (click)="handleItemClick(geocerca)">
+
+                                        <!-- Checkbox para modo eliminación -->
+                                        @if (modoEliminacion) {
+                                            <div class="flex-shrink-0 mr-3">
+                                                <input
+                                                    type="checkbox"
+                                                    [checked]="estaSeleccionada(geocerca.geoccod)"
+                                                    (change)="toggleSeleccionGeocerca(geocerca.geoccod)"
+                                                    (click)="$event.stopPropagation()"
+                                                    class="w-4 h-4 text-red-600 bg-surface-100 dark:bg-surface-700 border-surface-300 dark:border-surface-600 rounded focus:ring-red-500 dark:focus:ring-red-400">
+                                            </div>
+                                        }
+
+                                        <!-- Avatar/Icon con estado -->
+                                        <div class="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full flex-shrink-0 mr-3 sm:mr-4"
+                                             [class]="getAvatarClasses(geocerca)">
+                                            <i [class]="getAvatarIcon(geocerca)"></i>
                                         </div>
 
                                         <!-- Info de la Geocerca -->
@@ -92,28 +168,73 @@
                                                     [severity]="getGeocercaStatusSeverity(geocerca)"
                                                     class="text-xs">
                                                 </p-tag>
+
+                                                <!-- Indicador de edición -->
+                                                @if (editandoGeocerca && selectedGeocerca?.geoccod === geocerca.geoccod) {
+                                                    <p-tag value="Editando"
+                                                           severity="warning"
+                                                           class="text-xs">
+                                                    </p-tag>
+                                                }
                                             </div>
+
                                             <p class="text-xs sm:text-sm text-surface-600 dark:text-surface-400 truncate mb-1">
                                                 {{ geocerca.geoccod }} • {{ geocerca.geocsec }}
                                             </p>
-                                            <p class="text-xs text-surface-500 dark:text-surface-500 truncate">
+                                            <p class="text-xs text-surface-500 dark:text-surface-500 truncate mb-2">
                                                 {{ geocerca.geocciud }}, {{ geocerca.geocprov }}
                                             </p>
-                                            <div class="flex items-center gap-3 mt-1">
-                                                <span class="text-xs text-surface-400 flex items-center gap-1">
-                                                    <i class="pi pi-circle-fill text-[6px]"></i>
-                                                    {{ formatArea(geocerca.geocarm) }}
-                                                </span>
-                                                <span class="text-xs text-surface-400 flex items-center gap-1">
-                                                    <i class="pi pi-circle text-[6px]"></i>
+
+                                            <!-- Métricas con mejor diseño -->
+                                            <div class="flex items-center gap-4">
+                            <span class="text-xs text-surface-400 flex items-center gap-1.5">
+                                <div class="w-1.5 h-1.5 bg-current rounded-full"></div>
+                                {{ formatArea(geocerca.geocarm) }}
+                            </span>
+                                                <span class="text-xs text-surface-400 flex items-center gap-1.5">
+                                <div class="w-1.5 h-1.5 border border-current rounded-full"></div>
                                                     {{ formatPerimeter(geocerca.geocperm) }}
-                                                </span>
+                            </span>
                                             </div>
                                         </div>
 
-                                        <!-- Flecha -->
-                                        <i class="pi pi-chevron-right text-surface-400 flex-shrink-0"></i>
+                                        <!-- Área de acciones -->
+                                        @if (!modoEliminacion) {
+                                            <div class="flex items-center gap-2 ml-3 flex-shrink-0">
+
+                                                <!-- Botón de edición rápida -->
+                                                <button
+                                                    class="flex items-center justify-center w-8 h-8 rounded-lg border transition-all duration-200"
+                                                    [class]="getEditButtonClasses(geocerca)"
+                                                    (click)="quickEditGeocerca(geocerca, $event)"
+                                                    [disabled]="getEditButtonDisabled(geocerca)"
+                                                    pTooltip="Editar geocerca"
+                                                    tooltipPosition="left">
+                                                    <i class="pi pi-pencil text-sm"
+                                                       [class]="getEditIconClasses(geocerca)"></i>
+                                                </button>
+
+                                                <!-- Indicador de selección -->
+                                                <div class="flex items-center justify-center w-6">
+                                                    @if (selectedGeocerca?.geoccod === geocerca.geoccod) {
+                                                        <i class="pi pi-chevron-right text-primary-500 text-sm"></i>
+                                                    } @else {
+                                                        <i class="pi pi-chevron-right text-surface-300 dark:text-surface-600 text-sm opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                                    }
+                                                </div>
+                                            </div>
+                                        } @else {
+                                            <!-- Flecha simple para modo eliminación -->
+                                            <i class="pi pi-chevron-right text-surface-400 flex-shrink-0 ml-3"></i>
+                                        }
                                     </div>
+
+                                    <!-- Indicador de estado en la parte inferior -->
+                                    @if (selectedGeocerca?.geoccod === geocerca.geoccod && !modoEliminacion) {
+                                        <div class="h-1 w-full"
+                                             [class]="editandoGeocerca ? 'bg-orange-200 dark:bg-orange-800' : 'bg-primary-200 dark:bg-primary-800'">
+                                        </div>
+                                    }
                                 </div>
                             }
 
@@ -121,8 +242,11 @@
                             @if (filteredGeocercas.length === 0) {
                                 <div class="text-center py-6 sm:py-8">
                                     <i class="pi pi-map text-3xl sm:text-4xl text-surface-400 mb-3 sm:mb-4"></i>
-                                    <p class="text-sm sm:text-base text-surface-600 dark:text-surface-400">
+                                    <p class="text-sm sm:text-base text-surface-600 dark:text-surface-400 mb-2">
                                         No se encontraron geocercas
+                                    </p>
+                                    <p class="text-xs text-surface-500">
+                                        Intenta ajustar tus filtros de búsqueda
                                     </p>
                                 </div>
                             }
@@ -183,6 +307,7 @@
                                         tooltipPosition="bottom">
                                     <i class="pi pi-refresh text-primary-500 dark:text-primary-400"></i>
                                 </button>
+
                                 <p-button
                                     label="Crear Geocerca"
                                     icon="pi pi-plus"
@@ -195,20 +320,23 @@
                                 </p-button>
                             </div>
                         </div>
-                        @if (creandoGeocerca) {
+                        <!-- OPCIÓN 1: Combinar ambas condiciones -->
+                        @if (creandoGeocerca || editandoGeocerca) {
                             <div class="p-4 rounded-lg bg-primary-50/70 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 shadow-sm">
                                 <div class="flex items-center justify-between mb-3">
                                     <div class="flex items-center gap-2">
                                         <i class="pi pi-map text-primary-600 dark:text-primary-400 text-lg"></i>
-                                        <span class="font-medium text-primary-700 dark:text-primary-300">Creando Geocerca</span>
+                                        <span class="font-medium text-primary-700 dark:text-primary-300">
+                    {{ editandoGeocerca ? 'Editando Geocerca' : 'Creando Geocerca' }}
+                </span>
                                     </div>
                                     <p-button
                                         icon="pi pi-times"
                                         severity="danger"
                                         size="small"
                                         [text]="true"
-                                        (click)="cancelarCreacionGeocerca()"
-                                        pTooltip="Cancelar creación"
+                                        (click)="cancelarGestionGeocerca()"
+                                        [pTooltip]="editandoGeocerca ? 'Cancelar edición' : 'Cancelar creación'"
                                         tooltipPosition="bottom">
                                     </p-button>
                                 </div>
@@ -265,8 +393,8 @@
                                                     Puntos agregados: {{ coordenadasGeocerca.length }}
                                                     @if (coordenadasGeocerca.length >= 3) {
                                                         <span class="text-green-600 dark:text-green-400 ml-2">
-                                                          ✓ Listo para continuar
-                                                        </span>
+                                  ✓ Listo para continuar
+                                </span>
                                                     }
                                                 </div>
                                                 <p-button
@@ -290,14 +418,14 @@
                                         <i class="pi pi-info-circle mr-1"></i>
                                         @if (tipoGeocerca === 'circular') {
                                             <span>
-                                                <strong>Círculo:</strong> Haga clic en el mapa para colocar el centro, luego ajuste el radio con el slider
-                                              </span>
+                        <strong>Círculo:</strong> Haga clic en el mapa para colocar el centro, luego ajuste el radio con el slider
+                      </span>
                                         }
                                         @if (tipoGeocerca === 'poligono') {
                                             <span>
-                                                <strong>Polígono:</strong> Haga clic en el mapa para agregar puntos numerados (mínimo 3).
-                                                Use <i class="pi pi-undo"></i> para deshacer el último punto.
-                                            </span>
+                        <strong>Polígono:</strong> Haga clic en el mapa para agregar puntos numerados (mínimo 3).
+                        Use <i class="pi pi-undo"></i> para deshacer el último punto.
+                    </span>
                                         }
                                     </div>
                                 </div>
@@ -313,11 +441,11 @@
                                         (click)="limpiarDibujo()">
                                     </p-button>
                                     <p-button
-                                        label="Continuar"
-                                        icon="pi pi-arrow-right"
+                                        [label]="editandoGeocerca ? 'Guardar Cambios' : 'Continuar'"
+                                        [icon]="editandoGeocerca ? 'pi pi-save' : 'pi pi-arrow-right'"
                                         severity="primary"
                                         size="small"
-                                        (click)="abrirDialogoGeocerca()"
+                                        (click)="editandoGeocerca ? abrirDialogoEdicion() : abrirDialogoGeocerca()"
                                         [disabled]="!puedeFinalizarGeocerca">
                                     </p-button>
                                 </div>
@@ -410,11 +538,10 @@
     </div>
 </div>
 
-
 <p-dialog
     [(visible)]="geocercaDialog"
     [style]="{ width: '600px' }"
-    header="Completar datos de la Geocerca"
+    [header]="editandoGeocerca ? 'Editar Geocerca' : 'Completar datos de la Geocerca'"
     [modal]="true"
     class="p-fluid">
 
@@ -660,12 +787,15 @@
                 (click)="cerrarDialogoGeocerca()">
             </p-button>
             <p-button
-                label="Crear Geocerca"
-                icon="pi pi-check"
+                [label]="editandoGeocerca ? 'Actualizar Geocerca' : 'Crear Geocerca'"
+                [icon]="editandoGeocerca ? 'pi pi-save' : 'pi pi-check'"
                 severity="primary"
-                (click)="guardarGeocerca()"
-                [disabled]="geocercaForm.invalid || codeValidationResult !== 'valid'">
+                (click)="editandoGeocerca ? actualizarGeocerca() : guardarGeocerca()"
+                [disabled]="geocercaForm.invalid || (!editandoGeocerca && codeValidationResult !== 'valid')">
             </p-button>
         </div>
     </ng-template>
 </p-dialog>
+
+<p-confirmDialog></p-confirmDialog>
+
