@@ -327,12 +327,12 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
         // Configurar debounce para validación de código
         this.codeValidationSubject
             .pipe(
-                debounceTime(1000), // Esperar 500ms después de que el usuario deje de escribir
+                debounceTime(500), // Esperar 500ms después de que el usuario deje de escribir
                 distinctUntilChanged(),
                 takeUntil(this.destroy$)
             )
             .subscribe(code => {
-                if (code && code.length >= 3) {
+                if (code && code.length >= 5) {
                     this.validateGeocercaCode(code);
                 } else {
                     this.resetCodeValidation();
@@ -345,8 +345,6 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
                 if (value) {
                     this.codeValidationResult = 'pending';
                     this.codeValidationSubject.next(value);
-                } else {
-                    this.resetCodeValidation();
                 }
             });
 
@@ -1072,7 +1070,15 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
 
 
     //=================================================================//
+    getGeocercaStatusClasses(geocerca: any): string {
+        const baseClasses = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border shadow-sm';
 
+        if (geocerca.geocact) {
+            return `${baseClasses} bg-green-100/80 text-green-700 border-green-200/60 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700/40`;
+        } else {
+            return `${baseClasses} bg-gray-100/80 text-gray-700 border-gray-200/60 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-700/40`;
+        }
+    }
 
     //======= FUNCIÓN PARA OBTENER TODAS LAS GEOCERCAS ===================//
     getAllGeocercas(): void {

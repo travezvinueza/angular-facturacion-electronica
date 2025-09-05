@@ -1,127 +1,192 @@
 <!-- Contenedor principal -->
-<div class="flex flex-col min-h-screen p-2 sm:p-4 gap-2 sm:gap-4">
+<div class="flex flex-col md:flex-row gap-8">
     <!-- Cuerpo principal: Panel izquierdo + derecho -->
     <div class="flex flex-1 flex-col lg:flex-row gap-2 sm:gap-4 overflow-hidden min-h-0">
         <!-- Panel Izquierdo - Lista de Usuarios -->
         <div class="w-full lg:w-1/3 flex flex-col">
             <p-card class="flex flex-col flex-1 overflow-hidden h-full">
-                <!-- Header + Toolbar -->
-                <div class="p-3 sm:p-4 bg-gradient-to-r from-surface-50 to-white dark:from-surface-900 dark:to-surface-800 rounded-lg">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-10 h-10 flex items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 shadow-sm">
-                            <i class="pi pi-users text-primary-600 dark:text-primary-300 text-xl"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-white tracking-tight">
-                                Lista de Vendedores
-                            </h2>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                Visualización y gestión de vendedores
-                            </p>
-                        </div>
-                    </div>
+                <!-- Header + Toolbar OPTIMIZADO -->
+                <div class="relative overflow-hidden p-4 bg-gradient-to-br from-white via-surface-50/80 to-surface-100/30 dark:from-surface-900 dark:via-surface-800/90 dark:to-surface-900/60 rounded-lg border-b border-surface-200/60 dark:border-surface-700/60">
+                    <!-- Background pattern -->
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-primary-50/10 to-transparent dark:via-primary-900/5"></div>
 
-                    <div class="relative mt-2">
-                        <p-iconField iconPosition="left" class="w-full">
-                            <p-inputIcon>
-                                <i class="pi pi-search text-primary-400"></i>
-                            </p-inputIcon>
+                    <div class="relative">
+                        <!-- Buscador mejorado (sin header) -->
+                        <div class="relative">
                             <input
-                                pInputText
                                 type="text"
-                                placeholder="Buscar vendedores..."
+                                placeholder="Buscar usuarios..."
                                 (input)="onSearch($event)"
-                                class="w-full py-2.5 text-sm rounded-lg border-2 border-surface-200 hover:border-primary-200 focus:border-primary-500 transition-colors pl-9 shadow-sm dark:bg-surface-800 dark:border-surface-700 dark:hover:border-primary-700">
-                        </p-iconField>
-                        <button
-                            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-400 hover:text-primary-500 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-surface-700"
-                            title="Limpiar búsqueda">
-                            <i class="pi pi-times"></i>
-                        </button>
+                                class="w-full py-3 pl-11 pr-12 text-sm rounded-xl border-2 border-surface-200/80 dark:border-surface-600/80 bg-gradient-to-r from-white to-surface-50/50 dark:from-surface-800 dark:to-surface-800/80 hover:border-primary-300/60 dark:hover:border-primary-600/60 focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/80 transition-all duration-200 shadow-sm">
+
+                            <!-- Icono de búsqueda -->
+                            <div class="absolute left-3.5 top-1/2 transform -translate-y-1/2">
+                                <i class="pi pi-search text-primary-400 dark:text-primary-500"></i>
+                            </div>
+
+                            <!-- Botón limpiar -->
+                            <button
+                                class="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 flex items-center justify-center text-surface-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors rounded-full hover:bg-surface-100/80 dark:hover:bg-surface-700/60"
+                                title="Limpiar búsqueda">
+                                <i class="pi pi-times text-xs"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Lista de Usuarios con scroll -->
-                <div class="flex-1 overflow-auto min-h-0">
+                <!-- Lista de Usuarios CON SCROLL LIMITADO -->
+                <div class="overflow-hidden">
                     <!-- Loading Skeleton -->
                     @if (loading) {
-                        <div class="space-y-2 sm:space-y-3 px-1">
+                        <div class="space-y-3 p-3 max-h-[400px] overflow-y-auto custom-scrollbar">
                             @for (item of [1, 2, 3, 4, 5]; track item) {
-                                <div class="border rounded-lg p-3 sm:p-4">
-                                    <div class="flex items-center space-x-3 sm:space-x-4">
-                                        <p-skeleton
-                                            shape="circle"
-                                            size="2.5rem"
-                                            class="sm:!w-12 sm:!h-12">
-                                        </p-skeleton>
-                                        <div class="flex-1 min-w-0">
-                                            <p-skeleton height="1rem" class="mb-2"></p-skeleton>
-                                            <p-skeleton height="0.8rem" width="70%"></p-skeleton>
+                                <div class="rounded-xl border border-surface-200/60 dark:border-surface-700/60 bg-gradient-to-br from-white via-surface-50/50 to-surface-100/20 dark:from-surface-800 dark:via-surface-800/80 dark:to-surface-900/40 p-4">
+                                    <div class="flex items-center gap-4">
+                                        <!-- Avatar skeleton -->
+                                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-surface-200 to-surface-300 dark:from-surface-700 dark:to-surface-600 animate-pulse"></div>
+
+                                        <!-- Content skeleton -->
+                                        <div class="flex-1 space-y-2">
+                                            <div class="h-5 w-32 bg-surface-200 dark:bg-surface-700 rounded animate-pulse"></div>
+                                            <div class="h-4 w-24 bg-surface-200 dark:bg-surface-700 rounded animate-pulse"></div>
+                                            <div class="h-3 w-16 bg-surface-200 dark:bg-surface-700 rounded animate-pulse"></div>
                                         </div>
                                     </div>
                                 </div>
                             }
                         </div>
                     }
-                    <!-- Lista Real de Usuarios -->
+
+                    <!-- Lista Real de Usuarios CON SCROLL -->
                     @if (!loading) {
-                        <div class="space-y-1 sm:space-y-2 px-1">
+                        <div
+                            class="space-y-3 p-3 custom-scrollbar"
+                            [class]="paginatedUsers.length > 5 ? 'max-h-[800px] overflow-y-auto' : ''">
                             @for (user of paginatedUsers; track user) {
                                 <div
-                                    class="border rounded-lg p-3 sm:p-4 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors cursor-pointer relative"
-                                    [class.border-primary-500]="selectedUser?.usucodv === user.usucodv"
-                                    [class.bg-primary-50]="selectedUser?.usucodv === user.usucodv"
-                                    [class.dark:bg-primary-900]="selectedUser?.usucodv === user.usucodv"
-                                    [class.user-selected-indicator]="selectedUser?.usucodv === user.usucodv"
+                                    class="relative overflow-hidden rounded-xl border border-surface-200/80 dark:border-surface-600/80 bg-gradient-to-br from-white via-surface-50/60 to-surface-100/30 dark:from-surface-700 dark:via-surface-700/90 dark:to-surface-800/60 hover:from-primary-50/30 hover:via-white hover:to-primary-100/20 dark:hover:from-surface-600/80 dark:hover:via-surface-700/60 dark:hover:to-primary-900/20 transition-all duration-300 group hover:shadow-lg hover:border-primary-200/60 dark:hover:border-primary-600/60 hover:-translate-y-0.5 cursor-pointer"
+                                    [class.from-primary-50]="selectedUser?.usucodv === user.usucodv"
+                                    [class.to-primary-100-40]="selectedUser?.usucodv === user.usucodv"
+                                    [class.border-primary-300-80]="selectedUser?.usucodv === user.usucodv"
+                                    [class.dark:from-primary-900-30]="selectedUser?.usucodv === user.usucodv"
+                                    [class.dark:to-primary-800-40]="selectedUser?.usucodv === user.usucodv"
+                                    [class.dark:border-primary-600-80]="selectedUser?.usucodv === user.usucodv"
                                     (click)="selectUser(user)">
 
-                                    <div class="flex items-center space-x-3 sm:space-x-4">
-                                        <!-- Avatar -->
-                                        <div class="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 flex-shrink-0"
-                                             [class.ring-2]="selectedUser?.usucodv === user.usucodv"
-                                             [class.ring-primary-400]="selectedUser?.usucodv === user.usucodv">
-                                            <i class="pi pi-user text-primary text-lg sm:text-xl"></i>
+                                    <!-- Background pattern sutil -->
+                                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-primary-50/20 to-transparent dark:via-primary-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                                <!-- Contenido -->
+                                <div class="relative p-4">
+                                    <div class="flex items-center gap-4">
+                                        <!-- Avatar mejorado -->
+                                        <div class="relative flex-shrink-0">
+                                            <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-primary-100 via-primary-200/50 to-primary-300/30 dark:from-primary-900/40 dark:via-primary-800/60 dark:to-primary-700/40 border border-primary-200/50 dark:border-primary-700/50 group-hover:scale-105 transition-transform duration-200"
+                                                 [class.ring-2]="selectedUser?.usucodv === user.usucodv"
+                                                 [class.ring-primary-400]="selectedUser?.usucodv === user.usucodv"
+                                                 [class.shadow-lg]="selectedUser?.usucodv === user.usucodv">
+                                                <i class="pi pi-user text-primary-600 dark:text-primary-300 text-lg"></i>
+                                            </div>
+
+                                            <!-- Indicador de estado activo -->
+                                            @if (selectedUser?.usucodv === user.usucodv) {
+                                                <div class="absolute -top-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white dark:border-surface-700 rounded-full">
+                                                    <div class="w-full h-full bg-green-400 rounded-full animate-ping opacity-75"></div>
+                                                </div>
+                                            }
                                         </div>
 
                                         <!-- Info del Usuario -->
                                         <div class="flex-1 min-w-0">
-                                            <h3 class="font-semibold text-sm sm:text-base text-surface-900 dark:text-surface-0 truncate">
+                                            <!-- Códigos primero -->
+                                            <div class="flex items-center gap-2 mb-2">
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-surface-100/80 dark:bg-surface-600/60 border border-surface-200/60 dark:border-surface-500/60 text-xs font-mono font-medium text-surface-700 dark:text-surface-300">
+                                                <i class="pi pi-id-card mr-1.5 text-xs"></i>
+                                                {{ user.usucod }}
+                                            </span>
+                                                <span class="inline-flex items-center px-2 py-1 rounded-md bg-surface-200/60 dark:bg-surface-600/40 text-xs font-mono text-surface-600 dark:text-surface-400">
+                                                {{ user.usucodv }}
+                                            </span>
+                                            </div>
+
+                                            <!-- Nombre del usuario (h6) -->
+                                            <h6 class="font-bold text-surface-900 dark:text-surface-0 mb-2 group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors leading-tight">
                                                 {{ user.usunombre }}
-                                            </h3>
-                                            <p class="text-xs sm:text-sm text-surface-600 dark:text-surface-400 truncate">
-                                                {{ user.usucod }} • {{ user.usucodv }}
-                                            </p>
-                                            <div class="flex items-center space-x-2 mt-1">
+                                            </h6>
+
+                                            <!-- Indicadores de estado -->
+                                            <div class="flex items-center gap-3">
+                                                <!-- Indicador de ubicación -->
                                                 @if (user.ubicacion) {
-                                                    <i class="pi pi-map-marker text-green-500 text-xs" title="Con ubicación"></i>
+                                                    <div class="flex items-center gap-1.5">
+                                                        <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                        <span class="text-xs text-green-600 dark:text-green-400 font-medium">Con ubicación</span>
+                                                    </div>
+                                                } @else {
+                                                    <div class="flex items-center gap-1.5">
+                                                        <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                                        <span class="text-xs text-gray-500 dark:text-gray-400">Sin ubicación</span>
+                                                    </div>
                                                 }
+
                                                 <!-- Indicador de rango activo -->
                                                 @if (selectedUser?.usucodv === user.usucodv && hasUserRange) {
-                                                    <div class="flex items-center gap-1">
-                                                        <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                                                        <span class="text-xs text-blue-600 font-medium">Rango activo</span>
+                                                    <div class="flex items-center gap-1.5">
+                                                        <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                                        <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">Rango activo</span>
                                                     </div>
                                                 }
                                             </div>
                                         </div>
 
-                                        <!-- Flecha e indicadores -->
-                                        <div class="flex items-center space-x-2">
+                                        <!-- Área de acciones -->
+                                        <div class="flex items-center gap-2 ml-3 flex-shrink-0">
+                                            <!-- Indicador de visualización -->
                                             @if (selectedUser?.usucodv === user.usucodv && hasUserRange) {
-                                                <i class="pi pi-eye text-primary-500 text-sm animate-pulse" title="Visualizando rango"></i>
+                                                <div class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-100/80 dark:bg-blue-900/30 border border-blue-200/60 dark:border-blue-700/40">
+                                                    <i class="pi pi-eye text-blue-600 dark:text-blue-400 text-sm animate-pulse"></i>
+                                                </div>
                                             }
-                                            <i class="pi pi-chevron-right text-surface-400 flex-shrink-0"></i>
+
+                                            <!-- Flecha indicadora -->
+                                            <div class="flex items-center justify-center w-6">
+                                                @if (selectedUser?.usucodv === user.usucodv) {
+                                                    <i class="pi pi-chevron-right text-primary-500 text-sm"></i>
+                                                } @else {
+                                                    <i class="pi pi-chevron-right text-surface-300 dark:text-surface-600 text-sm opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                                }
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Indicador de estado en la parte inferior -->
+                                @if (selectedUser?.usucodv === user.usucodv) {
+                                    <div class="h-1 w-full bg-gradient-to-r from-primary-200 to-primary-400 dark:from-primary-800 dark:to-primary-600"></div>
+                                }
+                                </div>
                             }
-                            <!-- Mensaje si no hay usuarios -->
+
+                            <!-- Mensaje si no hay usuarios MEJORADO -->
                             @if (filteredUsers.length === 0) {
-                                <div class="text-center py-6 sm:py-8">
-                                    <i class="pi pi-users text-3xl sm:text-4xl text-surface-400 mb-3 sm:mb-4"></i>
-                                    <p class="text-sm sm:text-base text-surface-600 dark:text-surface-400">
-                                        No se encontraron usuarios
-                                    </p>
+                                <div class="text-center py-12">
+                                    <div class="relative">
+                                        <!-- Background decorativo -->
+                                        <div class="absolute inset-0 bg-gradient-to-br from-surface-100/50 via-transparent to-surface-200/30 dark:from-surface-800/30 dark:to-surface-900/50 rounded-3xl"></div>
+
+                                        <!-- Contenido -->
+                                        <div class="relative p-8">
+                                            <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-surface-200 to-surface-300 dark:from-surface-700 dark:to-surface-800 rounded-2xl flex items-center justify-center border border-surface-300/60 dark:border-surface-600/60">
+                                                <i class="pi pi-users text-2xl text-surface-500 dark:text-surface-400"></i>
+                                            </div>
+                                            <h6 class="text-surface-700 dark:text-surface-300 font-bold mb-2 text-sm">
+                                                No se encontraron usuarios
+                                            </h6>
+                                            <p class="text-surface-500 dark:text-surface-500 text-xs max-w-sm mx-auto leading-relaxed">
+                                                Intenta ajustar los filtros de búsqueda
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             }
                         </div>
@@ -130,15 +195,14 @@
 
                 <!-- Paginación -->
                 <ng-template pTemplate="footer">
-                    <div class="pt-3 sm:pt-4">
+                    <div class="pt-4 border-t border-surface-200/60 dark:border-surface-700/60">
                         @if (!loading && filteredUsers.length > 0) {
                             <p-paginator
                                 [rows]="itemsPerPage"
                                 [totalRecords]="filteredUsers.length"
                                 [first]="first"
                                 (onPageChange)="onPageChange($event)"
-                                [rowsPerPageOptions]="[5,10,20]"
-                                class="text-sm relative">
+                                class="text-sm">
                             </p-paginator>
                         }
                     </div>
@@ -159,13 +223,14 @@
 
                             <!-- Bloque de icono + texto -->
                             <div class="flex items-center gap-3 min-w-0">
-                                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 shadow-sm">
-                                    <i class="pi pi-map-marker text-primary-600 dark:text-primary-300 text-xl flex-shrink-0"></i>
+                                <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-primary-100 via-primary-200/60 to-primary-300/40 dark:from-primary-900/50 dark:via-primary-800/70 dark:to-primary-700/50 border border-primary-200/60 dark:border-primary-600/40 shadow-lg">
+                                    <i class="pi pi-users text-primary-600 dark:text-primary-300 text-xl"></i>
                                 </div>
                                 <div class="min-w-0">
-                                    <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-white tracking-tight">
-                                        Ubicaciones
-                                    </h2>
+                                    <p class="text-gray-800 dark:text-white text-xl sm:text-2xl font-bold leading-snug tracking-tight">
+                                        Vendedores
+                                    </p>
+
                                     <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-snug mt-0.5">
                                         Mapa de geolocalización de vendedores activos
                                     </p>
@@ -275,7 +340,7 @@
                     <!-- Mapa de Leaflet -->
                     <div #mapContainer
                          class="w-full h-full rounded-lg"
-                         style="min-height: 700px; height: 100%; width: 100%;">
+                         style="min-height: 650px; height: 100%; width: 100%;">
                     </div>
                 </div>
 

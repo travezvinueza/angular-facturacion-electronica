@@ -1,7 +1,7 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
-import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
@@ -23,16 +23,11 @@ import 'leaflet.markercluster';
 import { UserService } from '@/core/services/user.service';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { VendedorDto, VendedoresResponse, PaginacionDto } from '@/core/models/Geocercas/VendedorDto';
-import { Subject } from 'rxjs';
-import { AuthService } from '@/core/services/auth.service';
+import { catchError, finalize, of, retry, Subject, timeout, timer } from 'rxjs';
 import { GeocercaService } from '@/core/services/geocerca.service';
-import { CoordenadaDto } from '@/core/models/Geocercas/GeocercaDto';
-import { ToggleSwitch } from 'primeng/toggleswitch';
-import { AutoComplete } from 'primeng/autocomplete';
-import { Canton, Parroquia, Provincia } from '@/core/models/ProvinciaDto';
-import { ProvinceService } from '@/core/services/province.service';
-import { Slider } from 'primeng/slider';
-import { Drawer } from 'primeng/drawer';
+import { AuthService } from '@/core/services/auth.service';
+import { NominatimReverseResponse } from '@/core/models/nominatim-response.interface';
+import { AsignarGeocercaDto } from '@/core/models/AsignarGeocercaDto';
 
 interface NominatimResult {
     lat: string;
@@ -63,22 +58,33 @@ interface NominatimResult {
         CardModule,
         PaginatorModule,
         SkeletonModule,
-        Tooltip,
-        ToggleSwitch,
-        AutoComplete,
-        Slider,
-        Drawer
+        Tooltip
     ],
     templateUrl: './vendedores.component.html',
     styleUrl: './vendedores.component.css'
 })
 export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
-    @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
+    @ViewChild('mapContainer', { static: true }) mapContainer!: ElementRef;
 
-    // Propiedades del drawerR
-    drawerGeocercasVisible: boolean = false;
+    userLocations: Map<string, string> = new Map();
+    loadingLocations: Set<string> = new Set();
+    private geocodingQueue: Array<{userId: string, lat: number, lon: number}> = [];
+    private isProcessingQueue: boolean = false;
+    private lastRequestTime: number = 0;
+    private readonly MIN_REQUEST_INTERVAL = 1500; // 1.5 segundos entre peticiones
+    private readonly MAX_RETRIES = 3;
+    private failedRequests: Map<string, number> = new Map();
 
-    // Filtro de geocercas
+    // Propiedades para el diálogo de geocercas disponibles
+    availableGeocercas: any[] = [];
+    filteredAvailableGeocercas: any[] = [];
+    selectedAvailableGeocerca: any = null;
+    availableGeocercasLoading: boolean = false;
+    searchAvailableGeocerca: string = '';
+
+// Mapa del diálogo
+    dialogMap: L.Map | null = null;
+    dialogPreviewPolygon: L.Polygon | L.Circle | null = null;// Filtro de geocercas
     filtroGeocerca: string = '';
     geocercasFiltradas: any[] = [];
 
@@ -96,13 +102,12 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Propiedades de paginación local
     first: number = 0;
-    itemsPerPage: number = 5;
+    itemsPerPage: number = 4;
 
     // Búsqueda
     searchValue: string = '';
     private destroy$ = new Subject<void>();
 
-    userForm!: FormGroup;
 
     // Mapa
     map: L.Map | null = null;
@@ -120,44 +125,26 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
     editMode: boolean = false;
     editingGeocerca: any = null;
     editingPolygon: L.Polygon | null = null;
-    originalCoordinates: CoordenadaDto[] = [];
     editingMarkers: L.Marker[] = [];
     isEditingVertices: boolean = false;
-    geocercaForm!: FormGroup;
     geocercaDialog: boolean = false;
+    enterpriseName: string = '';
 
-    // Propiedades para la edición de geocercas
-    coordenadasGeocerca: CoordenadaDto[] = [];
-    centroGeocerca: CoordenadaDto | null = null;
-
-    // Propiedades para la gestion de provincias
-    provinciasFiltradas: Provincia[] = [];
-    ciudadesFiltradas: Canton[] = [];
-    sectoresFiltrados: Parroquia[] = [];
-    cantonesList: Canton[] = [];
-    parroquiasList: Parroquia[] = [];
-    provinciaSeleccionada: Provincia | null = null;
-    ciudadSeleccionada: Canton | null = null;
-    sectorSeleccionado: Parroquia | null = null;
 
     constructor(
-        private readonly formBuilder: FormBuilder,
         private readonly userService: UserService,
+        private readonly geocercaService: GeocercaService,
         private readonly authService: AuthService,
         private readonly msgService: MessageService,
-        private readonly geocercaService: GeocercaService,
-        private readonly provinceService: ProvinceService,
-        private readonly confirmationService: ConfirmationService,
-        private readonly http: HttpClient
+        private readonly http: HttpClient,
+        private readonly confirmationService: ConfirmationService
     ) {}
 
     //====================== MÉTODOS DE INICIALIZACIÓN =======================
 
     ngOnInit(): void {
         this.getAllUsers();
-        this.initializeForm();
-        this.initializeGeocercaForm();
-        this.inicializarProvincias();
+        this.initializeEnterpriseName();
     }
 
     ngAfterViewInit(): void {
@@ -166,32 +153,20 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
         });
     }
 
-    private inicializarProvincias(): void {
-        this.provinciasFiltradas = this.provinceService.getProvincias();
-    }
-
-    initializeForm(): void {
-        this.userForm = this.formBuilder.group({
-            codigoVendedor: ['', [Validators.required]],
-            nombreVendedor: ['', [Validators.required]],
-            emailVendedor: ['', [Validators.required, Validators.email]],
-            codigoVendedorSecundario: ['', [Validators.required]]
-        });
-    }
-
-    initializeGeocercaForm(): void {
-        this.geocercaForm = this.formBuilder.group({
-            geoccod: ['', [Validators.required, Validators.maxLength(5)]],
-            geocnom: ['', [Validators.required]],
-            geocsec: ['', [Validators.required]],
-            geocdirre: ['', [Validators.required]],
-            geocciud: ['', [Validators.required]],
-            geocprov: ['', [Validators.required]],
-            geocpais: ['ECUADOR', [Validators.required]],
-            geocpri: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
-            geocact: [true],
-            geocdesc: ['', [Validators.required]]
-        });
+    /**
+     * Inicializa el nombre de la empresa desde el auth service
+     */
+     initializeEnterpriseName(): any {
+        const empresa = this.authService.getEmpresa();
+        if (empresa && empresa.nomempresa) {
+            this.enterpriseName = empresa.nomempresa;
+        } else {
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'No se pudo obtener la información de la empresa'
+            });
+        }
     }
 
     initializeMap(): void {
@@ -202,6 +177,7 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
                 return;
             }
 
+            // No necesitamos calcular altura manualmente, el CSS lo maneja
             delete (L.Icon.Default.prototype as any)._getIconUrl;
             L.Icon.Default.mergeOptions({
                 iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
@@ -236,9 +212,14 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.addUserMarkersToMap();
             }
 
-            requestAnimationFrame(() => {
+            // Invalidar el tamaño después de un delay
+            setTimeout(() => {
                 this.map?.invalidateSize();
-            });
+            }, 100);
+
+            setTimeout(() => {
+                this.map?.invalidateSize();
+            }, 500);
 
             console.log('Mapa inicializado correctamente');
         } catch (error) {
@@ -247,66 +228,7 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
         }
     }
 
-    //==========================================================================//
 
-    // ==== MÉTODOS PARA FILTRAR PROVINCIAS, CIUDADES Y SECTORES ====
-
-    filtrarProvincias(event: any): void {
-        const query = event.query?.toLowerCase() || '';
-        this.provinciasFiltradas = this.provinceService.filtrarProvincias(query);
-    }
-
-    filtrarCiudades(event: any): void {
-        const query = event.query?.toLowerCase() || '';
-        this.ciudadesFiltradas = this.provinceService.filtrarCantones(this.cantonesList, query);
-    }
-
-    filtrarSectores(event: any): void {
-        const query = event.query?.toLowerCase() || '';
-        this.sectoresFiltrados = this.provinceService.filtrarParroquias(this.parroquiasList, query);
-    }
-
-    onProvinciaSeleccionada(event: any): void {
-        const provinciaObj: Provincia = event.value;
-        this.provinciaSeleccionada = provinciaObj;
-        this.cantonesList = this.provinceService.getCantones(provinciaObj.codigo);
-        this.ciudadSeleccionada = null;
-        this.parroquiasList = [];
-        this.sectorSeleccionado = null;
-        this.geocercaForm.patchValue({
-            geocciud: '',
-            geocsec: ''
-        });
-    }
-
-    onProvinciaLimpiada() {
-        this.provinciaSeleccionada = null;
-        this.cantonesList = [];
-        this.ciudadSeleccionada = null;
-        this.parroquiasList = [];
-        this.sectorSeleccionado = null;
-    }
-
-    onCiudadSeleccionada(event: any): void {
-        const ciudadObj: Canton = event.value;
-        this.ciudadSeleccionada = ciudadObj;
-
-        if (this.provinciaSeleccionada) {
-            this.parroquiasList = this.provinceService.getParroquias(this.provinciaSeleccionada.codigo, ciudadObj.codigo);
-        }
-
-        this.sectorSeleccionado = null;
-        this.geocercaForm.patchValue({
-            geocsec: ''
-        });
-    }
-
-    onCiudadLimpiada() {
-        this.ciudadSeleccionada = null;
-        this.parroquiasList = [];
-        this.sectorSeleccionado = null;
-    }
-    //==========================================================================//
 
     // ===================================== MÉTODO PARA OBTENER TODOS LOS USUARIOS ================================
 
@@ -341,21 +263,73 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
                 }
             });
     }
+    /**
+     * Carga las direcciones de todos los usuarios que tienen ubicación
+     */
+    private loadUserLocations(): void {
+        // Limpiar estados previos
+        this.geocodingQueue = [];
+        this.isProcessingQueue = false;
 
-    //==========================================================================//
+        // Filtrar usuarios con ubicación válida
+        const usersWithLocation = this.users.filter(user =>
+            user.ubicacionActual?.geublat &&
+            user.ubicacionActual?.geublon &&
+            !isNaN(parseFloat(String(user.ubicacionActual.geublat))) &&
+            !isNaN(parseFloat(String(user.ubicacionActual.geublon)))
+        );
+
+        console.log(`Iniciando geocoding para ${usersWithLocation.length} usuarios`);
+
+        // Agregar todos a la cola con un pequeño delay aleatorio inicial
+        usersWithLocation.forEach((user, index) => {
+            setTimeout(() => {
+                this.addToGeocodingQueue(
+                    parseFloat(String(user.ubicacionActual!.geublat)),
+                    parseFloat(String(user.ubicacionActual!.geublon)),
+                    user.codigoVendedor
+                );
+            }, index * 100); // 100ms entre adiciones a la cola
+        });
+    }
+
+    /**
+     * Obtiene el nombre de la ubicación para mostrar en el UI
+     */
+    getUserLocationName(user: VendedorDto): string {
+        const locationName = this.userLocations.get(user.codigoVendedor);
+        const isLoading = this.loadingLocations.has(user.codigoVendedor);
+
+        if (isLoading) {
+            return 'Obteniendo ubicación...';
+        }
+
+        if (locationName) {
+            return locationName;
+        }
+
+        // Si no se ha iniciado el proceso, iniciarlo
+        if (user.ubicacionActual?.geublat && user.ubicacionActual?.geublon) {
+            // Agregar a la cola si no existe
+            setTimeout(() => {
+                this.addToGeocodingQueue(
+                    parseFloat(String(user.ubicacionActual!.geublat)),
+                    parseFloat(String(user.ubicacionActual!.geublon)),
+                    user.codigoVendedor
+                );
+            }, 100);
+
+            return 'Cargando ubicación...';
+        }
+
+        return 'Sin ubicación disponible';
+    }
 
     // ======================================================= MÉTODO PARA FILTRAR USUARIOS =======================================
     onSearch(event: Event): void {
         const value = (event.target as HTMLInputElement).value.toLowerCase();
         this.searchValue = value;
         this.filteredUsers = this.users.filter((user) => user.nombreVendedor.toLowerCase().includes(value) || user.codigoVendedor.toLowerCase().includes(value) || user.emailVendedor.toLowerCase().includes(value));
-        this.first = 0;
-        this.updateLocalPagination();
-    }
-
-    clearUserSearch(): void {
-        this.searchValue = '';
-        this.filteredUsers = [...this.users];
         this.first = 0;
         this.updateLocalPagination();
     }
@@ -374,6 +348,9 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
 
     selectUser(user: VendedorDto): void {
         this.selectedUser = user;
+        this.geocercasFiltradas = user.geocercas || [];
+        this.filtroGeocerca = ''; // Limpiar filtro
+
 
         if (this.map) {
             this.showSelectedUserGeocercas(user);
@@ -389,7 +366,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
                 marker.openPopup();
             }
         }
-        this.actualizarDrawerSiEstaAbierto();
     }
     //==========================================================================//
 
@@ -612,8 +588,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     //==========================================================================//
-
-    // ===================== MÉTODOS PARA GEOCERCAS DEL VENDEDOR SELECCIONADO =========================//
 
     /**
      * Muestra solo las geocercas del vendedor seleccionado
@@ -863,19 +837,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
                     </div>
                 </div>
 
-                <!-- Fecha de asignación -->
-                <div class="flex items-center space-x-1.5 text-xs pt-1 border-t border-gray-100">
-                    <svg class="w-2.5 h-2.5 text-gray-400" viewBox="0 0 20 20">
-                      <path
-                        fill="currentColor"
-                        fill-rule="evenodd"
-                        clip-rule="evenodd"
-                        d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-                      />
-                    </svg>
-                    <span class="text-gray-500">Asignado:</span>
-                    <span class="text-gray-700 font-medium">${assignedDate}</span>
-                </div>
             </div>
         </div>
     `;
@@ -968,278 +929,11 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
 
     //==========================================================================//
 
-    //============METODOS PARA ELIMINAR/DESACTIVAR/ACTIVAR GEOCERCAS=============================
 
-    /**
-     * Elimina una geocerca con confirmación
-     */
-    eliminarGeocerca(geocerca?: any): void {
-        // Usar la geocerca pasada como parámetro o la que está en edición
-        const geocercaAEliminar = geocerca || this.editingGeocerca;
-
-        if (!geocercaAEliminar) {
-            this.msgService.add({
-                severity: 'warn',
-                summary: 'Advertencia',
-                detail: 'No hay geocerca seleccionada para eliminar'
-            });
-            return;
-        }
-
-        // ConfirmDialog simple para eliminar
-        this.confirmationService.confirm({
-            message: `¿Está seguro de que desea eliminar la geocerca "${geocercaAEliminar.geocnom}"?\n\nCódigo: ${geocercaAEliminar.geoccod}\n\nEsta acción no se puede deshacer.`,
-            header: 'Delete Geocerca',
-            icon: 'pi pi-exclamation-triangle',
-            acceptLabel: 'Delete',
-            rejectLabel: 'Cancel',
-            acceptButtonStyleClass: 'p-button-danger',
-            rejectButtonStyleClass: 'p-button-outlined',
-            accept: () => {
-                this.ejecutarEliminacionGeocerca(geocercaAEliminar);
-            },
-            reject: () => {
-                this.msgService.add({
-                    severity: 'info',
-                    summary: 'Cancelled',
-                    detail: 'Delete operation was cancelled',
-                    life: 3000
-                });
-            }
-        });
-    }
-    private ejecutarEliminacionGeocerca(geocercaAEliminar: any): void {
-        this.loading = true;
-
-        this.geocercaService.eliminarGeocerca(geocercaAEliminar.geoccod).subscribe({
-            next: () => {
-                this.loading = false;
-                this.msgService.add({
-                    severity: 'success',
-                    summary: 'Geocerca eliminada',
-                    detail: `La geocerca "${geocercaAEliminar.geocnom}" fue eliminada correctamente`
-                });
-
-                if (this.editMode && this.editingGeocerca?.geoccod === geocercaAEliminar.geoccod) {
-                    this.cancelarModoEdicion();
-                }
-
-                if (this.geocercaDialog) {
-                    this.cerrarDialogoGeocerca();
-                }
-
-                if (this.drawerGeocercasVisible) {
-                    this.actualizarDrawerSiEstaAbierto();
-                }
-                this.refreshRapidoUsuarioActual();
-            },
-            error: (error) => {
-                this.loading = false;
-                console.error('Error eliminando geocerca:', error);
-
-                let mensajeError = 'No se pudo eliminar la geocerca';
-                if (error.status === 404) {
-                    mensajeError = 'La geocerca no existe o ya fue eliminada';
-                } else if (error.status === 403) {
-                    mensajeError = 'No tiene permisos para eliminar esta geocerca';
-                } else if (error.status === 409) {
-                    mensajeError = 'No se puede eliminar la geocerca porque está siendo utilizada';
-                }
-
-                this.msgService.add({
-                    severity: 'error',
-                    summary: 'Error al eliminar',
-                    detail: mensajeError
-                });
-            }
-        });
-    }
-
-    /**
-     * Activa una geocerca
-     */
-    activarGeocerca(geocerca: any): void {
-        if (!geocerca) {
-            this.msgService.add({
-                severity: 'warn',
-                summary: 'Advertencia',
-                detail: 'No hay geocerca seleccionada'
-            });
-            return;
-        }
-
-        // Verificar si ya está activa
-        if (geocerca.geocact === true) {
-            this.msgService.add({
-                severity: 'info',
-                summary: 'Información',
-                detail: 'La geocerca ya está activa'
-            });
-            return;
-        }
-
-        this.loading = true;
-
-        this.geocercaService.activarGeocerca(geocerca.geoccod).subscribe({
-            next: () => {
-                this.loading = false;
-                this.msgService.add({
-                    severity: 'success',
-                    summary: 'Geocerca activada',
-                    detail: `La geocerca "${geocerca.geocnom}" fue activada correctamente`
-                });
-
-                this.refreshData();
-            },
-            error: (error) => {
-                this.loading = false;
-                console.error('Error activando geocerca:', error);
-                this.msgService.add({
-                    severity: 'error',
-                    summary: 'Error',
-                    detail: 'No se pudo activar la geocerca'
-                });
-            }
-        });
-    }
-
-    /**
-     * Desactiva una geocerca con ConfirmDialog
-     */
-    desactivarGeocerca(geocerca: any): void {
-        if (!geocerca) {
-            this.msgService.add({
-                severity: 'warn',
-                summary: 'Advertencia',
-                detail: 'No hay geocerca seleccionada'
-            });
-            return;
-        }
-
-        if (geocerca.geocact === false) {
-            this.msgService.add({
-                severity: 'info',
-                summary: 'Información',
-                detail: 'La geocerca ya está desactivada'
-            });
-            return;
-        }
-
-        // ConfirmDialog para desactivar
-        this.confirmationService.confirm({
-            message: `¿Está seguro de que desea desactivar la geocerca "${geocerca.geocnom}"?\n\nEsto ocultará la geocerca para el vendedor pero no la eliminará.`,
-            header: 'Desactivar Geocerca',
-            icon: 'pi pi-question-circle',
-            acceptLabel: 'Sí, Desactivar',
-            rejectLabel: 'Cancelar',
-            acceptButtonStyleClass: 'p-button-warning',
-            rejectButtonStyleClass: 'p-button-outlined',
-            accept: () => {
-                this.ejecutarDesactivacionGeocerca(geocerca);
-            },
-            reject: () => {
-                this.msgService.add({
-                    severity: 'info',
-                    summary: 'Cancelado',
-                    detail: 'La desactivación fue cancelada',
-                    life: 3000
-                });
-            }
-        });
-    }
 
     /**
      * Ejecuta la desactivación real de la geocerca
      */
-    private ejecutarDesactivacionGeocerca(geocerca: any): void {
-        this.loading = true;
-
-        this.geocercaService.desactivarGeocerca(geocerca.geoccod).subscribe({
-            next: () => {
-                this.loading = false;
-                this.msgService.add({
-                    severity: 'success',
-                    summary: 'Geocerca desactivada',
-                    detail: `La geocerca "${geocerca.geocnom}" fue desactivada correctamente`
-                });
-
-                // Refresh de datos para mostrar el cambio
-                this.refreshRapidoUsuarioActual();
-            },
-            error: (error) => {
-                this.loading = false;
-                console.error('Error desactivando geocerca:', error);
-                this.msgService.add({
-                    severity: 'error',
-                    summary: 'Error',
-                    detail: 'No se pudo desactivar la geocerca'
-                });
-            }
-        });
-    }
-
-    toggleEstadoGeocerca(geocerca: any): void {
-        if (geocerca.geocact) {
-            this.desactivarGeocerca(geocerca);
-        } else {
-            this.activarGeocerca(geocerca);
-        }
-    }
-    //==========================================================================//
-
-    // ================== MÉTODOS PARA MODO EDICIÓN ===============================
-    iniciarEdicionDeGeocerca(geocerca: any): void {
-        if (!this.selectedUser) {
-            this.msgService.add({
-                severity: 'warn',
-                summary: 'Advertencia',
-                detail: 'Seleccione un vendedor primero'
-            });
-            return;
-        }
-        if (!geocerca || !geocerca.geoccod) {
-            this.msgService.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: 'Geocerca inválida'
-            });
-            return;
-        }
-        const geocercaDelUsuario = this.selectedUser.geocercas?.find((g) => g.geoccod === geocerca.geoccod);
-        if (!geocercaDelUsuario) {
-            this.msgService.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: 'La geocerca no pertenece al vendedor seleccionado'
-            });
-            return;
-        }
-        const key = `${this.selectedUser.codigoVendedor}-${geocerca.geoccod}`;
-        const polygon = this.geocercaLayers.get(key);
-
-        if (!polygon) {
-            console.error('❌ No se encontró la geocerca en el mapa');
-            this.msgService.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: `No se encontró la geocerca "${geocerca.geocnom}" en el mapa`
-            });
-            return;
-        }
-        this.cerrarDrawerGeocercas();
-
-        if (!this.editMode) {
-            this.activarModoEdicion();
-
-            setTimeout(() => {
-                this.seleccionarGeocercaParaEditar(key, polygon);
-            }, 100);
-        } else {
-            this.seleccionarGeocercaParaEditar(key, polygon);
-        }
-
-        this.centrarMapaEnGeocerca(geocerca);
-    }
     centrarMapaEnGeocerca(geocerca: any): void {
         if (!this.map) {
             this.msgService.add({
@@ -1314,195 +1008,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     /**
-     * Activa el modo edición - hace las geocercas clickeables
-     */
-    activarModoEdicion(): void {
-        if (!this.selectedUser || this.selectedUser.totalGeocercas === 0) {
-            this.msgService.add({
-                severity: 'warn',
-                summary: 'Advertencia',
-                detail: 'No hay geocercas para editar'
-            });
-            return;
-        }
-
-        this.editMode = true;
-        this.editingGeocerca = null;
-        this.editingPolygon = null;
-
-        this.geocercaLayers.forEach((polygon, key) => {
-            polygon.setStyle({
-                color: '#3B82F6',
-                weight: 3,
-                opacity: 0.8,
-                fillOpacity: 0.2
-            });
-
-            polygon.off('click');
-            polygon.on('click', () => {
-                this.seleccionarGeocercaParaEditar(key, polygon);
-            });
-        });
-
-        this.msgService.add({
-            severity: 'info',
-            summary: 'Modo edición activado',
-            detail: 'Haga clic en una geocerca para editarla'
-        });
-    }
-
-    /**
-     * Selecciona una geocerca específica para editar
-     */
-    seleccionarGeocercaParaEditar(key: string, polygon: L.Polygon): void {
-        if (this.editingPolygon) {
-            this.limpiarEdicionActual();
-        }
-        const parts = key.split('-');
-        const geocercaCodigo = parts[parts.length - 1];
-
-        if (!this.selectedUser?.geocercas) {
-            this.msgService.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: 'No hay datos de geocercas disponibles'
-            });
-            return;
-        }
-
-        const geocercaEncontrada = this.selectedUser.geocercas.find((g) => g.geoccod === geocercaCodigo);
-
-        if (!geocercaEncontrada) {
-            this.msgService.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: `No se encontró la geocerca con código: ${geocercaCodigo}`
-            });
-            return;
-        }
-
-        this.editingGeocerca = geocercaEncontrada;
-        this.editingPolygon = polygon;
-
-        try {
-            this.originalCoordinates = JSON.parse(this.editingGeocerca.geoccoor);
-        } catch (error) {
-            console.error('Error parsing coordinates:', error);
-            this.originalCoordinates = [];
-        }
-
-        polygon.setStyle({
-            color: '#EF4444',
-            weight: 4,
-            opacity: 1,
-            fillOpacity: 0.3
-        });
-
-        this.habilitarEdicionVertices(polygon);
-
-        this.msgService.add({
-            severity: 'success',
-            summary: 'Geocerca seleccionada',
-            detail: `Editando: ${this.editingGeocerca.geocnom}. Arrastre los vértices para modificar.`
-        });
-    }
-
-    /**
-     * Habilita la edición de vértices de un polígono
-     */
-    habilitarEdicionVertices(polygon: L.Polygon): void {
-        if (!this.map) return;
-
-        this.limpiarMarkersEdicion();
-        this.isEditingVertices = true;
-        const latLngs = polygon.getLatLngs()[0] as L.LatLng[];
-
-        latLngs.forEach((latLng, index) => {
-            const marker = L.marker(latLng, {
-                draggable: true,
-                icon: L.divIcon({
-                    className: 'vertex-marker-custom',
-                    html: `<div class="vertex-point"></div>`,
-                    iconSize: [16, 16],
-                    iconAnchor: [8, 8]
-                })
-            }).addTo(this.map!);
-
-            marker.on('drag', () => {
-                const newLatLngs = [...latLngs];
-                newLatLngs[index] = marker.getLatLng();
-                polygon.setLatLngs(newLatLngs);
-            });
-
-            marker.on('dragstart', () => {
-                marker.getElement()?.classList.add('dragging');
-            });
-
-            marker.on('dragend', () => {
-                marker.getElement()?.classList.remove('dragging');
-            });
-
-            this.editingMarkers.push(marker);
-        });
-
-        this.agregarEstilosVertices();
-
-        this.msgService.add({
-            severity: 'info',
-            summary: 'Vértices habilitados',
-            detail: 'Arrastre los puntos rojos para modificar la forma',
-            life: 3000
-        });
-    }
-
-    /**
-     * Agrega estilos CSS para los vértices si no existen
-     */
-    private agregarEstilosVertices(): void {
-        if (document.querySelector('#vertex-styles')) return;
-
-        const style = document.createElement('style');
-        style.id = 'vertex-styles';
-        style.innerHTML = `
-        .vertex-marker-custom {
-            border: none !important;
-            background: none !important;
-        }
-
-        .vertex-point {
-            width: 12px;
-            height: 12px;
-            background-color: #EF4444;
-            border: 3px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            cursor: grab;
-            position: relative;
-            z-index: 1000;
-            transition: all 0.2s ease;
-        }
-
-        .vertex-point:hover {
-            transform: scale(1.2);
-            box-shadow: 0 3px 12px rgba(239, 68, 68, 0.4);
-        }
-
-        .vertex-marker-custom.dragging .vertex-point {
-            cursor: grabbing !important;
-            transform: scale(1.3);
-            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.6);
-        }
-
-        .leaflet-marker-icon.vertex-marker-custom {
-            border: none !important;
-            outline: none !important;
-        }
-    `;
-
-        document.head.appendChild(style);
-    }
-
-    /**
      * Limpia los markers de edición
      */
     limpiarMarkersEdicion(): void {
@@ -1513,277 +1018,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
         });
         this.editingMarkers = [];
         this.isEditingVertices = false;
-    }
-
-    /**
-     * Limpia la edición actual
-     */
-    limpiarEdicionActual(): void {
-        this.limpiarMarkersEdicion();
-
-        if (this.editingPolygon) {
-            // Restaurar estilo normal
-            this.editingPolygon.setStyle({
-                color: this.getGeocercaColor(this.editingGeocerca?.geocpri || 1),
-                weight: 3,
-                opacity: 0.8,
-                fillOpacity: 0.3
-            });
-        }
-    }
-
-    /**
-     * Cancela el modo edición y restaura todo
-     */
-    cancelarModoEdicion(): void {
-        if (this.editingPolygon && this.originalCoordinates.length > 0) {
-            const latlngs: [number, number][] = this.originalCoordinates.map((coord) => [coord.lat, coord.lng]);
-            this.editingPolygon.setLatLngs(latlngs);
-        }
-
-        this.limpiarEdicionActual();
-        this.editMode = false;
-        this.editingGeocerca = null;
-        this.editingPolygon = null;
-        this.originalCoordinates = [];
-
-        if (this.selectedUser) {
-            this.showSelectedUserGeocercas(this.selectedUser);
-        }
-
-        this.msgService.add({
-            severity: 'info',
-            summary: 'Edición cancelada',
-            detail: 'Se restauraron las geocercas originales'
-        });
-    }
-
-    /**
-     * Continúa con la edición
-     */
-    continuarEdicion(): void {
-        if (!this.editingGeocerca || !this.editingPolygon) {
-            this.msgService.add({
-                severity: 'warn',
-                summary: 'Advertencia',
-                detail: 'Seleccione una geocerca primero'
-            });
-            return;
-        }
-
-        const latLngs = this.editingPolygon.getLatLngs()[0] as L.LatLng[];
-        this.coordenadasGeocerca = latLngs.map((latLng) => ({
-            lat: latLng.lat,
-            lng: latLng.lng
-        }));
-
-        const sumLat = this.coordenadasGeocerca.reduce((sum, coord) => sum + coord.lat, 0);
-        const sumLng = this.coordenadasGeocerca.reduce((sum, coord) => sum + coord.lng, 0);
-        this.centroGeocerca = {
-            lat: sumLat / this.coordenadasGeocerca.length,
-            lng: sumLng / this.coordenadasGeocerca.length
-        };
-
-        this.cargarDatosEnFormulario();
-        this.limpiarMarkersEdicion();
-        this.geocercaDialog = true;
-
-        this.msgService.add({
-            severity: 'success',
-            summary: 'Continuando edición',
-            detail: 'Complete los datos en el formulario'
-        });
-    }
-
-    /**
-     * Carga los datos de la geocerca en el formulario
-     */
-    private cargarDatosEnFormulario(): void {
-        if (!this.editingGeocerca) return;
-
-        this.geocercaForm.patchValue({
-            geoccod: this.editingGeocerca.geoccod,
-            geocnom: this.editingGeocerca.geocnom,
-            geocdesc: this.editingGeocerca.geocdesc,
-            geocdirre: this.editingGeocerca.geocdirre,
-            geocprov: this.editingGeocerca.geocprov,
-            geocciud: this.editingGeocerca.geocciud,
-            geocsec: this.editingGeocerca.geocsec,
-            geocpais: this.editingGeocerca.geocpais || 'ECUADOR',
-            geocpri: this.editingGeocerca.geocpri,
-            geocact: this.editingGeocerca.geocact
-        });
-
-        this.cargarSeleccionesGeograficas();
-    }
-
-    /**
-     * Carga las selecciones geográficas en los autocompletes
-     */
-    private cargarSeleccionesGeograficas(): void {
-        if (!this.editingGeocerca) return;
-        const provincia = this.provinceService.getProvincias().find((p) => p.provincia.toLowerCase() === this.editingGeocerca.geocprov.toLowerCase());
-
-        if (provincia) {
-            this.provinciaSeleccionada = provincia;
-            this.cantonesList = this.provinceService.getCantones(provincia.codigo);
-            this.geocercaForm.patchValue({ geocprov: provincia });
-            const canton = this.cantonesList.find((c) => c.canton.toLowerCase() === this.editingGeocerca.geocciud.toLowerCase());
-
-            if (canton) {
-                this.ciudadSeleccionada = canton;
-                this.parroquiasList = this.provinceService.getParroquias(provincia.codigo, canton.codigo);
-                this.geocercaForm.patchValue({ geocciud: canton });
-
-                const parroquia = this.parroquiasList.find((p) => p.parroquia.toLowerCase() === this.editingGeocerca.geocsec.toLowerCase());
-
-                if (parroquia) {
-                    this.sectorSeleccionado = parroquia;
-                    this.geocercaForm.patchValue({ geocsec: parroquia });
-                }
-            }
-        }
-    }
-
-
-    cerrarDialogoGeocerca(): void {
-        this.geocercaDialog = false;
-        if (this.editMode && this.editingGeocerca) {
-            this.msgService.add({
-                severity: 'info',
-                summary: 'Edición cancelada',
-                detail: 'Puede seguir editando en el mapa o cancelar'
-            });
-        }
-    }
-
-    /**
-     * Guardar geocerca actualizada
-     */
-    guardarGeocerca(): void {
-        if (this.geocercaForm.invalid) {
-            this.msgService.add({
-                severity: 'error',
-                summary: 'Error de validación',
-                detail: 'Complete todos los campos requeridos'
-            });
-            return;
-        }
-
-        if (!this.coordenadasGeocerca || this.coordenadasGeocerca.length === 0) {
-            this.msgService.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: 'No hay coordenadas de la geocerca modificada'
-            });
-            return;
-        }
-
-        if (!this.editingGeocerca || !this.selectedUser) {
-            this.msgService.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: 'No hay datos suficientes para la actualización'
-            });
-            return;
-        }
-
-        const formData = this.geocercaForm.value;
-        let centroLat = this.centroGeocerca?.lat || 0;
-        let centroLng = this.centroGeocerca?.lng || 0;
-
-        if (!this.centroGeocerca && this.coordenadasGeocerca.length > 0) {
-            centroLat = this.coordenadasGeocerca.reduce((sum, coord) => sum + coord.lat, 0) / this.coordenadasGeocerca.length;
-            centroLng = this.coordenadasGeocerca.reduce((sum, coord) => sum + coord.lng, 0) / this.coordenadasGeocerca.length;
-        }
-
-        const provinciaString = typeof formData.geocprov === 'object' ? formData.geocprov.provincia : formData.geocprov;
-        const ciudadString = typeof formData.geocciud === 'object' ? formData.geocciud.canton : formData.geocciud;
-        const sectorString = typeof formData.geocsec === 'object' ? formData.geocsec.parroquia : formData.geocsec;
-
-        const actualizarGeocercaDto: any = {
-            geocnom: formData.geocnom,
-            geocsec: sectorString,
-            geocdirre: formData.geocdirre,
-            geocciud: ciudadString,
-            geocprov: provinciaString,
-            geocpais: formData.geocpais || 'ECUADOR',
-            geoclat: centroLat,
-            geoclon: centroLng,
-            geoccoor: this.coordenadasGeocerca,
-            geocarm: this.editingGeocerca.geocarm || 0,
-            geocperm: this.editingGeocerca.geocperm || 1,
-            geocest: this.editingGeocerca.geocest || 'ACTIVO',
-            geocact: formData.geocact,
-            geocpri: formData.geocpri,
-            geocdesc: formData.geocdesc,
-            geocusedi: this.authService.getUsuarioFromToken() || 'SUPERVISOR',
-            geoceqedi: this.authService.getEmpresa()?.nomempresa
-        };
-
-        this.loading = true;
-
-        this.geocercaService.actualizarGeocerca(this.editingGeocerca.geoccod, actualizarGeocercaDto).subscribe({
-            next: () => {
-                this.loading = false;
-                this.msgService.add({
-                    severity: 'success',
-                    summary: 'Éxito',
-                    detail: 'Geocerca actualizada correctamente'
-                });
-
-                this.cerrarDialogoGeocerca();
-                this.cancelarModoEdicion();
-                this.refreshData();
-
-                if (this.selectedUser) {
-                    this.selectUser(this.selectedUser);
-                }
-            },
-            error: () => {
-                this.loading = false;
-                this.msgService.add({
-                    severity: 'error',
-                    summary: 'Error',
-                    detail: 'Error al actualizar la geocerca'
-                });
-            }
-        });
-    }
-
-    //==========================================================================//
-
-    // ========== MÉTODOS PARA EL DRAWER ==========
-
-    abrirDrawerGeocercas(): void {
-        if (!this.selectedUser || this.selectedUser.totalGeocercas === 0) {
-            this.msgService.add({
-                severity: 'info',
-                summary: 'Sin geocercas',
-                detail: 'Este vendedor no tiene geocercas asignadas'
-            });
-            return;
-        }
-        this.drawerGeocercasVisible = true;
-        this.inicializarListaGeocercas();
-    }
-
-    /**
-     * Cierra el drawer de geocercas
-     */
-    cerrarDrawerGeocercas(): void {
-        this.drawerGeocercasVisible = false;
-        this.limpiarFiltroGeocerca();
-    }
-
-    /**
-     * Inicializa la lista de geocercas en el drawer
-     */
-    private inicializarListaGeocercas(): void {
-        if (this.selectedUser?.geocercas) {
-            this.geocercasFiltradas = [...this.selectedUser.geocercas];
-            this.filtroGeocerca = '';
-        }
     }
 
     /**
@@ -1813,58 +1047,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
         });
     }
 
-    /**
-     * Limpia el filtro de geocercas
-     */
-    limpiarFiltroGeocerca(): void {
-        this.filtroGeocerca = '';
-        this.filtrarGeocercasList();
-    }
-
-    /**
-     * Método mejorado para actualizar la lista cuando cambia la selección de usuario
-     */
-    private actualizarDrawerSiEstaAbierto(): void {
-        if (this.drawerGeocercasVisible) {
-            this.inicializarListaGeocercas();
-        }
-    }
-
-    refreshRapidoUsuarioActual(): void {
-        if (!this.selectedUser) return;
-
-        const codigoUsuario = this.selectedUser.codigoVendedor;
-        this.loading = true;
-        this.refreshData();
-
-        setTimeout(() => {
-            const usuarioActualizado = this.users.find(u => u.codigoVendedor === codigoUsuario);
-            if (usuarioActualizado) {
-                this.selectUser(usuarioActualizado);
-                this.msgService.add({
-                    severity: 'info',
-                    summary: 'Datos actualizados',
-                    detail: 'Geocercas actualizadas en tiempo real',
-                    life: 2000
-                });
-            }
-            this.loading = false;
-
-            this.actualizarDrawerSiEstaAbierto();
-        }, 1000);
-    }
-
-
-    //==========================================================================//
-
-
-    // =========== MÉTODOS PARA EL CONFIRM DIALOG ===========
-
-    //==========================================================================//
-
-
-
-
     ngOnDestroy(): void {
         this.destroy$.next();
         this.destroy$.complete();
@@ -1883,7 +1065,719 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
         this.editMode = false;
         this.editingGeocerca = null;
         this.editingPolygon = null;
+
+
+        this.geocodingQueue = [];
+        this.isProcessingQueue = false;
+        this.userLocations.clear();
+        this.loadingLocations.clear();
+        this.failedRequests.clear();
     }
 
     protected readonly Math = Math;
+
+ //====================== FUNCIONES ASYNC COMPLETADAS =======================
+
+
+    /**
+     * Obtiene geocercas DISPONIBLES (sin vendedores asignados) para el diálogo
+     */
+    async getAvailableGeocercas(): Promise<void> {
+        if (!this.enterpriseName) {
+            return;
+        }
+
+        this.availableGeocercasLoading = true;
+
+        try {
+            const response = await this.geocercaService.getGeocercasConVendedoresByEnterpriseName(
+                this.enterpriseName,
+                1, // Primera página
+                100, // Tamaño grande para obtener todas
+                true, // activo
+                false // soloConVendedores = false - geocercas SIN asignar
+            ).toPromise();
+
+            if (response && response.success && response.data) {
+                this.availableGeocercas = response.data.data;
+                this.filteredAvailableGeocercas = [...this.availableGeocercas];
+
+                console.log('Geocercas disponibles:', this.availableGeocercas);
+            }
+        } catch (error) {
+            console.error('Error obteniendo geocercas disponibles:', error);
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'No se pudieron cargar las geocercas disponibles'
+            });
+        } finally {
+            this.availableGeocercasLoading = false;
+        }
+    }
+
+//====================== FUNCIONES DEL DIÁLOGO =======================
+
+    /**
+     * Abre el diálogo para agregar geocerca (botón AGREGAR)
+     */
+    async openAddGeocercaDialog(): Promise<void> {
+        this.geocercaDialog = true;
+        this.selectedAvailableGeocerca = null;
+        this.searchAvailableGeocerca = '';
+
+        // Cargar geocercas disponibles
+        await this.getAvailableGeocercas();
+
+        // Inicializar mapa del diálogo después de que se abra
+        setTimeout(() => {
+            this.initializeDialogMap();
+        }, 100);
+    }
+
+    /**
+     * Cierra el diálogo
+     */
+    closeGeocercaDialog(): void {
+        this.geocercaDialog = false;
+        this.selectedAvailableGeocerca = null;
+        this.searchAvailableGeocerca = '';
+
+        // Limpiar mapa del diálogo
+        if (this.dialogMap) {
+            this.dialogMap.remove();
+            this.dialogMap = null;
+        }
+        this.dialogPreviewPolygon = null;
+    }
+
+    /**
+     * Filtra las geocercas disponibles
+     */
+    filterAvailableGeocercas(): void {
+        if (!this.searchAvailableGeocerca.trim()) {
+            this.filteredAvailableGeocercas = [...this.availableGeocercas];
+            return;
+        }
+
+        const searchTerm = this.searchAvailableGeocerca.toLowerCase().trim();
+        this.filteredAvailableGeocercas = this.availableGeocercas.filter(geocerca =>
+            geocerca.geocnom?.toLowerCase().includes(searchTerm) ||
+            geocerca.geoccod?.toLowerCase().includes(searchTerm) ||
+            geocerca.geocsec?.toLowerCase().includes(searchTerm) ||
+            geocerca.geocciud?.toLowerCase().includes(searchTerm)
+        );
+    }
+
+    /**
+     * Selecciona una geocerca para vista previa
+     */
+    selectAvailableGeocerca(geocerca: any): void {
+        this.selectedAvailableGeocerca = geocerca;
+        this.showGeocercaPreview(geocerca);
+    }
+
+    /**
+     * Asigna la geocerca seleccionada al vendedor actual
+     */
+    async assignGeocercaToUser(): Promise<void> {
+        if (!this.selectedAvailableGeocerca || !this.selectedUser) {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Advertencia',
+                detail: 'Debe seleccionar una geocerca y tener un vendedor seleccionado'
+            });
+            return;
+        }
+
+        // Validar que el vendedor tenga ubicación actual
+        if (!this.selectedUser.ubicacionActual?.geublat || !this.selectedUser.ubicacionActual?.geublon) {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Advertencia',
+                detail: 'El vendedor debe tener una ubicación válida para asignar geocercas'
+            });
+            return;
+        }
+
+        try {
+            // Preparar el DTO con los datos del vendedor y ubicación
+            const asignarDto: AsignarGeocercaDto = {
+                geugidv: this.selectedUser.codigoVendedor,
+                geuglat: parseFloat(String(this.selectedUser.ubicacionActual.geublat)),
+                geuglon: parseFloat(String(this.selectedUser.ubicacionActual.geublon)),
+                geuguscre: this.authService.getUsuarioFromToken() || 'SUPERVISOR',
+                geugeqcre: this.initializeEnterpriseName() || 'SUPERVISOR'
+            };
+
+            // Llamar al servicio para asignar la geocerca
+            await this.geocercaService.assignGeocercaToUser(
+                this.selectedAvailableGeocerca.geoccod,
+                asignarDto
+            ).toPromise();
+
+            this.msgService.add({
+                severity: 'success',
+                summary: 'Éxito',
+                detail: `Geocerca "${this.selectedAvailableGeocerca.geocnom}" asignada correctamente a ${this.selectedUser.nombreVendedor}`
+            });
+
+            // Actualizar la información local del vendedor
+            if (!this.selectedUser.geocercas) {
+                this.selectedUser.geocercas = [];
+            }
+
+            // Agregar la geocerca asignada con información adicional
+            const geocercaAsignada = {
+                ...this.selectedAvailableGeocerca,
+                fechaAsignacion: new Date().toISOString(),
+                geuglat: asignarDto.geuglat,
+                geuglon: asignarDto.geuglon,
+                geuguscre: asignarDto.geuguscre,
+                geugeqcre: asignarDto.geugeqcre
+            };
+
+            this.selectedUser.geocercas.push(geocercaAsignada);
+            this.selectedUser.totalGeocercas = this.selectedUser.geocercas.length;
+
+            // Actualizar la lista filtrada de geocercas del vendedor
+            this.filtrarGeocercasList();
+
+            // Remover la geocerca de la lista de disponibles
+            this.availableGeocercas = this.availableGeocercas.filter(
+                g => g.geoccod !== this.selectedAvailableGeocerca!.geoccod
+            );
+            this.filteredAvailableGeocercas = this.filteredAvailableGeocercas.filter(
+                g => g.geoccod !== this.selectedAvailableGeocerca!.geoccod
+            );
+
+            // Limpiar selección
+            this.selectedAvailableGeocerca = null;
+
+            // Cerrar diálogo
+            this.closeGeocercaDialog();
+
+            this.refreshData();
+
+        } catch (error: any) {
+            console.error('Error asignando geocerca:', error);
+
+            // Manejo de errores específicos
+            let errorMessage = 'No se pudo asignar la geocerca al vendedor';
+
+            if (error?.error?.message) {
+                errorMessage = error.error.message;
+            } else if (error?.status === 400) {
+                errorMessage = 'Datos inválidos para la asignación';
+            } else if (error?.status === 404) {
+                errorMessage = 'Geocerca o vendedor no encontrado';
+            } else if (error?.status === 409) {
+                errorMessage = 'La geocerca ya está asignada a otro vendedor';
+            }
+
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: errorMessage
+            });
+        }
+    }
+
+//====================== FUNCIONES DEL MAPA DEL DIÁLOGO =======================
+
+    /**
+     * Inicializa el mapa del diálogo
+     */
+    initializeDialogMap(): void {
+        try {
+            const dialogMapContainer = document.getElementById('dialogMapContainer');
+            if (!dialogMapContainer) {
+                console.error('Contenedor del mapa del diálogo no encontrado');
+                return;
+            }
+
+            this.dialogMap = L.map(dialogMapContainer, {
+                center: [-0.2298, -78.5249],
+                zoom: 13,
+                zoomControl: true
+            });
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(this.dialogMap);
+
+            // Permitir que el mapa se redimensione
+            setTimeout(() => {
+                this.dialogMap?.invalidateSize();
+            }, 100);
+
+        } catch (error) {
+            console.error('Error inicializando mapa del diálogo:', error);
+        }
+    }
+
+    showGeocercaPreview(geocerca: any): void {
+        if (!this.dialogMap) {
+            return;
+        }
+
+        // Limpiar capas anteriores
+        if (this.dialogPreviewPolygon) {
+            this.dialogMap.removeLayer(this.dialogPreviewPolygon);
+            this.dialogPreviewPolygon = null;
+        }
+
+        try {
+
+
+
+            // Intentar usar las coordenadas completas del polígono primero
+            if (geocerca.geoccoor) {
+                this.showFullPolygonPreview(geocerca);
+                return;
+            }
+
+            // Fallback: usar coordenadas del centro si no hay polígono completo
+            if (geocerca.geoclat && geocerca.geoclon) {
+                this.showCenterPointPreview(geocerca);
+                return;
+            }
+
+            console.warn('Geocerca sin coordenadas válidas:', geocerca);
+
+        } catch (error) {
+            console.error('Error mostrando vista previa de geocerca:', error);
+            this.msgService.add({
+                severity: 'error',
+                summary: 'Error',
+                detail: 'No se pudo mostrar la vista previa de la geocerca'
+            });
+        }
+    }
+
+    /**
+     * Muestra el polígono completo de la geocerca
+     */
+    private showFullPolygonPreview(geocerca: any): void {
+        try {
+            // Parsear las coordenadas del JSON string
+            const coordinates = typeof geocerca.geoccoor === 'string'
+                ? JSON.parse(geocerca.geoccoor)
+                : geocerca.geoccoor;
+
+            if (!Array.isArray(coordinates) || coordinates.length < 3) {
+                console.warn('Coordenadas insuficientes para formar polígono, usando punto central');
+                this.showCenterPointPreview(geocerca);
+                return;
+            }
+
+            // Convertir a formato Leaflet [lat, lng] con tipado explícito
+            const latLngs: [number, number][] = coordinates.map((coord: any) => {
+                const lat = parseFloat(coord.lat);
+                const lng = parseFloat(coord.lng);
+
+                if (isNaN(lat) || isNaN(lng)) {
+                    throw new Error(`Coordenada inválida: lat=${coord.lat}, lng=${coord.lng}`);
+                }
+
+                return [lat, lng] as [number, number]; // Tupla explícita
+            });
+
+            // Crear el polígono
+            this.dialogPreviewPolygon = L.polygon(latLngs, {
+                color: this.getGeocercaColor(geocerca.geocpri) || '#3388ff',
+                fillColor: this.getGeocercaColor(geocerca.geocpri) || '#3388ff',
+                fillOpacity: 0.25,
+                weight: 3,
+                opacity: 0.8,
+                dashArray: geocerca.geocact ? undefined : '5, 10' // Línea punteada si está inactiva
+            }).addTo(this.dialogMap!);
+
+            // Agregar marcador en el centro del polígono
+            const bounds = this.dialogPreviewPolygon.getBounds(); // Ahora funciona porque es L.Polygon
+            const center = bounds.getCenter();
+
+            const centerMarker = L.marker([center.lat, center.lng], {
+                icon: L.divIcon({
+                    className: 'geocerca-center-marker',
+                    html: `<div style="
+                    width: 16px;
+                    height: 16px;
+                    background-color: ${this.getGeocercaColor(geocerca.geocpri) || '#3388ff'};
+                    border: 3px solid white;
+                    border-radius: 50%;
+                    box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+                "></div>`,
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
+                })
+            }).addTo(this.dialogMap!);
+
+            // Ajustar vista al polígono
+            this.dialogMap!.fitBounds(bounds, {
+                padding: [20, 20],
+                maxZoom: 16
+            });
+
+            // Usar tu método existente para crear el popup
+            if (this.selectedUser) {
+                const popupContent = this.createGeocercaPopupContent(geocerca, this.selectedUser);
+                centerMarker.bindPopup(popupContent, {
+                    maxWidth: 300,
+                    className: 'custom-popup'
+                }).openPopup();
+            }
+
+            console.log(`Polígono completo mostrado para geocerca: ${geocerca.geocnom} con ${coordinates.length} vértices`);
+
+        } catch (error) {
+            console.error('Error parseando coordenadas del polígono:', error);
+            // Fallback al punto central
+            this.showCenterPointPreview(geocerca);
+        }
+    }
+
+    /**
+     * Muestra solo el punto central como círculo (fallback)
+     */
+    private showCenterPointPreview(geocerca: any): void {
+        if (!geocerca.geoclat || !geocerca.geoclon) {
+            console.warn('Sin coordenadas de centro disponibles');
+            return;
+        }
+
+        const lat = parseFloat(geocerca.geoclat);
+        const lon = parseFloat(geocerca.geoclon);
+
+        if (isNaN(lat) || isNaN(lon)) {
+            console.error('Coordenadas de centro inválidas:', { lat: geocerca.geoclat, lon: geocerca.geoclon });
+            return;
+        }
+
+        // Crear círculo de aproximación
+        const radius = 500; // Radio en metros
+
+        this.dialogPreviewPolygon = L.circle([lat, lon], {
+            radius: radius,
+            color: this.getGeocercaColor(geocerca.geocpri) || '#3388ff',
+            fillColor: this.getGeocercaColor(geocerca.geocpri) || '#3388ff',
+            fillOpacity: 0.15,
+            weight: 2,
+            opacity: 0.6,
+            dashArray: '10, 5' // Línea punteada para indicar que es aproximado
+        }).addTo(this.dialogMap!);
+
+        // Marcador central
+        const centerMarker = L.marker([lat, lon], {
+            icon: L.divIcon({
+                className: 'geocerca-center-marker',
+                html: `<div style="
+                width: 12px;
+                height: 12px;
+                background-color: ${this.getGeocercaColor(geocerca.geocpri) || '#3388ff'};
+                border: 2px solid white;
+                border-radius: 50%;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            "></div>`,
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
+            })
+        }).addTo(this.dialogMap!);
+
+        // Centrar mapa
+        this.dialogMap!.setView([lat, lon], 15);
+
+        // Usar tu método existente para el popup
+        if (this.selectedUser) {
+            const popupContent = this.createGeocercaPopupContent(geocerca, this.selectedUser);
+            centerMarker.bindPopup(popupContent, {
+                maxWidth: 300,
+                className: 'custom-popup'
+            }).openPopup();
+        }
+
+        console.log(`Vista aproximada mostrada para geocerca: ${geocerca.geocnom} en [${lat}, ${lon}]`);
+    }
+
+    /**
+     * Obtiene el nombre del lugar usando reverse geocoding de Nominatim
+     */
+    private getReverseGeocoding(lat: number, lon: number, userId: string): void {
+        // Evitar llamadas duplicadas
+        if (this.loadingLocations.has(userId) || this.userLocations.has(userId)) {
+            return;
+        }
+
+        this.loadingLocations.add(userId);
+
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`;
+
+        this.http.get<NominatimReverseResponse>(url)
+            .pipe(
+                catchError(error => {
+                    console.error('Error en reverse geocoding:', error);
+                    return of(null);
+                }),
+                finalize(() => {
+                    this.loadingLocations.delete(userId);
+                })
+            )
+            .subscribe(response => {
+                if (response && response.address) {
+                    // Construir un nombre legible del lugar
+                    const locationParts: string[] = [];
+
+                    if (response.address.road) {
+                        locationParts.push(response.address.road);
+                    }
+                    if (response.address.quarter) {
+                        locationParts.push(response.address.quarter);
+                    }
+                    if (response.address.city) {
+                        locationParts.push(response.address.city);
+                    }
+
+                    const locationName = locationParts.length > 0
+                        ? locationParts.join(', ')
+                        : response.display_name.split(',').slice(0, 2).join(',');
+
+                    this.userLocations.set(userId, locationName);
+                }
+            });
+    }
+
+
+    /**
+     * Obtiene el nombre del lugar usando reverse geocoding con cola y cooldown
+     */
+    private addToGeocodingQueue(lat: number, lon: number, userId: string): void {
+        // Evitar duplicados en la cola
+        const exists = this.geocodingQueue.some(item => item.userId === userId);
+        if (exists || this.loadingLocations.has(userId) || this.userLocations.has(userId)) {
+            return;
+        }
+
+        // Agregar a la cola
+        this.geocodingQueue.push({ userId, lat, lon });
+        this.loadingLocations.add(userId);
+
+        // Procesar la cola si no se está procesando
+        if (!this.isProcessingQueue) {
+            this.processGeocodingQueue();
+        }
+    }
+
+
+    /**
+     * Construye un nombre legible de la ubicación
+     */
+    private buildLocationName(response: NominatimReverseResponse): string {
+        const address = response.address;
+        const locationParts: string[] = [];
+
+        // Priorizar información más específica
+        if (address.road) {
+            locationParts.push(address.road);
+        }
+        if (address.quarter && address.quarter !== address.road) {
+            locationParts.push(address.quarter);
+        }
+        if (address.city_district && address.city_district !== address.quarter) {
+            locationParts.push(address.city_district);
+        }
+        if (address.city) {
+            locationParts.push(address.city);
+        }
+
+        return locationParts.length > 0
+            ? locationParts.slice(0, 3).join(', ') // Máximo 3 partes
+            : response.display_name.split(',').slice(0, 2).join(',');
+    }
+
+    /**
+     * Utility para delays
+     */
+    private delay(ms: number): Promise<void> {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /**
+     * Procesa la cola de geocoding de forma secuencial con delays
+     */
+    private async processGeocodingQueue(): Promise<void> {
+        if (this.isProcessingQueue || this.geocodingQueue.length === 0) {
+            return;
+        }
+
+        this.isProcessingQueue = true;
+
+        while (this.geocodingQueue.length > 0) {
+            const item = this.geocodingQueue.shift();
+            if (!item) continue;
+
+            try {
+                // Calcular delay necesario
+                const now = Date.now();
+                const timeSinceLastRequest = now - this.lastRequestTime;
+                const delay = Math.max(0, this.MIN_REQUEST_INTERVAL - timeSinceLastRequest);
+
+                if (delay > 0) {
+                    await this.delay(delay);
+                }
+
+                // Realizar la petición
+                await this.performGeocodingRequest(item.lat, item.lon, item.userId);
+                this.lastRequestTime = Date.now();
+
+            } catch (error) {
+                console.warn(`Error procesando geocoding para ${item.userId}:`, error);
+                this.handleGeocodingError(item);
+            }
+
+            // Pequeño delay adicional entre peticiones
+            await this.delay(200);
+        }
+
+        this.isProcessingQueue = false;
+    }
+
+    /**
+     * Realiza la petición de geocoding con retry automático
+     */
+    private performGeocodingRequest(lat: number, lon: number, userId: string): Promise<void> {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`;
+
+        return this.http.get<NominatimReverseResponse>(url, {
+            headers: {
+                'User-Agent': `${this.enterpriseName || 'VendedoresApp'}/1.0`
+            }
+        }).pipe(
+            timeout(10000), // 10 segundos timeout
+            retry({
+                count: this.MAX_RETRIES,
+                delay: (error, retryCount) => {
+                    // Delay exponencial: 2s, 4s, 8s
+                    const delayMs = Math.pow(2, retryCount) * 1000;
+                    console.log(`Reintentando geocoding para ${userId} en ${delayMs}ms (intento ${retryCount})`);
+                    return timer(delayMs);
+                }
+            }),
+            catchError(error => {
+                console.warn(`Error en geocoding para ${userId} después de ${this.MAX_RETRIES} intentos:`, error);
+                return of(null); // Continuar sin error
+            }),
+            finalize(() => {
+                this.loadingLocations.delete(userId);
+            })
+        ).toPromise().then(response => {
+            if (response && response.address) {
+                const locationName = this.buildLocationName(response);
+                this.userLocations.set(userId, locationName);
+
+                // Limpiar contador de errores si fue exitoso
+                this.failedRequests.delete(userId);
+            } else {
+                // Marcar como fallido pero no mostrar error
+                this.userLocations.set(userId, 'Ubicación no disponible');
+            }
+        });
+    }
+
+    /**
+     * Maneja errores de geocoding con reintentos inteligentes
+     */
+    private handleGeocodingError(item: {userId: string, lat: number, lon: number}): void {
+        const failures = this.failedRequests.get(item.userId) || 0;
+
+        if (failures < this.MAX_RETRIES) {
+            // Reintroducir en la cola con delay exponencial
+            const retryDelay = Math.pow(2, failures) * 2000; // 2s, 4s, 8s
+
+            setTimeout(() => {
+                this.failedRequests.set(item.userId, failures + 1);
+                this.geocodingQueue.push(item);
+
+                if (!this.isProcessingQueue) {
+                    this.processGeocodingQueue();
+                }
+            }, retryDelay);
+
+        } else {
+            // Máximo de reintentos alcanzado, marcar como no disponible
+            this.loadingLocations.delete(item.userId);
+            this.userLocations.set(item.userId, 'Ubicación no disponible');
+            this.failedRequests.delete(item.userId);
+        }
+    }
+
+    confirmarDesvincularGeocerca(geocerca: any): void {
+        this.confirmationService.confirm({
+            message: `¿Está seguro de que desea desvincular la geocerca "${geocerca.geocnom}" del vendedor "${this.selectedUser?.nombreVendedor}"?`,
+            header: 'Confirmar Desvinculación',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Sí, Desvincular',
+            rejectLabel: 'Cancelar',
+            acceptButtonStyleClass: 'p-button-warning p-button-sm',
+            rejectButtonStyleClass: 'p-button-text p-button-sm',
+            accept: () => {
+                this.desvincularGeocercaDelVendedor(geocerca);
+            },
+            reject: () => {
+                // Opcional: mensaje de cancelación
+                this.msgService.add({
+                    severity: 'info',
+                    summary: 'Cancelado',
+                    detail: 'La desvinculación ha sido cancelada',
+                    life: 3000
+                });
+            }
+        });
+    }
+
+    /**
+     * Realiza la desvinculación de la geocerca
+     */
+    private desvincularGeocercaDelVendedor(geocerca: any): void {
+        this.loading = true;
+
+        this.geocercaService.desvincularGeocerca(geocerca.geoccod).subscribe({
+            next: () => {
+                this.msgService.add({
+                    severity: 'success',
+                    summary: 'Desvinculación Exitosa',
+                    detail: `La geocerca "${geocerca.geocnom}" ha sido desvinculada correctamente`,
+                    life: 5000
+                });
+
+                // Recargar las geocercas del vendedor seleccionado
+                if (this.selectedUser) {
+                    this.refreshData()
+                }
+
+                this.loading = false;
+            },
+            error: (error: HttpErrorResponse) => {
+                console.error('Error al desvincular geocerca:', error);
+
+                let errorMessage = 'No se pudo desvincular la geocerca';
+                if (error.error?.message) {
+                    errorMessage = error.error.message;
+                } else if (error.status === 404) {
+                    errorMessage = 'La geocerca no fue encontrada';
+                } else if (error.status === 403) {
+                    errorMessage = 'No tiene permisos para realizar esta acción';
+                }
+
+                this.msgService.add({
+                    severity: 'error',
+                    summary: 'Error de Desvinculación',
+                    detail: errorMessage,
+                    life: 7000
+                });
+
+                this.loading = false;
+            }
+        });
+    }
 }

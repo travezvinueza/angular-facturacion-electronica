@@ -9,6 +9,7 @@ export interface GeocercaDto {
     geoccod: string;
     geocnom: string;
     geocsec: string;
+    geocdirre: string;
     geocciud: string;
     geocprov: string;
     geocest: string;

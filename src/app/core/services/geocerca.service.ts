@@ -5,6 +5,7 @@ import { ActualizarGeocercaDto, CrearGeocercaDto, GeocercaResponseDto } from '..
 import { AuthService } from './auth.service';
 import { environment } from '../../../environments/environment';
 import { CreateGeofenceDto, GeocercaValidationResponse, GeofenceDto } from '@/core/models/Geocercas/GeocercaValidationResponseDto';
+import { AsignarGeocercaDto } from '@/core/models/AsignarGeocercaDto';
 
 @Injectable({
     providedIn: 'root'
@@ -14,6 +15,55 @@ export class GeocercaService {
     private readonly authService = inject(AuthService);
 
     constructor(private readonly http: HttpClient) { }
+
+
+    desvincularGeocerca(codigoGeocerca: string): Observable<void> {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+        return this.http.patch<void>(`${this.baseUrl}/desvincular-vendedor/${codigoGeocerca}`, { headers });
+    }
+
+    assignGeocercaToUser(codigoGeocerca: string, dto: AsignarGeocercaDto): Observable<any> {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+
+        return this.http.post<any>(`${this.baseUrl}/asignar-vendedor/${codigoGeocerca}`, dto, { headers });
+    }
+
+
+    getGeocercasConVendedoresByEnterpriseName(
+        enterpriseName: string,
+        pageNumber: number = 1,
+        pageSize: number = 10,
+        activo: boolean = true,
+        soloConVendedores: boolean = true
+    ): Observable<GeocercaValidationResponse> {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+
+        const params = new HttpParams()
+            .set('pageNumber', pageNumber)
+            .set('pageSize', pageSize)
+            .set('activo', activo)
+            .set('soloConVendedores', soloConVendedores)
+            .set('nameEnterprise', enterpriseName);
+
+
+
+        return this.http.get<GeocercaValidationResponse>(
+            `${this.baseUrl}/obtenerGeocercasConVendedorAsync/`,
+            { headers, params }
+        );
+    }
 
     getOnlyGeocercasByEnterpriseName(
         enterpriseName: string,
@@ -30,10 +80,12 @@ export class GeocercaService {
         const params = new HttpParams()
             .set('pageNumber', pageNumber)
             .set('pageSize', pageSize)
+            .set('enterpriseName', enterpriseName)
             .set('activo', activo);
 
+
         return this.http.get<GeocercaValidationResponse>(
-            `${this.baseUrl}/getListGeofenceByEnterprise/${enterpriseName}`,
+            `${this.baseUrl}/getListGeofenceByEnterprise/`,
             { headers, params }
         );
     }

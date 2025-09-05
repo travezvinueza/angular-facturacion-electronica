@@ -29,26 +29,46 @@ export class AppMenu {
     ngOnInit() {
         this.model = [
             {
-                label: 'Maestro',
+                label: 'CONFIGURACIÓN',
                 items: [
                     {
-                        label: 'Configuración',
+                        label: 'Geolocalización',
                         isAuthenticated: true,
                         icon: 'pi pi-fw pi-cog',
                         items: [
-                            { label: 'Crear Geocercas', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/geocercas'] },
-                            { label: 'Crear Geocercas 2', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/only-geocercas'] },
                             { label: 'Geocercas y Vendedores', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/geocercas-vendedores'] },
                         ]
                     },
                 ]
             },
             {
-                label: 'Vendedores',
+                label: 'MAESTRO',
                 items: [
-                    { label: 'Lista de Vendedores', isAuthenticated: true, icon: 'pi pi-fw pi-id-card', routerLink: ['/pages/vendedores'] },
+                    {
+                        label: 'Geolocalización',
+                        isAuthenticated: true,
+                        icon: 'pi pi-fw pi-cog',
+                        items: [
+                            { label: 'Crear Geocercas ', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/only-geocercas'] },
+                        ]
+                    },
                 ]
             },
+            {
+                label: 'REPORTES',
+                items: [
+                    {
+                        label: 'Geolocalización',
+                        isAuthenticated: true,
+                        icon: 'pi pi-fw pi-cog',
+                        items: [
+                            { label: 'Detalles del Registro', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/detalles-registro'] },
+                            { label: 'Vendedores', isAuthenticated: true, icon: 'pi pi-fw pi-id-card', routerLink: ['/pages/vendedores'] },
+                        ]
+                    },
+                ]
+            },
+
 
             {
                 label: 'Cerrar Sesión',
