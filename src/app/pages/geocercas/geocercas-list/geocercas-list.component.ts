@@ -28,7 +28,18 @@ import { Drawer } from 'primeng/drawer';
 import { CustomerResponseDto } from '@/core/models/Customer/CustomerResponseDto';
 import { CustomerService } from '@/core/services/customer.service';
 import { CustomerAreaRequestDto } from '@/core/models/Customer/CustomerAreaRequestDto';
-import { GeocercaDto, VendedorDto, VendedoresQueryParams, VendedoresResponse } from '@/core/models/Geocercas/VendedorDto';
+import {
+    GeocercaDto,
+    VendedorDto,
+    VendedoresQueryParams,
+    VendedoresResponse
+} from '@/core/models/Geocercas/VendedorDto';
+import { AutoComplete } from 'primeng/autocomplete';
+import { DatePicker } from 'primeng/datepicker';
+import { Checkbox } from 'primeng/checkbox';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { Accordion, AccordionContent, AccordionHeader, AccordionPanel } from 'primeng/accordion';
+
 @Component({
     selector: 'app-geocercas',
     imports: [
@@ -51,15 +62,44 @@ import { GeocercaDto, VendedorDto, VendedoresQueryParams, VendedoresResponse } f
         PaginatorModule,
         SkeletonModule,
         Tooltip,
-        Drawer
+        AutoComplete,
+        DatePicker,
+        Checkbox,
+        ToggleSwitchModule,
+        Accordion,
+        AccordionContent,
+        AccordionPanel,
+        AccordionHeader
     ],
     standalone: true,
     templateUrl: './geocercas-list.component.html',
     styleUrls: ['./geocercas-list.component.css']
 })
 export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy {
-    @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
+    @ViewChild('mapContainer') mapContainer!: ElementRef;
+    @ViewChild('scrollContainer') scrollContainer!: ElementRef;
 
+
+    // Para scroll infinito
+    loadingMore: boolean = false;
+    hasReachedEnd: boolean = false;
+    currentPage: number = 0;
+    allUsers: UserDto[] = []; // Mantener usuarios originales
+    private scrollThreshold: number = 100;
+    private debounceTimer: any;
+
+    // Propiedades de filtros
+    filterFrom: Date | null = null;
+    selectedTimeUnit: any = null;
+    timeValue: number | null = null;
+    selectedGeofence: any = null;
+    geofenceEnabled: boolean = false;
+    pedidosEnabled: boolean = false;
+    collectionsEnabled: boolean = false;
+
+    // Opciones para autoComplete
+    timeUnitOptions: any[] = [];
+    geofenceOptions: any[] = [];
 
     // Propiedades para geocercas
     vendorGeocercas: GeocercaDto[] = [];
@@ -72,7 +112,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     loadingCustomers: boolean = false;
 
     // Propiedades de búsqueda de customers
-    customerSearchTerm: string = '';
     filteredCustomers: CustomerResponseDto[] = [];
 
     // Subject para manejo de subscripciones
@@ -96,20 +135,20 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     mapInitialized: boolean = false;
     map: L.Map | null = null;
 
-    // Nuevas propiedades para el drawerRRR
+    // Nuevas propiedades para el drawer
+    openFilterDrawer: boolean = false;
     showRangeDrawer: boolean = false;
     userRange: RangeDisplayInfo | null = null;
     showRangeDialog: boolean = false;
     defaultRadius: number = 1000;
     customRadius: number = 1000;
-    showRangeInfo: boolean = false;
+
 
     constructor(
         private readonly userService: UserService,
         private readonly msgService: MessageService,
         private readonly mapService: MapService,
         private readonly customerService: CustomerService
-
     ) {}
 
     //===============MÉTODO DE INICIALIZACIÓN========================================//
@@ -129,7 +168,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         try {
             await this.mapService.initializeMap(this.mapContainer, {
                 center: [-0.2298, -78.5249],
-                zoom: 13,
+                zoom: 20,
                 defaultLocation: 'Quito, Ecuador'
             });
             if (!this.loading && this.users.length > 0) {
@@ -145,16 +184,8 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
      * Suscribe a los observables del servicio de mapas
      */
     private subscribeToMapService(): void {
-
         this.mapService.currentUserRange$.pipe(takeUntil(this.destroy$)).subscribe((range) => {
             this.userRange = range;
-
-            if (range) {
-                this.showRangeDrawer = true;
-                this.showRangeNotification(range);
-            } else {
-                this.showRangeDrawer = false;
-            }
         });
 
         this.mapService.isMapInitialized$.pipe(takeUntil(this.destroy$)).subscribe((initialized) => {
@@ -167,41 +198,9 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         this.mapService.searchResultsList$.pipe(takeUntil(this.destroy$)).subscribe((results) => {
             this.searchResults = results;
         });
-
     }
 
     //====MÉTODO PARA OBTENER LOS CUSTOMERS POR VENDEDOR Y ÁREA====//
-    /**
-     * Filtra clientes basado en el término de búsqueda
-     */
-    filterCustomers(): void {
-        if (!this.customerSearchTerm.trim()) {
-            this.filteredCustomers = [...this.customers];
-            return;
-        }
-
-        const searchTerm = this.customerSearchTerm.toLowerCase();
-        this.filteredCustomers = this.customers.filter(customer =>
-            customer.dirnombre.toLowerCase().includes(searchTerm) ||
-            customer.dirruc.toLowerCase().includes(searchTerm) ||
-            customer.dirdirec.toLowerCase().includes(searchTerm)
-        );
-    }
-
-    /**
-     * Centra el mapa en un cliente específico
-     */
-    focusCustomerOnMap(customer: CustomerResponseDto): void {
-        this.mapService.focusOnCustomer(customer);
-
-        this.msgService.add({
-            severity: 'info',
-            summary: 'Cliente localizado',
-            detail: `Mapa centrado en ${customer.dirnombre}`,
-            life: 2000
-        });
-    }
-
     private getCustomersInArea(vendorCode: string, range: any): void {
         this.loadingCustomers = true;
 
@@ -217,7 +216,8 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     }
 
     private fetchCustomersByArea(requestDto: CustomerAreaRequestDto): void {
-        this.customerService.getCustomersByVendorAndArea(requestDto)
+        this.customerService
+            .getCustomersByVendorAndArea(requestDto)
             .pipe(takeUntil(this.destroy$))
             .subscribe({
                 next: (customers: CustomerResponseDto[]) => {
@@ -227,8 +227,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
                     setTimeout(() => {
                         this.mapService.addCustomerMarkers(customers);
                     }, 200);
-                    const assignedCount = customers.filter(c => c.asignado).length;
-
+                    const assignedCount = customers.filter((c) => c.asignado).length;
 
                     this.msgService.add({
                         severity: 'success',
@@ -252,8 +251,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     }
     //==============================================================================================//
 
-
-
     //===============MÉTODO PARA OBTENER TODOS LOS USERS===========================================//
 
     getAllUsers(): void {
@@ -262,6 +259,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
             next: (data: UserDto[]) => {
                 this.users = data;
                 this.filteredUsers = [...this.users];
+                this.resetInfiniteScroll();
                 this.updatePagination();
                 this.loading = false;
 
@@ -281,7 +279,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         });
     }
     //=============================================================================================//
-
 
     //===============MÉTODO PARA BUSCAR USUARIOS/PAGINACIÓN====================================================//
     onSearch(event: Event): void {
@@ -313,11 +310,9 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         }
 
         this.loadVendorGeocercas(user.usucodv);
-
     }
 
     //===MÉTODO PARA CARGAR LAS GEOCERCAS DEL VENDEDOR====================================================//
-
 
     private loadVendorGeocercas(vendorCode: string): void {
         this.loadingGeocercas = true;
@@ -328,7 +323,8 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
             pageSize: 50
         };
 
-        this.userService.getVendedoresConGeocercas(params)
+        this.userService
+            .getVendedoresConGeocercas(params)
             .pipe(takeUntil(this.destroy$))
             .subscribe({
                 next: (response: VendedoresResponse) => {
@@ -341,7 +337,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
 
                         // Mostrar geocercas en el mapa
                         this.mapService.displayVendorGeocercas(this.vendorGeocercas);
-                        this.showGeocercasDrawer = true;
 
                         this.msgService.add({
                             severity: 'success',
@@ -362,10 +357,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     }
 
     private findVendorByCode(vendors: VendedorDto[], vendorCode: string): VendedorDto | null {
-        return vendors.find(vendor =>
-            vendor.codigoVendedor === vendorCode ||
-            vendor.codigoVendedorSecundario === vendorCode
-        ) || null;
+        return vendors.find((vendor) => vendor.codigoVendedor === vendorCode || vendor.codigoVendedorSecundario === vendorCode) || null;
     }
 
     private handleNoGeocercasFound(vendorCode: string): void {
@@ -394,22 +386,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         });
     }
 
-
     //===============MÉTODO PARA CONFIGURAR EL RANGO/SACAR COORDENADAS NORHWEST AND SOUTHWEST/CONFIGURACION DEL MODULO DRAWER====================================================//
-    openRangeConfigDialog(): void {
-        if (this.selectedUser) {
-            this.customRadius = this.defaultRadius;
-            this.showRangeDialog = true;
-        } else {
-            this.msgService.add({
-                severity: 'warn',
-                summary: 'Sin selección',
-                detail: 'Selecciona un usuario primero',
-                life: 3000
-            });
-        }
-    }
-
     /**
      * Aplica el radio personalizado
      */
@@ -439,79 +416,11 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         this.showRangeDialog = false;
         this.customRadius = this.defaultRadius;
     }
-
-    toggleRangeDrawer(): void {
-        if (this.hasUserRange) {
-            this.showRangeDrawer = !this.showRangeDrawer;
-        } else {
-            this.msgService.add({
-                severity: 'warn',
-                summary: 'Sin rango',
-                detail: 'Selecciona un usuario para ver su rango',
-                life: 3000
-            });
-        }
-    }
     get hasUserRange(): boolean {
         return this.userRange !== null;
     }
 
-    get rangeRadiusText(): string {
-        return this.userRange ? `${this.userRange.range.radius}m` : '';
-    }
-
-    clearUserRange(): void {
-        this.mapService.clearUserRange();
-        this.mapService.clearCustomerMarkers();
-        this.userRange = null;
-        this.customers = [];
-        this.filteredCustomers = [];
-        this.customerSearchTerm = '';
-        this.showRangeInfo = false;
-    }
-
-    async copyRangeToClipboard(): Promise<void> {
-        if (!this.userRange) return;
-
-        const { user, range } = this.userRange;
-        const text = `Usuario: ${user.usunombre} (${user.usucod})
-            Centro: ${range.center[0].toFixed(6)}, ${range.center[1].toFixed(6)}
-            Superior Derecho: ${range.northEast[0].toFixed(6)}, ${range.northEast[1].toFixed(6)}
-            Inferior Izquierdo: ${range.southWest[0].toFixed(6)}, ${range.southWest[1].toFixed(6)}
-            Radio: ${range.radius} metros`;
-
-        try {
-            await navigator.clipboard.writeText(text);
-            this.msgService.add({
-                severity: 'success',
-                summary: 'Copiado',
-                detail: 'Coordenadas copiadas al portapapeles',
-                life: 2000
-            });
-        } catch (error) {
-            console.error('Error al copiar:', error);
-            this.msgService.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: 'No se pudo copiar al portapapeles'
-            });
-        }
-    }
-
-    private showRangeNotification(rangeInfo: RangeDisplayInfo): void {
-        const { user, range } = rangeInfo;
-
-        this.msgService.add({
-            severity: 'info',
-            summary: `Rango de ${user.usunombre}`,
-            detail: `Radio: ${range.radius}m | Superior: ${range.northEast[0].toFixed(4)}, ${range.northEast[1].toFixed(4)} | Inferior: ${range.southWest[0].toFixed(4)}, ${range.southWest[1].toFixed(4)}`,
-            life: 3000
-        });
-    }
     //=============================================================================================//
-
-
-
 
     //=====MÉTODO PARA EL BUSCADOR DEL MAPA========================================================//
     searchLocationOnMap(): void {
@@ -546,7 +455,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     }
     //=============================================================================================//
 
-
     //=====MÉTODO DE REFRESH (LOADING) MAPA/DATA================================================================//
     resetMapView(): void {
         this.selectedUser = null;
@@ -563,7 +471,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         this.resetMapView();
         this.customers = [];
 
-
         this.msgService.add({
             severity: 'info',
             summary: 'Datos actualizados',
@@ -572,7 +479,163 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         });
     }
     //=============================================================================================//
+
+    // Métodos para autoComplete
+    searchTimeUnit(event: any): void {
+        const query = event.query.toLowerCase();
+        const allTimeUnits = [
+            { label: 'Horas', value: 'Horas' },
+            { label: 'Minutos', value: 'Minutos' },
+            { label: 'Días', value: 'Días' }
+        ];
+
+        this.timeUnitOptions = allTimeUnits.filter((option) => option.label.toLowerCase().includes(query));
+    }
+
+    searchGeofence(event: any): void {
+        const query = event.query.toLowerCase();
+
+        // Solo buscar si hay usuario seleccionado y geocercas cargadas
+        if (!this.selectedUser || !this.vendorGeocercas.length) {
+            this.geofenceOptions = [];
+            return;
+        }
+
+        // Usar las geocercas del vendor actual con la interfaz correcta
+        this.geofenceOptions = this.vendorGeocercas
+            .filter((geocerca) => geocerca.geocnom.toLowerCase().includes(query) || geocerca.geocciud.toLowerCase().includes(query) || geocerca.geocprov.toLowerCase().includes(query))
+            .map((geocerca) => ({
+                label: `${geocerca.geocnom} - ${geocerca.geocciud}`,
+                value: geocerca.geoccod,
+                geocerca: geocerca
+            }));
+    }
+
+    getActiveFiltersCount(): number {
+        let count = 0;
+        if (this.filterFrom) count++;
+        if (this.geofenceEnabled && this.selectedGeofence) count++;
+        if (this.pedidosEnabled) count++;
+        if (this.collectionsEnabled) count++;
+        if (this.timeValue && this.selectedTimeUnit) count++;
+        return count;
+    }
+
+    clearFilters(): void {
+        this.filterFrom = null;
+        this.geofenceEnabled = false;
+        this.selectedGeofence = null;
+        this.pedidosEnabled = false;
+        this.collectionsEnabled = false;
+        this.timeValue = null;
+        this.selectedTimeUnit = null;
+    }
+
+    applyFilters(): void {
+        // Tu lógica de filtrado
+    }
+
+    //===============NUEVOS MÉTODOS PARA SCROLL INFINITO========================================//
+
+    /**
+     * Maneja el evento de scroll para detectar cuando cargar más usuarios
+     */
+    onScroll(event: Event): void {
+        const element = event.target as HTMLElement;
+        const { scrollTop, scrollHeight, clientHeight } = element;
+
+        // Calcular si estamos cerca del final
+        const isNearBottom = scrollTop + clientHeight >= scrollHeight - this.scrollThreshold;
+
+        // Solo cargar más si cumple todas las condiciones
+        if (isNearBottom && !this.loadingMore && !this.hasReachedEnd && this.canLoadMore()) {
+            this.loadMoreUsers();
+        }
+    }
+
+    /**
+     * Verifica si se pueden cargar más usuarios
+     */
+    private canLoadMore(): boolean {
+        const totalLoaded = this.paginatedUsers.length;
+        const totalAvailable = this.filteredUsers.length;
+        return totalLoaded < totalAvailable;
+    }
+
+    /**
+     * Carga más usuarios con skeleton
+     */
+    private loadMoreUsers(): void {
+        if (this.loadingMore) return;
+
+        this.loadingMore = true;
+
+        // Simular delay de carga para mostrar skeleton
+        setTimeout(() => {
+            const startIndex = this.currentPage * this.itemsPerPage;
+            const endIndex = startIndex + this.itemsPerPage;
+            const nextBatch = this.filteredUsers.slice(startIndex, endIndex);
+
+            if (nextBatch.length > 0) {
+                // Agregar nuevos usuarios a la lista existente
+                this.paginatedUsers = [...this.paginatedUsers, ...nextBatch];
+                this.currentPage++;
+
+                // Verificar si hemos llegado al final
+                if (this.paginatedUsers.length >= this.filteredUsers.length) {
+                    this.hasReachedEnd = true;
+                }
+            } else {
+                this.hasReachedEnd = true;
+            }
+
+            this.loadingMore = false;
+        }, 600); // Tiempo ajustable según necesidades
+    }
+
+    /**
+     * Resetea el estado del scroll infinito
+     */
+    private resetInfiniteScroll(): void {
+        this.currentPage = 0;
+        this.loadingMore = false;
+        this.hasReachedEnd = false;
+        this.paginatedUsers = [];
+
+        // Cargar la primera página
+        this.loadInitialUsers();
+    }
+
+    /**
+     * Carga los usuarios iniciales
+     */
+    private loadInitialUsers(): void {
+
+        this.paginatedUsers = this.filteredUsers.slice(0, this.itemsPerPage);
+        this.currentPage = 1;
+
+        // Verificar si ya no hay más usuarios
+        if (this.paginatedUsers.length >= this.filteredUsers.length) {
+            this.hasReachedEnd = true;
+        }
+    }
+
+    /**
+     * Scroll suave al inicio (útil después de filtros)
+     */
+    scrollToTop(): void {
+        if (this.scrollContainer?.nativeElement) {
+            this.scrollContainer.nativeElement.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+    }
+
     ngOnDestroy(): void {
+        if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+        }
         this.destroy$.next();
         this.destroy$.complete();
         this.mapService.destroyMap();

@@ -592,9 +592,9 @@ export class MapService {
 
                 this.initializeMarkerCluster();
 
-                requestAnimationFrame(() => {
+                setTimeout(() => {
                     this.map?.invalidateSize();
-                });
+                }, 0);
 
                 this.mapInitialized$.next(true);
                 console.log('Mapa inicializado correctamente');

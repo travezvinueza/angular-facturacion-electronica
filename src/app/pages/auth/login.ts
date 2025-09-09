@@ -41,12 +41,12 @@ import { CommonModule } from '@angular/common';
                             </svg>
                             <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">Egas Tamayo & Asociados</div>
                             <span class="text-muted-color font-medium text-sm">
-        Contabilidad, Impuestos, Nómina
-    </span>
+                                Contabilidad, Impuestos, Nómina
+                            </span>
                             <div class="mt-2">
-        <span class="text-muted-color font-medium">
-            {{ mostrarSelectorEmpresa() ? 'Selecciona una empresa' : 'Inicia sesión para continuar' }}
-        </span>
+                            <span class="text-muted-color font-medium">
+                                {{ mostrarSelectorEmpresa() ? 'Selecciona una empresa' : 'Inicia sesión para continuar' }}
+                            </span>
                             </div>
                         </div>
 
@@ -83,34 +83,38 @@ import { CommonModule } from '@angular/common';
                             </div>
 
                             <div class="space-y-3">
-                                <p-card *ngFor="let empresa of empresasDisponibles()"
-                                        styleClass="cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-800 transition-all duration-200 border-1 hover:border-primary-300"
+                                @for (empresa of empresasDisponibles(); track empresa.id) {
+                                    <p-card
+                                        class="cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-800 transition-all duration-200 border-1 hover:border-primary-300"
                                         (click)="seleccionarEmpresa(empresa.id)">
-                                    <div class="flex items-center gap-4">
-                                        <!-- Icono de empresa -->
-                                        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30">
-                                            <i class="pi pi-building text-primary text-xl"></i>
-                                        </div>
 
-                                        <!-- Información de la empresa -->
-                                        <div class="flex-1">
-                                            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-1">
-                                                {{ empresa.nomempresa }}
-                                            </h3>
-                                            <div class="flex items-center gap-2">
-                                                <i class="pi pi-tag text-surface-500 text-sm"></i>
-                                                <p class="text-sm text-surface-600 dark:text-surface-400">
-                                                    ID: {{ empresa.id }}
-                                                </p>
+                                        <div class="flex items-center gap-4">
+                                            <!-- Icono de empresa -->
+                                            <div class="flex items-center justify-center w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30">
+                                                <i class="pi pi-building text-primary text-xl"></i>
+                                            </div>
+
+                                            <!-- Información de la empresa -->
+                                            <div class="flex-1">
+                                                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-1">
+                                                    {{ empresa.nomempresa }}
+                                                </h3>
+                                                <div class="flex items-center gap-2">
+                                                    <i class="pi pi-tag text-surface-500 text-sm"></i>
+                                                    <p class="text-sm text-surface-600 dark:text-surface-400">
+                                                        ID: {{ empresa.id }}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <!-- Flecha de acceso -->
+                                            <div class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-100 dark:bg-surface-700">
+                                                <i class="pi pi-arrow-right text-primary text-sm"></i>
                                             </div>
                                         </div>
+                                    </p-card>
+                                }
 
-                                        <!-- Flecha de acceso -->
-                                        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-100 dark:bg-surface-700">
-                                            <i class="pi pi-arrow-right text-primary text-sm"></i>
-                                        </div>
-                                    </div>
-                                </p-card>
                             </div>
 
                             <div class="mt-6">

@@ -155,7 +155,7 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
     searchLocation: string = '';
     searchingLocation: boolean = false;
     searchResults: SearchResult[] = [];
-    mapInitialized: boolean = false;
+        mapInitialized: boolean = false;
     //=================================================================//
 
 
