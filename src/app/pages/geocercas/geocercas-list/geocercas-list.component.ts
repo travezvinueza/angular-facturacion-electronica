@@ -704,7 +704,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     }
     //=============================================================================================//
 
-    //=====MÉTODO DE REFRESH (LOADING) MAPA/DATA================================================================//
+    //=====MÉTODO DE REFRESH (LOADING) MAPA/DATA==================================================================//
 
 
 
