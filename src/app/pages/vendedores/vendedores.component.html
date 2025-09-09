@@ -2,70 +2,67 @@
 <div class="flex flex-col md:flex-row gap-8">
     <!-- Cuerpo principal: Panel izquierdo + derecho -->
     <div class="flex flex-1 flex-col lg:flex-row gap-2 sm:gap-4 overflow-hidden min-h-0">
-        <!-- Panel Izquierdo - Lista de Usuarios -->
-        <div class="w-full lg:w-1/3 flex flex-col">
-            <p-card class="flex flex-col flex-1 overflow-hidden h-full">
-                <!-- Header Simplificado -  -->
-                @if (!selectedUser) {
-                    <div>
+        <!-- Panel Izquierdo - Lista de Vendedores -->
+        <div class="w-full lg:w-1/4 flex flex-col">
+            <div class="flex flex-col flex-1 overflow-hidden h-full bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg shadow-sm">
+                <!-- Header + Toolbar OPTIMIZADO -->
+                <div class="relative overflow-hidden p-4 bg-gradient-to-br from-white via-surface-50/80 to-surface-100/30 dark:from-surface-900 dark:via-surface-800/90 dark:to-surface-900/60 rounded-t-lg border-b border-surface-200/60 dark:border-surface-700/60">
+                    <!-- Background pattern -->
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-primary-50/10 to-transparent dark:via-primary-900/5"></div>
 
-                        <!-- Buscador -->
-                        <div class="relative">
-                            <input
-                                type="text"
-                                placeholder="Buscar vendedor..."
-                                (input)="onSearch($event)"
-                                class="w-full py-3 pl-11 pr-4 text-sm rounded-xl border-2 border-surface-200/80 dark:border-surface-600/80 bg-gradient-to-r from-white to-surface-50/50 dark:from-surface-800 dark:to-surface-800/80 hover:border-primary-300/60 dark:hover:border-primary-600/60 focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/80 transition-all duration-200 shadow-sm">
-                            <div class="absolute left-3.5 top-1/2 transform -translate-y-1/2">
-                                <i class="pi pi-search text-primary-400 dark:text-primary-500"></i>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="relative">
+                        <!-- Vista: Lista de Vendedores -->
+                        @if (!selectedUser) {
+                            <!-- Buscador mejorado (sin header) -->
+                            <div class="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Buscar vendedores..."
+                                    (input)="onSearch($event)"
+                                    class="w-full py-3 pl-11 pr-12 text-sm rounded-xl border-2 border-surface-200/80 dark:border-surface-600/80 bg-gradient-to-r from-white to-surface-50/50 dark:from-surface-800 dark:to-surface-800/80 hover:border-primary-300/60 dark:hover:border-primary-600/60 focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/80 transition-all duration-200 shadow-sm">
 
-                    <!-- Información de estado -->
-                    <div class="flex justify-between items-center text-xs text-surface-600 dark:text-surface-400 px-4 py-2">
-                        <span>
-                            @if (filteredUsers.length > 0) {
-                                {{ filteredUsers.length }} vendedores disponibles
-                            }
-                        </span>
-                    </div>
-                }
-
-                <!-- Vista de vendedor seleccionado -->
-                @if (selectedUser) {
-                    <!-- Header del vendedor seleccionado con gradiente -->
-                    <div class="relative overflow-hidden border-b border-surface-200/80 dark:border-surface-700/80 pb-3 mb-4">
-                        <!-- Background gradual sutil -->
-                        <div class="absolute inset-0 bg-gradient-to-r from-primary-50/30 via-transparent to-primary-100/20 dark:from-primary-900/10 dark:via-transparent dark:to-primary-800/10"></div>
-
-                        <div class="relative">
-                            <div class="flex items-center justify-between mb-3 px-4">
-                                <!-- Botón volver y título -->
-                                <div class="flex items-center gap-3">
-                                    <button
-                                        (click)="refreshData()"
-                                        class="p-2 rounded-xl hover:bg-surface-100/80 dark:hover:bg-surface-700/60 transition-all duration-200 hover:scale-105 border border-surface-200/60 dark:border-surface-600/60"
-                                        title="Volver a la lista">
-                                        <i class="pi pi-arrow-left text-sm text-surface-600 dark:text-surface-400"></i>
-                                    </button>
+                                <!-- Icono de búsqueda -->
+                                <div class="absolute left-3.5 top-1/2 transform -translate-y-1/2">
+                                    <i class="pi pi-search text-primary-400 dark:text-primary-500"></i>
                                 </div>
 
-                                <!-- Badge de estado mejorado -->
-                                <span class="inline-flex items-center px-3 py-1.5 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-semibold shadow-lg border border-green-400/30">
-                    <div class="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
-                    EN USO
-                </span>
+                                <!-- Botón limpiar -->
+                                <button
+                                    class="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 flex items-center justify-center text-surface-400 hover:text-primary-500 dark:hover:text-primary-400 transition-colors rounded-full hover:bg-surface-100/80 dark:hover:bg-surface-700/60"
+                                    title="Limpiar búsqueda">
+                                    <i class="pi pi-times text-xs"></i>
+                                </button>
                             </div>
 
-                            <!-- Información del vendedor con diseño mejorado -->
-                            <div class="mx-4 relative overflow-hidden rounded-xl bg-gradient-to-br from-white via-surface-50/80 to-surface-100/40 dark:from-surface-800 dark:via-surface-800/90 dark:to-surface-900/60 border border-surface-200/80 dark:border-surface-600/80 shadow-sm">
-                                <!-- Pattern decorativo -->
-                                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-primary-50/10 to-transparent dark:via-primary-900/5"></div>
+                            <!-- Información de estado -->
+                            @if (filteredUsers.length > 0) {
+                                <div class="mt-3 flex justify-between items-center text-xs text-surface-600 dark:text-surface-400">
+                                    <span>{{ filteredUsers.length }} vendedores disponibles</span>
+                                </div>
+                            }
+                        }
 
-                                <div class="relative p-4">
-                                    <div class="flex items-center gap-4">
-                                        <!-- Avatar mejorado -->
+                        <!-- Vista: Información del Vendedor Seleccionado -->
+                        @if (selectedUser) {
+                            <div class="space-y-3">
+                                <!-- Información detallada del vendedor -->
+                                <div class="bg-gradient-to-br from-white via-surface-50/60 to-surface-100/30 dark:from-surface-800 dark:via-surface-800/80 dark:to-surface-900/40 rounded-xl border border-surface-200/60 dark:border-surface-700/60 p-4">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <button
+                                            (click)="refreshData()"
+                                            class="w-8 h-8 flex items-center justify-center rounded-lg bg-surface-100/80 dark:bg-surface-700/60 hover:bg-primary-100/80 dark:hover:bg-primary-900/40 border border-surface-200/60 dark:border-surface-600/60 hover:border-primary-300/60 dark:hover:border-primary-600/60 transition-all duration-200 group">
+                                            <i class="pi pi-arrow-left text-surface-600 dark:text-surface-400 group-hover:text-primary-600 dark:group-hover:text-primary-400 text-sm"></i>
+                                        </button>
+
+                                        <!-- Badge de estado EN USO -->
+                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-semibold shadow-lg border border-green-400/30">
+                                    <div class="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
+                                    EN USO
+                                </span>
+                                    </div>
+
+                                    <div class="flex items-center gap-3 mb-3">
+                                        <!-- Avatar con indicador online -->
                                         <div class="relative flex-shrink-0">
                                             <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-primary-100 via-primary-200/60 to-primary-300/40 dark:from-primary-900/50 dark:via-primary-800/70 dark:to-primary-700/50 border border-primary-200/60 dark:border-primary-600/40 shadow-md">
                                                 <i class="pi pi-user text-primary-600 dark:text-primary-300 text-lg"></i>
@@ -76,268 +73,160 @@
                                             </div>
                                         </div>
 
-                                        <!-- Info principal -->
                                         <div class="flex-1 min-w-0">
-                                            <!-- Código del vendedor -->
-                                            <div class="flex items-center gap-2 mb-2">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-surface-100/80 dark:bg-surface-700/60 border border-surface-200/60 dark:border-surface-600/60 text-xs font-mono font-medium text-surface-700 dark:text-surface-300">
-                                    <i class="pi pi-id-card mr-1.5 text-xs"></i>
-                                    {{ selectedUser.codigoVendedor }}
-                                </span>
-                                                @if (selectedUser.codigoVendedorSecundario) {
-                                                    <span class="inline-flex items-center px-2 py-1 rounded-md bg-surface-200/60 dark:bg-surface-600/40 text-xs font-mono text-surface-600 dark:text-surface-400">
-                                        {{ selectedUser.codigoVendedorSecundario }}
-                                    </span>
-                                                }
-                                            </div>
-
-                                            <!-- Nombre del vendedor -->
-                                            <h6 class="font-bold text-surface-900 dark:text-surface-0 mb-2 text-base leading-tight">
+                                            <h6 class="font-bold text-surface-900 dark:text-surface-100 mb-1 truncate text-base">
                                                 {{ selectedUser.nombreVendedor }}
                                             </h6>
-
-                                            <!-- Ubicación -->
-                                            @if (selectedUser.ubicacionActual) {
-                                                <div class="flex items-center gap-2">
-                                                    <div class="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-100/80 dark:bg-blue-900/30 border border-blue-200/60 dark:border-blue-700/40">
-                                                        <i class="pi pi-map-marker text-blue-600 dark:text-blue-400 text-xs"></i>
-                                                    </div>
-                                                    <span
-                                                        class="text-sm text-surface-700 dark:text-surface-300 font-medium truncate"
-                                                        [title]="selectedUser.ubicacionActual.geublat + ', ' + selectedUser.ubicacionActual.geublon">
-                                                        {{ getUserLocationName(selectedUser) }}
-                                                    </span>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Lista de Geocercas MEJORADA -->
-                    <div class="flex-1 overflow-hidden px-4">
-                        <!-- Header Geocercas -->
-                        <div class="mb-6">
-                            <div class="flex items-center gap-3 mb-4">
-                                <div class="w-8 h-8 flex items-center justify-center rounded-xl bg-gradient-to-br from-red-100 to-red-200/60 dark:from-red-900/40 dark:to-red-800/60 border border-red-200/60 dark:border-red-700/40">
-                                    <i class="pi pi-map text-red-600 dark:text-red-400 text-sm"></i>
-                                </div>
-                                <h6 class="text-sm font-bold text-surface-800 dark:text-surface-200 uppercase tracking-wider">
-                                    GEOCERCAS ASIGNADAS
-                                </h6>
-                            </div>
-
-                            <!-- Botón Agregar mejorado -->
-                            <button
-                                class="w-full relative overflow-hidden bg-gradient-to-r from-red-500 via-red-600 to-red-700 hover:from-red-600 hover:via-red-700 hover:to-red-800 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 border border-red-400/30"
-                                (click)="openAddGeocercaDialog()">
-                                <!-- Efecto brillante -->
-                                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-                                <div class="relative flex items-center justify-center gap-2 uppercase tracking-wide text-sm">
-                                    <i class="pi pi-plus text-sm"></i>
-                                    AGREGAR GEOCERCA
-                                </div>
-                            </button>
-                        </div>
-
-                        <!-- Lista de geocercas -->
-                        @if (selectedUser && selectedUser.totalGeocercas > 0) {
-                            <!-- Buscador mejorado -->
-                            <div class="mb-4">
-                                <div class="relative">
-                                    <input
-                                        type="text"
-                                        placeholder="Buscar geocerca por nombre o código..."
-                                        [(ngModel)]="filtroGeocerca"
-                                        (input)="filtrarGeocercasList()"
-                                        class="w-full px-4 py-3 pl-12 text-sm border-2 border-surface-200/80 dark:border-surface-600/80 rounded-xl bg-gradient-to-r from-white to-surface-50/50 dark:from-surface-800 dark:to-surface-800/80 hover:border-primary-300/60 dark:hover:border-primary-600/60 focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/80 transition-all duration-200 shadow-sm">
-                                    <div class="absolute left-4 top-1/2 transform -translate-y-1/2">
-                                        <i class="pi pi-search text-surface-400 dark:text-surface-500"></i>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Lista scrolleable de geocercas MEJORADA -->
-                            <div class="max-h-96 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-                                @for (geocerca of geocercasFiltradas; track geocerca.geoccod) {
-                                    <div class="relative overflow-hidden rounded-xl border border-surface-200/80 dark:border-surface-600/80 bg-gradient-to-br from-white via-surface-50/60 to-surface-100/30 dark:from-surface-700 dark:via-surface-700/90 dark:to-surface-800/60 hover:from-primary-50/30 hover:via-white hover:to-primary-100/20 dark:hover:from-surface-600/80 dark:hover:via-surface-700/60 dark:hover:to-primary-900/20 transition-all duration-300 group hover:shadow-lg hover:border-primary-200/60 dark:hover:border-primary-600/60 hover:-translate-y-0.5">
-
-                                        <!-- Background pattern -->
-                                        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-surface-100/20 to-transparent dark:via-surface-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-                                        <div class="relative p-4">
-                                            <!-- Header de la geocerca -->
-                                            <div class="flex justify-between items-start mb-3">
-                                                <div class="flex-1 min-w-0">
-                                                    <!-- Código primero -->
-                                                    <div class="flex items-center gap-2 mb-2">
-                                        <span class="inline-flex items-center px-2 py-1 rounded-md bg-surface-100/80 dark:bg-surface-600/60 border border-surface-200/60 dark:border-surface-500/60 text-xs font-mono font-medium text-surface-700 dark:text-surface-300">
-                                            <i class="pi pi-hashtag mr-1 text-xs"></i>
-                                            {{ geocerca.geoccod }}
+                                            <div class="flex items-center gap-2">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-surface-100/80 dark:bg-surface-700/60 border border-surface-200/60 dark:border-surface-600/60 text-xs font-mono font-medium text-surface-700 dark:text-surface-300">
+                                            <i class="pi pi-id-card mr-1.5 text-xs"></i>
+                                            {{ selectedUser.codigoVendedor }}
                                         </span>
-                                                    </div>
+                                                @if (selectedUser.codigoVendedorSecundario) {
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded bg-surface-200/60 dark:bg-surface-600/40 text-xs font-mono text-surface-600 dark:text-surface-400">
+                                                {{ selectedUser.codigoVendedorSecundario }}
+                                            </span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                                    <!-- Nombre de la geocerca (h6) -->
-                                                    <h6 class="font-bold text-surface-900 dark:text-surface-0 group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors leading-tight uppercase tracking-wide mb-1">
-                                                        {{ geocerca.geocnom }}
-                                                    </h6>
+                                    <!-- Información de ubicación -->
+                                    <div class="space-y-3">
+                                        <div class="flex items-center gap-2 mb-3">
+                                            <i class="pi pi-map text-surface-600 dark:text-surface-400"></i>
+                                            <span class="font-semibold text-surface-700 dark:text-surface-300 text-sm">Información de Ubicación</span>
+                                        </div>
+
+                                        @if (selectedUser.ubicacionActual) {
+                                            <div class="flex items-center gap-2">
+                                                <div class="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-100/80 dark:bg-blue-900/30 border border-blue-200/60 dark:border-blue-700/40">
+                                                    <i class="pi pi-map-marker text-blue-600 dark:text-blue-400 text-xs"></i>
+                                                </div>
+                                                <span
+                                                    class="text-sm text-surface-700 dark:text-surface-300 font-medium truncate"
+                                                    [title]="selectedUser.ubicacionActual.geublat + ', ' + selectedUser.ubicacionActual.geublon">
+                                            {{ getUserLocationName(selectedUser) }}
+                                        </span>
+                                            </div>
+
+                                            <div class="border-t border-surface-200/60 dark:border-surface-700/60 pt-3">
+                                                <!-- Estado y fecha en una línea -->
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                                        <span class="text-xs font-medium text-green-600 dark:text-green-400">Ubicación activa</span>
+                                                    </div>
+                                                    @if (selectedUser.ubicacionActual.geubfech) {
+                                                        <span class="text-xs text-surface-500 dark:text-surface-500">
+                                                    {{ getLocationTimeAgo(selectedUser.ubicacionActual.geubfech) }}
+                                                </span>
+                                                    }
                                                 </div>
 
-                                                <!-- Estado visual mejorado -->
-                                                <div class="flex items-center gap-2">
-                                                    <div class="relative">
-                                                        <div class="w-4 h-4 rounded-full border-2 border-white dark:border-surface-700 shadow-sm"
-                                                             [class]="geocerca.geocact ? 'bg-green-500' : 'bg-gray-400'"
-                                                             [pTooltip]="geocerca.geocact ? 'Geocerca Activa' : 'Geocerca Inactiva'"
-                                                             tooltipPosition="left">
+                                                <!-- Coordenadas compactas -->
+                                                <div class="bg-white dark:bg-surface-700/50 rounded-lg border border-surface-200/60 dark:border-surface-600/60 p-2">
+                                                    <div class="flex items-center justify-between">
+                                                        <div class="flex items-center gap-2">
+                                                            <i class="pi pi-compass text-blue-500 text-xs"></i>
+                                                            <div class="flex items-center gap-3 text-xs">
+                                                                <span class="text-surface-500 dark:text-surface-500">Lat:</span>
+                                                                <span class="font-mono text-surface-700 dark:text-surface-300">{{ selectedUser.ubicacionActual.geublat | number:'1.4-4' }}</span>
+                                                                <span class="text-surface-300 dark:text-surface-600">|</span>
+                                                                <span class="text-surface-500 dark:text-surface-500">Lng:</span>
+                                                                <span class="font-mono text-surface-700 dark:text-surface-300">{{ selectedUser.ubicacionActual.geublon | number:'1.4-4' }}</span>
+                                                            </div>
                                                         </div>
-                                                        @if (geocerca.geocact) {
-                                                            <div class="absolute inset-0 bg-green-400 rounded-full animate-ping opacity-75"></div>
-                                                        }
+                                                        <button
+                                                            (click)="copyCoordinates(selectedUser.ubicacionActual)"
+                                                            class="text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 p-1 rounded hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all"
+                                                            title="Copiar coordenadas">
+                                                            <i class="pi pi-copy text-xs"></i>
+                                                        </button>
                                                     </div>
+
+                                                    @if (selectedUser.ubicacionActual.geubfech) {
+                                                        <div class="mt-2 pt-2 border-t border-surface-200/40 dark:border-surface-600/40">
+                                                            <div class="text-xs text-surface-600 dark:text-surface-400">
+                                                                {{ formatLocationDateTime(selectedUser.ubicacionActual.geubfech) }}
+                                                            </div>
+                                                        </div>
+                                                    }
                                                 </div>
                                             </div>
-
-                                            <!-- Información de ubicación mejorada -->
-                                            <div class="space-y-2 mb-3">
-                                                <div class="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
-                                                    <div class="flex items-center justify-center w-5 h-5 rounded-md bg-blue-100/80 dark:bg-blue-900/30 border border-blue-200/40 dark:border-blue-700/40">
-                                                        <i class="pi pi-map-marker text-blue-600 dark:text-blue-400 text-xs"></i>
-                                                    </div>
-                                                    <span class="font-medium">{{ geocerca.geocsec }}, {{ geocerca.geocciud }}</span>
-                                                </div>
-                                                <div class="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
-                                                    <div class="flex items-center justify-center w-5 h-5 rounded-md bg-emerald-100/80 dark:bg-emerald-900/30 border border-emerald-200/40 dark:border-emerald-700/40">
-                                                        <i class="pi pi-globe text-emerald-600 dark:text-emerald-400 text-xs"></i>
-                                                    </div>
-                                                    <span class="font-medium">{{ geocerca.geocprov }}</span>
+                                        } @else {
+                                            <div class="border-t border-surface-200/60 dark:border-surface-700/60 pt-3">
+                                                <div class="flex items-center gap-2 text-center bg-orange-50/80 dark:bg-orange-900/20 rounded-lg border border-orange-200/60 dark:border-orange-700/60 p-2">
+                                                    <i class="pi pi-exclamation-triangle text-orange-600 dark:text-orange-400 text-sm"></i>
+                                                    <span class="text-xs text-orange-700 dark:text-orange-300 font-medium">Sin ubicación registrada</span>
                                                 </div>
                                             </div>
-
-                                            <!-- Badges mejorados -->
-                                            <div class="flex items-center gap-2 mb-4 flex-wrap">
-                                                <!-- Badge de Prioridad -->
-                                                <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border shadow-sm"
-                                                      [style.background-color]="getGeocercaColor(geocerca.geocpri) + '15'"
-                                                      [style.color]="getGeocercaColor(geocerca.geocpri)"
-                                                      [style.border-color]="getGeocercaColor(geocerca.geocpri) + '30'">
-                                    <i class="pi pi-flag mr-1.5"></i>
-                                    Prioridad {{ geocerca.geocpri }}
-                                </span>
-
-                                                <!-- Badge de Estado -->
-                                                <span [class]="'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border shadow-sm ' + (geocerca.geocact ? 'bg-green-100/80 text-green-700 border-green-200/60 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700/40' : 'bg-gray-100/80 text-gray-700 border-gray-200/60 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-700/40')">
-                                    <i [class]="'mr-1.5 ' + (geocerca.geocact ? 'pi pi-check-circle' : 'pi pi-ban')"></i>
-                                                    {{ geocerca.geocact ? 'Activa' : 'Inactiva' }}
-                                </span>
-                                            </div>
-
-                                            <!-- Botones de acción mejorados -->
-                                            <div class="flex justify-between items-center">
-                                                <!-- Botón centrar en mapa -->
-                                                <button class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-50/80 dark:bg-primary-900/20 border border-primary-200/60 dark:border-primary-700/40 text-primary-700 dark:text-primary-300 hover:bg-primary-100/80 dark:hover:bg-primary-800/30 transition-all duration-200 text-xs font-medium"
-                                                        (click)="centrarMapaEnGeocerca(geocerca)">
-                                                    <i class="pi pi-eye"></i>
-                                                    Ver en mapa
-                                                </button>
-                                                <!-- Botón Desvincular -->
-                                                <button class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-orange-100/80 dark:hover:bg-orange-900/30 border border-transparent hover:border-orange-200/60 dark:hover:border-orange-700/40 transition-all duration-200 group"
-                                                        (click)="confirmarDesvincularGeocerca(geocerca)"
-                                                        [disabled]="loading"
-                                                        pTooltip="Desvincular geocerca del vendedor"
-                                                        tooltipPosition="top">
-                                                    <i class="pi pi-sign-out text-orange-500 dark:text-orange-400 group-hover:scale-110 transition-transform duration-200"></i>
-                                                </button>
-                                            </div>
-                                        </div>
+                                        }
                                     </div>
-                                }
+                                </div>
 
-                                <!-- Mensaje si no hay geocercas filtradas -->
-                                @if (geocercasFiltradas.length === 0 && filtroGeocerca) {
-                                    <div class="text-center py-12">
-                                        <div class="relative">
-                                            <div class="absolute inset-0 bg-gradient-to-br from-surface-100/50 via-transparent to-surface-200/30 dark:from-surface-800/30 dark:to-surface-900/50 rounded-2xl"></div>
-                                            <div class="relative p-8">
-                                                <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-surface-200 to-surface-300 dark:from-surface-700 dark:to-surface-800 rounded-full flex items-center justify-center">
-                                                    <i class="pi pi-search text-2xl text-surface-500 dark:text-surface-400"></i>
-                                                </div>
-                                                <h6 class="text-surface-700 dark:text-surface-300 font-semibold mb-2">
-                                                    Sin resultados
-                                                </h6>
-                                                <p class="text-surface-500 dark:text-surface-500 text-sm">
-                                                    No se encontraron geocercas que coincidan con "{{ filtroGeocerca }}"
-                                                </p>
-                                            </div>
+                                <!-- Header Geocercas con botón agregar -->
+                                <div class="space-y-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 flex items-center justify-center rounded-xl bg-gradient-to-br from-red-100 to-red-200/60 dark:from-red-900/40 dark:to-red-800/60 border border-red-200/60 dark:border-red-700/40">
+                                            <i class="pi pi-map text-red-600 dark:text-red-400 text-sm"></i>
                                         </div>
-                                    </div>
-                                }
-                            </div>
-
-                        } @else {
-                            <!-- Estado vacío mejorado -->
-                            <div class="text-center py-16">
-                                <div class="relative">
-                                    <!-- Background decorativo -->
-                                    <div class="absolute inset-0 bg-gradient-to-br from-surface-100/50 via-transparent to-surface-200/30 dark:from-surface-800/30 dark:to-surface-900/50 rounded-3xl"></div>
-
-                                    <!-- Contenido -->
-                                    <div class="relative p-12">
-                                        <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-surface-200 to-surface-300 dark:from-surface-700 dark:to-surface-800 rounded-2xl flex items-center justify-center border border-surface-300/60 dark:border-surface-600/60">
-                                            <i class="pi pi-map text-3xl text-surface-500 dark:text-surface-400"></i>
-                                        </div>
-                                        <h6 class="text-surface-700 dark:text-surface-300 font-bold mb-3 text-base">
-                                            Sin geocercas asignadas
+                                        <h6 class="text-sm font-bold text-surface-800 dark:text-surface-200 uppercase tracking-wider">
+                                            GEOCERCAS ASIGNADAS
                                         </h6>
-                                        <p class="text-surface-500 dark:text-surface-500 text-sm max-w-sm mx-auto leading-relaxed">
-                                            Este vendedor no tiene geocercas configuradas. Utiliza el botón "Agregar Geocerca" para asignar nuevas áreas de trabajo.
-                                        </p>
                                     </div>
+
+                                    <!-- Botón Agregar geocerca -->
+                                    <button
+                                        class="w-full relative overflow-hidden bg-gradient-to-r from-red-500 via-red-600 to-red-700 hover:from-red-600 hover:via-red-700 hover:to-red-800 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 border border-red-400/30"
+                                        (click)="openAddGeocercaDialog()">
+                                        <!-- Efecto brillante -->
+                                        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+                                        <div class="relative flex items-center justify-center gap-2 uppercase tracking-wide text-sm">
+                                            <i class="pi pi-plus text-sm"></i>
+                                            AGREGAR GEOCERCA
+                                        </div>
+                                    </button>
+
+                                    <!-- Buscador de geocercas -->
+                                    @if (selectedUser && selectedUser.totalGeocercas > 0) {
+                                        <div class="relative">
+                                            <input
+                                                type="text"
+                                                placeholder="Buscar geocerca..."
+                                                [(ngModel)]="filtroGeocerca"
+                                                (input)="filtrarGeocercasList()"
+                                                class="w-full py-2.5 pl-10 pr-4 text-sm rounded-lg border border-surface-200/80 dark:border-surface-600/80 bg-white dark:bg-surface-800 hover:border-primary-300/60 dark:hover:border-primary-600/60 focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/80 transition-all duration-200">
+
+                                            <div class="absolute left-3 top-1/2 transform -translate-y-1/2">
+                                                <i class="pi pi-search text-surface-400 dark:text-surface-500 text-sm"></i>
+                                            </div>
+                                        </div>
+                                    }
                                 </div>
                             </div>
                         }
                     </div>
-                }
+                </div>
 
-                <!-- Lista de vendedores (solo cuando no hay selección) -->
-                @if (!selectedUser) {
-                    <div class="flex-1 overflow-auto min-h-0">
-                        <!-- Loading Skeleton MEJORADO -->
+                <!-- Contenido Principal -->
+                <div class="overflow-hidden flex-1">
+                    <!-- Vista: Lista de Vendedores -->
+                    @if (!selectedUser) {
+                        <!-- Loading Skeleton -->
                         @if (loading) {
-                            <div class="space-y-3 px-3">
-                                @for (item of [1, 2, 3, 4]; track item) {
+                            <div class="space-y-3 p-3 max-h-[400px] overflow-y-auto custom-scrollbar">
+                                @for (item of [1, 2, 3, 4, 5]; track item) {
                                     <div class="rounded-xl border border-surface-200/60 dark:border-surface-700/60 bg-gradient-to-br from-white via-surface-50/50 to-surface-100/20 dark:from-surface-800 dark:via-surface-800/80 dark:to-surface-900/40 p-4">
-                                        <div class="flex items-start gap-3">
+                                        <div class="flex items-center gap-4">
                                             <!-- Avatar skeleton -->
                                             <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-surface-200 to-surface-300 dark:from-surface-700 dark:to-surface-600 animate-pulse"></div>
 
                                             <!-- Content skeleton -->
                                             <div class="flex-1 space-y-2">
-                                                <!-- Código -->
-                                                <div class="flex gap-2">
-                                                    <div class="h-6 w-20 bg-surface-200 dark:bg-surface-700 rounded-md animate-pulse"></div>
-                                                    <div class="h-6 w-16 bg-surface-200 dark:bg-surface-700 rounded-md animate-pulse"></div>
-                                                </div>
-
-                                                <!-- Nombre -->
-                                                <div class="h-5 w-3/4 bg-surface-200 dark:bg-surface-700 rounded animate-pulse"></div>
-
-                                                <!-- Ubicación -->
-                                                <div class="space-y-1">
-                                                    <div class="flex items-center gap-2">
-                                                        <div class="w-5 h-5 bg-surface-200 dark:bg-surface-700 rounded-md animate-pulse"></div>
-                                                        <div class="h-4 w-2/3 bg-surface-200 dark:bg-surface-700 rounded animate-pulse"></div>
-                                                    </div>
-                                                    <div class="flex items-center gap-2">
-                                                        <div class="w-5 h-5 bg-surface-200 dark:bg-surface-700 rounded-md animate-pulse"></div>
-                                                        <div class="h-3 w-1/2 bg-surface-200 dark:bg-surface-700 rounded animate-pulse"></div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Badge geocercas -->
-                                                <div class="h-6 w-24 bg-surface-200 dark:bg-surface-700 rounded-full animate-pulse"></div>
+                                                <div class="h-5 w-32 bg-surface-200 dark:bg-surface-700 rounded animate-pulse"></div>
+                                                <div class="h-4 w-24 bg-surface-200 dark:bg-surface-700 rounded animate-pulse"></div>
+                                                <div class="h-3 w-16 bg-surface-200 dark:bg-surface-700 rounded animate-pulse"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -345,21 +234,26 @@
                             </div>
                         }
 
-                        <!-- Lista Real de Usuarios -->
+                        <!-- Lista Real de Vendedores -->
                         @if (!loading) {
-                            <div class="space-y-3 px-3">
+                            <div
+                                #scrollContainer
+                                class="space-y-3 p-3 custom-scrollbar"
+                                [class]="paginatedUsers.length > 5 ? 'max-h-[70rem] overflow-y-auto' : ''"
+                                (scroll)="onScroll($event)">
+
                                 @for (user of paginatedUsers; track user) {
                                     <div
-                                        class="relative overflow-hidden rounded-xl border border-surface-200/80 dark:border-surface-700/80 bg-gradient-to-br from-white via-surface-50/50 to-surface-100/30 dark:from-surface-800 dark:via-surface-800/80 dark:to-surface-900/50 hover:from-primary-50/40 hover:via-white hover:to-primary-100/20 dark:hover:from-surface-700/80 dark:hover:via-surface-800/60 dark:hover:to-primary-900/20 transition-all duration-300 cursor-pointer group hover:shadow-lg hover:border-primary-200/60 dark:hover:border-primary-700/60 hover:-translate-y-0.5"
+                                        class="relative overflow-hidden rounded-xl border border-surface-200/80 dark:border-surface-600/80 bg-gradient-to-br from-white via-surface-50/60 to-surface-100/30 dark:from-surface-700 dark:via-surface-700/90 dark:to-surface-800/60 hover:from-primary-50/30 hover:via-white hover:to-primary-100/20 dark:hover:from-surface-600/80 dark:hover:via-surface-700/60 dark:hover:to-primary-900/20 transition-all duration-300 group hover:shadow-lg hover:border-primary-200/60 dark:hover:border-primary-600/60 hover:-translate-y-0.5 cursor-pointer"
                                         (click)="selectUser(user)">
 
                                         <!-- Background pattern sutil -->
                                         <div class="absolute inset-0 bg-gradient-to-r from-transparent via-primary-50/20 to-transparent dark:via-primary-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
-                                        <!-- Contenido principal -->
+                                        <!-- Contenido del vendedor -->
                                         <div class="relative p-4">
-                                            <div class="flex items-start gap-3">
-                                                <!-- Avatar mejorado con gradiente -->
+                                            <div class="flex items-center gap-4">
+                                                <!-- Avatar mejorado con indicador online -->
                                                 <div class="relative flex-shrink-0">
                                                     <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-primary-100 via-primary-200/50 to-primary-300/30 dark:from-primary-900/40 dark:via-primary-800/60 dark:to-primary-700/40 border border-primary-200/50 dark:border-primary-700/50 group-hover:scale-105 transition-transform duration-200">
                                                         <i class="pi pi-user text-primary-600 dark:text-primary-300 text-lg"></i>
@@ -370,86 +264,92 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- Información del vendedor -->
+                                                <!-- Info del Vendedor -->
                                                 <div class="flex-1 min-w-0">
-                                                    <!-- Código del vendedor (arriba) -->
-                                                    <div class="flex items-center gap-2 mb-1">
-                                <span class="inline-flex items-center px-2 py-1 rounded-md bg-surface-100/80 dark:bg-surface-700/60 border border-surface-200/60 dark:border-surface-600/60 text-xs font-mono font-medium text-surface-700 dark:text-surface-300">
-                                    <i class="pi pi-id-card mr-1 text-xs"></i>
-                                    {{ user.codigoVendedor }}
-                                </span>
+                                                    <!-- Códigos primero -->
+                                                    <div class="flex items-center gap-2 mb-2">
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-surface-100/80 dark:bg-surface-600/60 border border-surface-200/60 dark:border-surface-500/60 text-xs font-mono font-medium text-surface-700 dark:text-surface-300">
+                                                    <i class="pi pi-id-card mr-1.5 text-xs"></i>
+                                                    {{ user.codigoVendedor }}
+                                                </span>
                                                         @if (user.codigoVendedorSecundario) {
                                                             <span class="inline-flex items-center px-2 py-1 rounded-md bg-surface-200/60 dark:bg-surface-600/40 text-xs font-mono text-surface-600 dark:text-surface-400">
-                                        {{ user.codigoVendedorSecundario }}
-                                    </span>
+                                                        {{ user.codigoVendedorSecundario }}
+                                                    </span>
                                                         }
                                                     </div>
 
                                                     <!-- Nombre del vendedor (h6) -->
-                                                    <h6 class="font-semibold text-surface-900 dark:text-surface-0 mb-2 group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors leading-tight">
+                                                    <h6 class="font-bold text-surface-900 dark:text-surface-0 mb-2 group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors leading-tight">
                                                         {{ user.nombreVendedor }}
                                                     </h6>
 
-                                                    <!-- Información de ubicación -->
-                                                    <div class="space-y-1.5">
-
-
-                                                        <!-- Coordenadas precisas -->
-                                                        @if (user.ubicacionActual) {
-                                                            <div class="flex items-center gap-2 text-xs text-surface-500 dark:text-surface-500">
-                                                                <div class="flex items-center justify-center w-5 h-5 rounded-md bg-surface-100/80 dark:bg-surface-700/60">
-                                                                    <i class="pi pi-compass text-surface-600 dark:text-surface-400 text-xs"></i>
-                                                                </div>
-                                                                <span class="font-mono">
-                                            {{ user.ubicacionActual.geublat }}, {{ user.ubicacionActual.geublon }}
-                                        </span>
+                                                    <!-- Indicadores de estado -->
+                                                    <div class="space-y-2">
+                                                        <!-- Estado de ubicación -->
+                                                        @if (user.ubicacionActual && user.ubicacionActual.geublat && user.ubicacionActual.geublon) {
+                                                            <div class="flex items-center gap-1.5">
+                                                                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                                                <span class="text-xs text-green-600 dark:text-green-400 font-medium">Ubicación activa</span>
                                                             </div>
-                                                        } @else {
-                                                            <div class="flex items-center gap-2 text-xs text-surface-400 dark:text-surface-500">
-                                                                <div class="flex items-center justify-center w-5 h-5 rounded-md bg-red-100/60 dark:bg-red-900/20">
-                                                                    <i class="pi pi-exclamation-triangle text-red-500 dark:text-red-400 text-xs"></i>
+
+                                                            <!-- Coordenadas -->
+                                                            <div class="flex items-center gap-2 text-xs text-surface-600 dark:text-surface-400">
+                                                                <i class="pi pi-map-marker text-green-500 w-3"></i>
+                                                                <span class="font-mono">{{ user.ubicacionActual.geublat  | number:'1.6-6' }}, {{ user.ubicacionActual.geublon | number:'1.6-6' }}</span>
+                                                            </div>
+
+                                                            <!-- Fecha de ubicación -->
+                                                            @if (user.ubicacionActual.geubfech) {
+                                                                <div class="flex items-center gap-2 text-xs text-surface-500 dark:text-surface-500">
+                                                                    <i class="pi pi-clock text-blue-500 w-3"></i>
+                                                                    <span>{{ formatLocationDate(user.ubicacionActual.geubfech) }}</span>
                                                                 </div>
-                                                                <span>Sin ubicación disponible</span>
+                                                            }
+                                                        } @else {
+                                                            <div class="flex items-center gap-1.5">
+                                                                <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                                                <span class="text-xs text-gray-500 dark:text-gray-400">Sin ubicación registrada</span>
+                                                            </div>
+                                                        }
+
+                                                        <!-- Badge de geocercas -->
+                                                        @if (user.totalGeocercas && user.totalGeocercas > 0) {
+                                                            <div class="flex items-center gap-2">
+                                                        <span class="inline-flex items-center px-2 py-1 rounded-full bg-emerald-100/80 dark:bg-emerald-900/30 border border-emerald-200/60 dark:border-emerald-700/40 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                                            <i class="pi pi-map mr-1 text-xs"></i>
+                                                            {{ user.totalGeocercas }} geocerca{{ user.totalGeocercas !== 1 ? 's' : '' }}
+                                                        </span>
                                                             </div>
                                                         }
                                                     </div>
-
-                                                    <!-- Badge de geocercas (si tiene) -->
-                                                    @if (user.totalGeocercas && user.totalGeocercas > 0) {
-                                                        <div class="mt-3 flex items-center gap-2">
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full bg-emerald-100/80 dark:bg-emerald-900/30 border border-emerald-200/60 dark:border-emerald-700/40 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-                                        <i class="pi pi-map mr-1 text-xs"></i>
-                                        {{ user.totalGeocercas }} geocerca{{ user.totalGeocercas !== 1 ? 's' : '' }}
-                                    </span>
-                                                        </div>
-                                                    }
                                                 </div>
 
                                                 <!-- Flecha indicadora -->
-                                                <div class="flex items-center">
-                                                    <i class="pi pi-chevron-right text-surface-400 dark:text-surface-500 group-hover:text-primary-500 dark:group-hover:text-primary-400 group-hover:translate-x-1 transition-all duration-200"></i>
+                                                <div class="flex items-center justify-center w-6">
+                                                    <i class="pi pi-chevron-right text-surface-300 dark:text-surface-600 text-sm opacity-0 group-hover:opacity-100 transition-opacity"></i>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 }
 
-                                <!-- Mensaje si no hay usuarios -->
-                                @if (filteredUsers.length === 0) {
+                                <!-- Mensaje si no hay vendedores -->
+                                @if (filteredUsers.length === 0 && !loadingMore) {
                                     <div class="text-center py-12">
                                         <div class="relative">
                                             <!-- Background decorativo -->
-                                            <div class="absolute inset-0 bg-gradient-to-br from-surface-100/50 via-transparent to-surface-200/30 dark:from-surface-800/30 dark:to-surface-900/50 rounded-2xl"></div>
+                                            <div class="absolute inset-0 bg-gradient-to-br from-surface-100/50 via-transparent to-surface-200/30 dark:from-surface-800/30 dark:to-surface-900/50 rounded-3xl"></div>
 
                                             <!-- Contenido -->
                                             <div class="relative p-8">
-                                                <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-surface-200 to-surface-300 dark:from-surface-700 dark:to-surface-800 rounded-full flex items-center justify-center">
+                                                <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-surface-200 to-surface-300 dark:from-surface-700 dark:to-surface-800 rounded-2xl flex items-center justify-center border border-surface-300/60 dark:border-surface-600/60">
                                                     <i class="pi pi-users text-2xl text-surface-500 dark:text-surface-400"></i>
                                                 </div>
-                                                <h6 class="text-surface-700 dark:text-surface-300 font-semibold mb-2">
+                                                <h6 class="text-surface-700 dark:text-surface-300 font-bold mb-2 text-sm">
                                                     No se encontraron vendedores
                                                 </h6>
-                                                <p class="text-sm text-surface-500 dark:text-surface-500">
+                                                <p class="text-surface-500 dark:text-surface-500 text-xs max-w-sm mx-auto leading-relaxed">
                                                     Intenta ajustar los filtros de búsqueda
                                                 </p>
                                             </div>
@@ -457,25 +357,166 @@
                                     </div>
                                 }
                             </div>
-                        }
-                    </div>
 
-                    <!-- Paginación -->
-                    <ng-template pTemplate="footer">
-                        <div class="pt-3">
+                            <!-- Paginación directa sin ng-template -->
                             @if (!loading && filteredUsers.length > 0) {
-                                <p-paginator
-                                    [rows]="itemsPerPage"
-                                    [totalRecords]="filteredUsers.length"
-                                    [first]="first"
-                                    (onPageChange)="onPageChange($event)"
-                                    class="text-sm">
-                                </p-paginator>
+                                <div class="p-3 border-t border-surface-200/60 dark:border-surface-700/60">
+                                    <p-paginator
+                                        [rows]="itemsPerPage"
+                                        [totalRecords]="filteredUsers.length"
+                                        [first]="first"
+                                        (onPageChange)="onPageChange($event)"
+                                        class="text-sm">
+                                    </p-paginator>
+                                </div>
+                            }
+                        }
+                    }
+
+                    <!-- Vista: Lista de Geocercas del Vendedor Seleccionado -->
+                    @if (selectedUser) {
+                        <div class="p-3">
+                            @if (selectedUser && selectedUser.totalGeocercas > 0) {
+                                <!-- Lista scrolleable de geocercas -->
+                                <div class="max-h-[60rem] overflow-y-auto space-y-3 custom-scrollbar">
+                                    @for (geocerca of geocercasFiltradas; track geocerca.geoccod) {
+                                        <div class="relative overflow-hidden rounded-xl border border-surface-200/80 dark:border-surface-600/80 bg-gradient-to-br from-white via-surface-50/60 to-surface-100/30 dark:from-surface-700 dark:via-surface-700/90 dark:to-surface-800/60 hover:from-primary-50/30 hover:via-white hover:to-primary-100/20 dark:hover:from-surface-600/80 dark:hover:via-surface-700/60 dark:hover:to-primary-900/20 transition-all duration-300 group hover:shadow-lg hover:border-primary-200/60 dark:hover:border-primary-600/60 hover:-translate-y-0.5">
+
+                                            <!-- Background pattern -->
+                                            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-surface-100/20 to-transparent dark:via-surface-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                                            <div class="relative p-4">
+                                                <!-- Header de la geocerca -->
+                                                <div class="flex justify-between items-start mb-3">
+                                                    <div class="flex-1 min-w-0">
+                                                        <!-- Código primero -->
+                                                        <div class="flex items-center gap-2 mb-2">
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-md bg-surface-100/80 dark:bg-surface-600/60 border border-surface-200/60 dark:border-surface-500/60 text-xs font-mono font-medium text-surface-700 dark:text-surface-300">
+                                                        <i class="pi pi-hashtag mr-1 text-xs"></i>
+                                                        {{ geocerca.geoccod }}
+                                                    </span>
+                                                        </div>
+
+                                                        <!-- Nombre de la geocerca (h6) -->
+                                                        <h6 class="font-bold text-surface-900 dark:text-surface-0 group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors leading-tight uppercase tracking-wide mb-1">
+                                                            {{ geocerca.geocnom }}
+                                                        </h6>
+                                                    </div>
+
+                                                    <!-- Estado visual -->
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="relative">
+                                                            <div class="w-4 h-4 rounded-full border-2 border-white dark:border-surface-700 shadow-sm"
+                                                                 [class]="geocerca.geocact ? 'bg-green-500' : 'bg-gray-400'"
+                                                                 [pTooltip]="geocerca.geocact ? 'Geocerca Activa' : 'Geocerca Inactiva'"
+                                                                 tooltipPosition="left">
+                                                            </div>
+                                                            @if (geocerca.geocact) {
+                                                                <div class="absolute inset-0 bg-green-400 rounded-full animate-ping opacity-75"></div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Información de ubicación -->
+                                                <div class="space-y-2 mb-3">
+                                                    <div class="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
+                                                        <div class="flex items-center justify-center w-5 h-5 rounded-md bg-blue-100/80 dark:bg-blue-900/30 border border-blue-200/40 dark:border-blue-700/40">
+                                                            <i class="pi pi-map-marker text-blue-600 dark:text-blue-400 text-xs"></i>
+                                                        </div>
+                                                        <span class="font-medium">{{ geocerca.geocsec }}, {{ geocerca.geocciud }}</span>
+                                                    </div>
+                                                    <div class="flex items-center gap-2 text-sm text-surface-600 dark:text-surface-400">
+                                                        <div class="flex items-center justify-center w-5 h-5 rounded-md bg-emerald-100/80 dark:bg-emerald-900/30 border border-emerald-200/40 dark:border-emerald-700/40">
+                                                            <i class="pi pi-globe text-emerald-600 dark:text-emerald-400 text-xs"></i>
+                                                        </div>
+                                                        <span class="font-medium">{{ geocerca.geocprov }}</span>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Badges -->
+                                                <div class="flex items-center gap-2 mb-4 flex-wrap">
+                                                    <!-- Badge de Prioridad -->
+                                                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border shadow-sm"
+                                                          [style.background-color]="getGeocercaColor(geocerca.geocpri) + '15'"
+                                                          [style.color]="getGeocercaColor(geocerca.geocpri)"
+                                                          [style.border-color]="getGeocercaColor(geocerca.geocpri) + '30'">
+                                                <i class="pi pi-flag mr-1.5"></i>
+                                                Prioridad {{ geocerca.geocpri }}
+                                            </span>
+
+                                                    <!-- Badge de Estado -->
+                                                    <span [class]="'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border shadow-sm ' + (geocerca.geocact ? 'bg-green-100/80 text-green-700 border-green-200/60 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700/40' : 'bg-gray-100/80 text-gray-700 border-gray-200/60 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-700/40')">
+                                                <i [class]="'mr-1.5 ' + (geocerca.geocact ? 'pi pi-check-circle' : 'pi pi-ban')"></i>
+                                                        {{ geocerca.geocact ? 'Activa' : 'Inactiva' }}
+                                            </span>
+                                                </div>
+
+                                                <!-- Botones de acción -->
+                                                <div class="flex justify-between items-center">
+                                                    <!-- Botón centrar en mapa -->
+                                                    <button class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-50/80 dark:bg-primary-900/20 border border-primary-200/60 dark:border-primary-700/40 text-primary-700 dark:text-primary-300 hover:bg-primary-100/80 dark:hover:bg-primary-800/30 transition-all duration-200 text-xs font-medium"
+                                                            (click)="centrarMapaEnGeocerca(geocerca)">
+                                                        <i class="pi pi-eye"></i>
+                                                        Ver en mapa
+                                                    </button>
+                                                    <!-- Botón Desvincular -->
+                                                    <button class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-orange-100/80 dark:hover:bg-orange-900/30 border border-transparent hover:border-orange-200/60 dark:hover:border-orange-700/40 transition-all duration-200 group"
+                                                            (click)="confirmarDesvincularGeocerca(geocerca)"
+                                                            [disabled]="loading"
+                                                            pTooltip="Desvincular geocerca del vendedor"
+                                                            tooltipPosition="top">
+                                                        <i class="pi pi-sign-out text-orange-500 dark:text-orange-400 group-hover:scale-110 transition-transform duration-200"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    } @empty {
+                                        <!-- Mensaje si no hay geocercas filtradas -->
+                                        <div class="text-center py-12">
+                                            <div class="relative">
+                                                <div class="absolute inset-0 bg-gradient-to-br from-surface-100/50 via-transparent to-surface-200/30 dark:from-surface-800/30 dark:to-surface-900/50 rounded-2xl"></div>
+                                                <div class="relative p-8">
+                                                    <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-surface-200 to-surface-300 dark:from-surface-700 dark:to-surface-800 rounded-full flex items-center justify-center">
+                                                        <i class="pi pi-search text-2xl text-surface-500 dark:text-surface-400"></i>
+                                                    </div>
+                                                    <h6 class="text-surface-700 dark:text-surface-300 font-semibold mb-2">
+                                                        Sin resultados
+                                                    </h6>
+                                                    <p class="text-surface-500 dark:text-surface-500 text-sm">
+                                                        No se encontraron geocercas que coincidan con "{{ filtroGeocerca }}"
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            } @else {
+                                <!-- Estado vacío - sin geocercas -->
+                                <div class="text-center py-16">
+                                    <div class="relative">
+                                        <!-- Background decorativo -->
+                                        <div class="absolute inset-0 bg-gradient-to-br from-surface-100/50 via-transparent to-surface-200/30 dark:from-surface-800/30 dark:to-surface-900/50 rounded-3xl"></div>
+
+                                        <!-- Contenido -->
+                                        <div class="relative p-12">
+                                            <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-surface-200 to-surface-300 dark:from-surface-700 dark:to-surface-800 rounded-2xl flex items-center justify-center border border-surface-300/60 dark:border-surface-600/60">
+                                                <i class="pi pi-map text-3xl text-surface-500 dark:text-surface-400"></i>
+                                            </div>
+                                            <h6 class="text-surface-700 dark:text-surface-300 font-bold mb-3 text-base">
+                                                Sin geocercas asignadas
+                                            </h6>
+                                            <p class="text-surface-500 dark:text-surface-500 text-sm max-w-sm mx-auto leading-relaxed">
+                                                Este vendedor no tiene geocercas configuradas. Utiliza el botón "Agregar Geocerca" para asignar nuevas áreas de trabajo.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             }
                         </div>
-                    </ng-template>
-                }
-            </p-card>
+                    }
+                </div>
+            </div>
         </div>
 
         <!-- Diálogo para Agregar Geocercas -->
@@ -601,7 +642,6 @@
                     </div>
                 </div>
 
-                <!-- Panel Derecho - Mapa de Vista Previa -->
                 <div class="w-1/2 flex flex-col">
                     <div class="mb-3">
                         <h6 class="text-sm font-semibold text-surface-700 dark:text-surface-300">
@@ -655,66 +695,68 @@
         </p-dialog>
 
         <!-- Panel Derecho - Mapa -->
+        <!-- Panel Derecho - Mapa -->
         <div class="w-full lg:flex-1 flex flex-col order-1 lg:order-2">
-            <p-card class="flex flex-col flex-1 overflow-hidden h-full">
+            <div class="flex flex-col flex-1 overflow-hidden h-full bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg shadow-sm">
 
-                <!-- Header: Buscador + botones -->
-                <ng-template pTemplate="header">
-                    <div class="flex flex-col gap-3 sm:gap-4 p-3 sm:p-4">
+                <!-- Header: Título, descripción y acciones -->
+                <div class="relative overflow-hidden p-4 bg-gradient-to-br from-white via-surface-50/80 to-surface-100/30 dark:from-surface-900 dark:via-surface-800/90 dark:to-surface-900/60 rounded-t-lg border-b border-surface-200/60 dark:border-surface-700/60">
+                    <!-- Background pattern -->
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-primary-50/10 to-transparent dark:via-primary-900/5"></div>
 
-                        <!-- Título, descripción y acciones alineados - Versión mejorada -->
-                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-surface-50 to-white dark:from-surface-900 dark:to-surface-800 rounded-t-lg border-b border-surface-200 dark:border-surface-700">
-
+                    <div class="relative space-y-4">
+                        <!-- Título y acciones -->
+                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                             <!-- Bloque de icono + texto -->
                             <div class="flex items-center gap-3 min-w-0">
-                                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900 shadow-sm">
-                                    <i class="pi pi-map-marker text-primary-600 dark:text-primary-300 text-xl flex-shrink-0"></i>
+                                <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-primary-100 via-primary-200/60 to-primary-300/40 dark:from-primary-900/50 dark:via-primary-800/70 dark:to-primary-700/50 border border-primary-200/60 dark:border-primary-600/40 shadow-md">
+                                    <i class="pi pi-map-marker text-primary-600 dark:text-primary-300 text-lg flex-shrink-0"></i>
                                 </div>
                                 <div class="min-w-0">
-                                    <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-white tracking-tight">
+                                    <h2 class="text-xl sm:text-2xl font-bold text-surface-900 dark:text-surface-0 tracking-tight">
                                         Vendedores y Geocercas
                                     </h2>
-                                    <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-snug mt-0.5">
+                                    <p class="text-surface-500 dark:text-surface-400 text-xs sm:text-sm leading-snug mt-0.5">
                                         Mapa de geolocalización de vendedores activos
                                     </p>
                                 </div>
                             </div>
 
-                            <!-- Botones de acción -->
+                            <!-- Botones de acción y badges -->
                             <div class="flex gap-2 flex-shrink-0 items-center">
-                                <button class="flex items-center justify-center h-9 w-9 rounded-full bg-white dark:bg-surface-800 hover:bg-primary-50 dark:hover:bg-primary-900/30 shadow-sm border border-surface-200 dark:border-surface-700 transition-all duration-200"
+                                <!-- Información del vendedor seleccionado -->
+                                @if (selectedUser) {
+                                    <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-full border border-green-200/60 dark:border-green-700/40">
+                                        <i class="pi pi-user text-green-600 dark:text-green-400 text-sm"></i>
+                                        <span class="text-xs text-green-700 dark:text-green-300 font-medium">
+                                    {{ selectedUser.nombreVendedor }}: {{ selectedUser.totalGeocercas }} zona{{ selectedUser.totalGeocercas !== 1 ? 's' : '' }}
+                                </span>
+                                    </div>
+                                    <div class="w-px h-6 bg-surface-200 dark:bg-surface-700"></div>
+                                }
+
+                                <!-- Botón refrescar -->
+                                <button class="flex items-center justify-center h-9 w-9 rounded-xl bg-white dark:bg-surface-800 hover:bg-primary-50 dark:hover:bg-primary-900/30 shadow-sm border border-surface-200 dark:border-surface-700 transition-all duration-200"
                                         (click)="refreshData()"
                                         pTooltip="Refrescar"
                                         tooltipPosition="bottom">
                                     <i class="pi pi-refresh text-primary-500 dark:text-primary-400"></i>
                                 </button>
 
+                                <!-- Botón limpiar selección -->
                                 @if (selectedUser) {
-                                    <button class="flex items-center justify-center h-9 w-9 rounded-full bg-white dark:bg-surface-800 hover:bg-red-50 dark:hover:bg-red-900/30 shadow-sm border border-surface-200 dark:border-surface-700 transition-all duration-200"
+                                    <button class="flex items-center justify-center h-9 w-9 rounded-xl bg-white dark:bg-surface-800 hover:bg-red-50 dark:hover:bg-red-900/30 shadow-sm border border-surface-200 dark:border-surface-700 transition-all duration-200"
                                             (click)="clearUserSelection()"
                                             pTooltip="Limpiar selección"
                                             tooltipPosition="bottom">
                                         <i class="pi pi-times text-red-500 dark:text-red-400"></i>
                                     </button>
                                 }
-
-                                <!-- Información de geocercas del vendedor seleccionado -->
-                                @if (selectedUser) {
-                                    <div class="hidden sm:flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 rounded-full">
-                                        <i class="pi pi-user text-green-600 dark:text-green-400 text-sm"></i>
-                                        <span class="text-xs text-green-700 dark:text-green-300 font-medium">
-                                            {{ selectedUser.nombreVendedor }}: {{ selectedUser.totalGeocercas }} zona{{ selectedUser.totalGeocercas !== 1 ? 's' : '' }}
-                                        </span>
-                                    </div>
-                                }
-                                <div class="w-px h-6 bg-surface-200 dark:bg-surface-700"></div>
-
-
                             </div>
                         </div>
 
                         <!-- Buscador de Ubicaciones -->
-                        <div class="flex flex-col sm:flex-row gap-2">
+                        <div class="flex flex-col sm:flex-row gap-3">
                             <div class="flex-1 min-w-0">
                                 <p-iconField iconPosition="left" class="w-full">
                                     <p-inputIcon>
@@ -726,66 +768,99 @@
                                         placeholder="Buscar ubicación (ej: Quito, Ecuador)"
                                         [(ngModel)]="searchLocation"
                                         (keyup.enter)="searchLocationOnMap()"
-                                        class="w-full text-sm"
+                                        class="w-full text-sm py-2.5 px-4 rounded-lg border-2 border-surface-200/80 dark:border-surface-600/80 bg-gradient-to-r from-white to-surface-50/50 dark:from-surface-800 dark:to-surface-800/80 hover:border-primary-300/60 dark:hover:border-primary-600/60 focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/80 transition-all duration-200"
                                         #locationInput>
                                 </p-iconField>
                             </div>
                             <div class="flex gap-2 flex-shrink-0">
-                                <p-button icon="pi pi-search"
-                                          severity="primary"
-                                          size="small"
-                                          (click)="searchLocationOnMap()"
-                                          [loading]="searchingLocation"
-                                          pTooltip="Buscar ubicación"
-                                          tooltipPosition="bottom">
+                                <p-button
+                                    icon="pi pi-search"
+                                    severity="primary"
+                                    size="small"
+                                    (click)="searchLocationOnMap()"
+                                    [loading]="searchingLocation"
+                                    pTooltip="Buscar ubicación"
+                                    tooltipPosition="bottom"
+                                    class="!rounded-lg">
                                 </p-button>
-                                <p-button icon="pi pi-times"
-                                          severity="secondary"
-                                          size="small"
-                                          [text]="true"
-                                          (click)="clearLocationSearch()"
-                                          pTooltip="Limpiar búsqueda"
-                                          tooltipPosition="bottom">
+                                <p-button
+                                    icon="pi pi-times"
+                                    severity="secondary"
+                                    size="small"
+                                    [text]="true"
+                                    (click)="clearLocationSearch()"
+                                    pTooltip="Limpiar búsqueda"
+                                    tooltipPosition="bottom"
+                                    class="!rounded-lg">
                                 </p-button>
                             </div>
                         </div>
+
                         <!-- Resultados de búsqueda -->
                         @if (searchResults.length > 0) {
-                            <div class="bg-surface-50 dark:bg-surface-800 rounded-lg p-3">
-                                <div class="text-xs sm:text-sm text-surface-600 dark:text-surface-400 mb-2">
-                                    Resultados de búsqueda:
+                            <div class="bg-gradient-to-br from-white via-surface-50/60 to-surface-100/30 dark:from-surface-800 dark:via-surface-800/80 dark:to-surface-900/40 rounded-xl border border-surface-200/60 dark:border-surface-700/60 p-3">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <i class="pi pi-search text-primary-600 dark:text-primary-400"></i>
+                                    <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
+                                Resultados de búsqueda
+                            </span>
                                 </div>
-                                <div class="space-y-1">
+                                <div class="space-y-2">
                                     @for (result of searchResults.slice(0, 3); track result) {
                                         <div
-                                            class="flex items-center justify-between p-2 hover:bg-surface-100 dark:hover:bg-surface-700 rounded cursor-pointer transition-colors"
+                                            class="flex items-center justify-between p-3 hover:bg-surface-100/80 dark:hover:bg-surface-700/60 rounded-lg cursor-pointer transition-all duration-200 border border-transparent hover:border-primary-200/60 dark:hover:border-primary-600/60 group"
                                             (click)="selectSearchResult(result)">
                                             <div class="flex items-center gap-2 min-w-0 flex-1">
-                                                <i class="pi pi-map-marker text-primary text-sm flex-shrink-0"></i>
-                                                <span class="text-xs sm:text-sm text-surface-900 dark:text-surface-0 truncate">{{ result.display_name }}</span>
+                                                <div class="w-6 h-6 flex items-center justify-center rounded-md bg-primary-100/80 dark:bg-primary-900/40 border border-primary-200/60 dark:border-primary-700/40">
+                                                    <i class="pi pi-map-marker text-primary-600 dark:text-primary-400 text-xs"></i>
+                                                </div>
+                                                <span class="text-sm text-surface-900 dark:text-surface-0 truncate group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors">
+                                            {{ result.display_name }}
+                                        </span>
                                             </div>
-                                            <i class="pi pi-arrow-right text-surface-400 text-xs flex-shrink-0 ml-2"></i>
+                                            <i class="pi pi-arrow-right text-surface-400 dark:text-surface-500 text-xs flex-shrink-0 ml-2 group-hover:text-primary-500 dark:group-hover:text-primary-400 group-hover:translate-x-1 transition-all duration-200"></i>
                                         </div>
                                     }
                                 </div>
                             </div>
                         }
                     </div>
-                </ng-template>
+                </div>
+
                 <!-- Contenedor del Mapa -->
                 <div class="flex-1 relative overflow-hidden min-h-0">
+                    <!-- Loading del mapa -->
                     @if (!map) {
-                        <div class="absolute inset-0 flex items-center justify-center bg-surface-100 dark:bg-surface-800 rounded-lg z-10">
-                            <div class="text-center p-4">
-                                <i class="pi pi-spin pi-spinner text-2xl text-primary mb-2"></i>
-                                <p class="text-sm sm:text-base text-surface-600 dark:text-surface-400">Cargando mapa...</p>
+                        <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-surface-100/50 via-transparent to-surface-200/30 dark:from-surface-800/30 dark:to-surface-900/50 z-10">
+                            <div class="text-center p-8">
+                                <div class="relative">
+                                    <!-- Background decorativo -->
+                                    <div class="absolute inset-0 bg-gradient-to-br from-surface-100/50 via-transparent to-surface-200/30 dark:from-surface-800/30 dark:to-surface-900/50 rounded-2xl"></div>
+
+                                    <!-- Contenido -->
+                                    <div class="relative p-8">
+                                        <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/40 dark:to-primary-800/60 rounded-2xl flex items-center justify-center border border-primary-200/60 dark:border-primary-700/40">
+                                            <i class="pi pi-spin pi-spinner text-2xl text-primary-600 dark:text-primary-400"></i>
+                                        </div>
+                                        <h6 class="text-surface-700 dark:text-surface-300 font-bold mb-2">
+                                            Cargando mapa
+                                        </h6>
+                                        <p class="text-sm text-surface-500 dark:text-surface-500 max-w-sm mx-auto leading-relaxed">
+                                            Preparando la visualización de ubicaciones...
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     }
+
                     <!-- Mapa de Leaflet -->
-                    <div #mapContainer class="w-full h-full" style="min-height: 600px; height: 100%; width: 100%;"></div>
+                    <div #mapContainer
+                         class="w-full h-full rounded-b-lg"
+                         style="min-height: 600px; height: 100%; width: 100%;">
+                    </div>
                 </div>
-            </p-card>
+            </div>
         </div>
     </div>
 </div>

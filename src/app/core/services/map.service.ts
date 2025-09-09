@@ -1,6 +1,6 @@
 import { ElementRef, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { BehaviorSubject, Observable, takeUntil } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import * as L from 'leaflet';
 import 'leaflet.markercluster';
@@ -8,6 +8,7 @@ import { UserDto } from '@/core/models/UserDto';
 import { CustomerResponseDto } from '@/core/models/Customer/CustomerResponseDto';
 import { GeocercaDto } from '@/core/models/Geocercas/VendedorDto';
 import { GeofenceDto } from '@/core/models/Geocercas/GeocercaValidationResponseDto';
+import { CustomerAreaRequestDto } from '@/core/models/Customer/CustomerAreaRequestDto';
 
 
 //===== INTERFACES =====//
@@ -70,6 +71,8 @@ export class MapService {
     private mapInitialized$ = new BehaviorSubject<boolean>(false);
     private searchingLocation$ = new BehaviorSubject<boolean>(false);
     private searchResults$ = new BehaviorSubject<SearchResult[]>([]);
+    private boundsSubject = new BehaviorSubject<L.LatLngBounds | null>(null);
+    public bounds$ = this.boundsSubject.asObservable();
 
     constructor(
         private http: HttpClient,
@@ -333,25 +336,26 @@ export class MapService {
      * Crea icono para cliente
      */
     private createCustomerIcon(isAssigned: boolean): L.DivIcon {
-        const bgColor = isAssigned ? 'bg-blue-500' : 'bg-gray-400';
+        const bgColor = isAssigned ? 'bg-green-500' : 'bg-red-500';
         const indicatorColor = isAssigned ? 'bg-green-400' : 'bg-yellow-400';
 
         return L.divIcon({
             html: `
-            <div class="relative">
-                <div class="w-7 h-7 ${bgColor} rounded-full border-2 border-white shadow-md flex items-center justify-center">
-                    <svg class="w-3.5 h-3.5 text-white" viewBox="0 0 20 20">
-                        <path fill="currentColor" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z"/>
-                    </svg>
-                </div>
-                <div class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 ${indicatorColor} border border-white rounded-full"></div>
+        <div class="relative">
+            <div class="w-7 h-7 ${bgColor} rounded-full border-2 border-white shadow-md flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                </svg>
             </div>
+            <div class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 ${indicatorColor} border border-white rounded-full"></div>
+        </div>
         `,
             className: 'custom-customer-marker',
             iconSize: [28, 28],
             iconAnchor: [14, 14]
         });
     }
+
 
     /**
      * Crea popup para cliente
@@ -454,15 +458,7 @@ export class MapService {
 
         const { range } = rangeInfo;
 
-        // Crear círculo para mostrar el área de cobertura
-        const circle = L.circle([range.center[0], range.center[1]], {
-            radius: range.radius,
-            color: '#3b82f6',
-            fillColor: '#3b82f6',
-            fillOpacity: 0.1,
-            weight: 2,
-            dashArray: '5, 5' // Línea discontinua
-        });
+
 
         // Crear rectángulo para mostrar los bounds exactos
         const rectangle = L.rectangle(
@@ -473,12 +469,12 @@ export class MapService {
             {
                 color: '#ef4444',
                 fillColor: '#ef4444',
-                fillOpacity: 0.05,
+                fillOpacity: 0,  // Relleno transparente
+                opacity: 0,      // Borde transparente
                 weight: 1,
                 dashArray: '3, 3'
             }
         );
-        this.userRangeLayer.addLayer(circle);
         this.userRangeLayer.addLayer(rectangle);
         this.addCornerMarkers(range);
     }
@@ -582,10 +578,21 @@ export class MapService {
                     zoom: mapConfig.zoom
                 });
 
+
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 19,
                     attribution: '© OpenStreetMap contributors'
                 }).addTo(this.map);
+
+                const mapInstance = this.map;
+                mapInstance.on('moveend zoomend', () => {
+                    const bounds = mapInstance.getBounds();
+                    this.boundsSubject.next(bounds); // Emitir cambios
+                    console.log('Nuevas coordenadas:', {
+                        southWest: bounds.getSouthWest(),
+                        northEast: bounds.getNorthEast()
+                    });
+                });
 
                 const mainMarker = L.marker(mapConfig.center).addTo(this.map);
                 mainMarker.bindPopup(`<b>${mapConfig.defaultLocation}</b><br>Ubicación principal`).openPopup();
@@ -607,6 +614,64 @@ export class MapService {
             }
         });
     }
+
+    addSearchAreaButton(onSearchClick: (bounds: L.LatLngBounds) => void): void {
+        if (!this.map) return;
+
+        const mapContainer = this.map.getContainer();
+
+        // Crear contenedor principal flotante
+        const container = L.DomUtil.create('div', 'leaflet-control leaflet-control-custom', mapContainer);
+
+        // Estilos base
+        container.style.position = 'absolute';
+        container.style.top = '10px';
+        container.style.left = '50%';
+        container.style.transform = 'translateX(-50%)';
+        container.style.backgroundColor = 'white';
+        container.style.padding = '6px 12px';
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.gap = '6px';
+        container.style.cursor = 'pointer';
+        container.style.fontSize = '13px';
+        container.style.fontWeight = '600'; // más peso
+        container.style.fontFamily = 'Segoe UI, Roboto, sans-serif'; // tipografía distinta
+        container.style.border = '2px solid rgba(0,0,0,0.2)';
+        container.style.borderRadius = '10px'; // bordes suaves
+        container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)'; // sombra ligera
+        container.style.transition = 'all 0.2s ease'; // transición suave
+
+        // Agregar icono y texto
+        container.innerHTML = `
+        <i class="pi pi-search" style="font-size: 15px; color: #4f46e5;"></i>
+        <span style="color: #374151;">Buscar en esta área</span>
+    `;
+
+        // Hover
+        container.onmouseenter = () => {
+            container.style.backgroundColor = '#f3f4f6'; // gris clarito
+            container.style.borderColor = '#4f46e5'; // morado del ícono
+            container.style.boxShadow = '0 3px 8px rgba(0,0,0,0.25)';
+        };
+
+        container.onmouseleave = () => {
+            container.style.backgroundColor = 'white';
+            container.style.borderColor = 'rgba(0,0,0,0.2)';
+            container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+        };
+
+        // Click
+        container.onclick = () => {
+            const currentBounds = this.map!.getBounds();
+            onSearchClick(currentBounds);
+        };
+
+        // Prevenir propagación
+        L.DomEvent.disableClickPropagation(container);
+    }
+
+
 
     /**
      * Configura los iconos de Leaflet
@@ -677,7 +742,7 @@ export class MapService {
         return L.divIcon({
             html: `
         <div class="relative">
-          <div class="w-8 h-8 bg-green-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+          <div class="w-8 h-8 bg-blue-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
             <svg class="w-4 h-4 text-white" viewBox="0 0 20 20">
               <path
                 fill="currentColor"
@@ -687,7 +752,7 @@ export class MapService {
               />
             </svg>
           </div>
-          <div class="absolute -top-1 -right-1 w-3 h-3 bg-blue-400 border border-white rounded-full"></div>
+          <div class="absolute -top-1 -right-1 w-3 h-3 bg-green-400 border border-white rounded-full"></div>
         </div>
       `,
             className: 'custom-user-marker',

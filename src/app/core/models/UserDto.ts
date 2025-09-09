@@ -9,5 +9,5 @@ export interface UserDto {
     usunombre: string;
     usuemail: string;
     usucodv: string;
-    ubicacion?: UbicacionDto;
+    ubicacion: UbicacionDto;
 }

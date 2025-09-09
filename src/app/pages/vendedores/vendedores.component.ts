@@ -28,6 +28,7 @@ import { GeocercaService } from '@/core/services/geocerca.service';
 import { AuthService } from '@/core/services/auth.service';
 import { NominatimReverseResponse } from '@/core/models/nominatim-response.interface';
 import { AsignarGeocercaDto } from '@/core/models/AsignarGeocercaDto';
+import { UserDto } from '@/core/models/UserDto';
 
 interface NominatimResult {
     lat: string;
@@ -65,6 +66,14 @@ interface NominatimResult {
 })
 export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
     @ViewChild('mapContainer', { static: true }) mapContainer!: ElementRef;
+
+
+    // Para scroll infinito
+    loadingMore: boolean = false;
+    hasReachedEnd: boolean = false;
+    allUsers: UserDto[] = []; // Mantener usuarios originales
+    private scrollThreshold: number = 100;
+    private debounceTimer: any;
 
     userLocations: Map<string, string> = new Map();
     loadingLocations: Set<string> = new Set();
@@ -1283,6 +1292,147 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
         }
     }
 
+    //===============NUEVOS MÉTODOS PARA SCROLL INFINITO========================================//
+
+    /**
+     * Maneja el evento de scroll para detectar cuando cargar más usuarios
+     */
+    onScroll(event: Event): void {
+        const element = event.target as HTMLElement;
+        const { scrollTop, scrollHeight, clientHeight } = element;
+
+        // Calcular si estamos cerca del final
+        const isNearBottom = scrollTop + clientHeight >= scrollHeight - this.scrollThreshold;
+
+        // Solo cargar más si cumple todas las condiciones
+        if (isNearBottom && !this.loadingMore && !this.hasReachedEnd && this.canLoadMore()) {
+            this.loadMoreUsers();
+        }
+    }
+
+    /**
+     * Verifica si se pueden cargar más usuarios
+     */
+    private canLoadMore(): boolean {
+        const totalLoaded = this.paginatedUsers.length;
+        const totalAvailable = this.filteredUsers.length;
+        return totalLoaded < totalAvailable;
+    }
+
+    /**
+     * Carga más usuarios con skeleton
+     */
+    private loadMoreUsers(): void {
+        if (this.loadingMore) return;
+
+        this.loadingMore = true;
+
+        // Simular delay de carga para mostrar skeleton
+        setTimeout(() => {
+            const startIndex = this.currentPage * this.itemsPerPage;
+            const endIndex = startIndex + this.itemsPerPage;
+            const nextBatch = this.filteredUsers.slice(startIndex, endIndex);
+
+            if (nextBatch.length > 0) {
+                // Agregar nuevos usuarios a la lista existente
+                this.paginatedUsers = [...this.paginatedUsers, ...nextBatch];
+                this.currentPage++;
+
+                // Verificar si hemos llegado al final
+                if (this.paginatedUsers.length >= this.filteredUsers.length) {
+                    this.hasReachedEnd = true;
+                }
+            } else {
+                this.hasReachedEnd = true;
+            }
+
+            this.loadingMore = false;
+        }, 600); // Tiempo ajustable según necesidades
+    }
+
+
+    /**
+     * Carga los usuarios iniciales
+     */
+    private loadInitialUsers(): void {
+
+        this.paginatedUsers = this.filteredUsers.slice(0, this.itemsPerPage);
+        this.currentPage = 1;
+
+        // Verificar si ya no hay más usuarios
+        if (this.paginatedUsers.length >= this.filteredUsers.length) {
+            this.hasReachedEnd = true;
+        }
+    }
+
+    /**
+     * Scroll suave al inicio (útil después de filtros)
+     */
+
+
+    formatLocationDate(dateString: string): string {
+        if (!dateString) return 'Sin fecha';
+
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInMs = now.getTime() - date.getTime();
+        const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+        const diffInDays = Math.floor(diffInHours / 24);
+
+        if (diffInHours < 1) return 'Hace menos de 1 hora';
+        if (diffInHours < 24) return `Hace ${diffInHours} horas`;
+        if (diffInDays === 1) return 'Ayer';
+        if (diffInDays < 7) return `Hace ${diffInDays} días`;
+
+        return date.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    }
+    getLocationTimeAgo(dateString: string): string {
+        if (!dateString) return '';
+
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffInMs = now.getTime() - date.getTime();
+        const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+        const diffInHours = Math.floor(diffInMinutes / 60);
+        const diffInDays = Math.floor(diffInHours / 24);
+
+        if (diffInMinutes < 1) return 'Recién actualizada';
+        if (diffInMinutes < 60) return `Hace ${diffInMinutes} minutos`;
+        if (diffInHours < 24) return `Hace ${diffInHours} horas`;
+        return `Hace ${diffInDays} días`;
+    }
+
+    formatLocationDateTime(dateString: string): string {
+        if (!dateString) return 'Sin fecha';
+
+        const date = new Date(dateString);
+        return date.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    copyCoordinates(ubicacion: any): void {
+        if (ubicacion?.geublat && ubicacion?.geublon) {
+            const coordinates = `${ubicacion.geublat}, ${ubicacion.geublon}`;
+            navigator.clipboard.writeText(coordinates).then(() => {
+                this.msgService.add({
+                    severity: 'success',
+                    summary: 'Copia exitosa',
+                    detail: 'Las coordenadas se copiaron al portapapeles',
+                    life: 1000
+                });
+            });
+        }
+    }
+
 //====================== FUNCIONES DEL MAPA DEL DIÁLOGO =======================
 
     /**
@@ -1499,55 +1649,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
 
         console.log(`Vista aproximada mostrada para geocerca: ${geocerca.geocnom} en [${lat}, ${lon}]`);
     }
-
-    /**
-     * Obtiene el nombre del lugar usando reverse geocoding de Nominatim
-     */
-    private getReverseGeocoding(lat: number, lon: number, userId: string): void {
-        // Evitar llamadas duplicadas
-        if (this.loadingLocations.has(userId) || this.userLocations.has(userId)) {
-            return;
-        }
-
-        this.loadingLocations.add(userId);
-
-        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`;
-
-        this.http.get<NominatimReverseResponse>(url)
-            .pipe(
-                catchError(error => {
-                    console.error('Error en reverse geocoding:', error);
-                    return of(null);
-                }),
-                finalize(() => {
-                    this.loadingLocations.delete(userId);
-                })
-            )
-            .subscribe(response => {
-                if (response && response.address) {
-                    // Construir un nombre legible del lugar
-                    const locationParts: string[] = [];
-
-                    if (response.address.road) {
-                        locationParts.push(response.address.road);
-                    }
-                    if (response.address.quarter) {
-                        locationParts.push(response.address.quarter);
-                    }
-                    if (response.address.city) {
-                        locationParts.push(response.address.city);
-                    }
-
-                    const locationName = locationParts.length > 0
-                        ? locationParts.join(', ')
-                        : response.display_name.split(',').slice(0, 2).join(',');
-
-                    this.userLocations.set(userId, locationName);
-                }
-            });
-    }
-
-
     /**
      * Obtiene el nombre del lugar usando reverse geocoding con cola y cooldown
      */
