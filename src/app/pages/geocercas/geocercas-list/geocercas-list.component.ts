@@ -81,7 +81,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
 
 
     customerSearchTerm: string = '';
-
     userLocations: Map<string, string> = new Map();
     loadingLocations: Set<string> = new Set();
     private geocodingQueue: Array<{userId: string, lat: number, lon: number}> = [];
@@ -181,7 +180,8 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
             await this.mapService.initializeMap(this.mapContainer, {
                 center: [-0.2298, -78.5249],
                 zoom: 13,
-                defaultLocation: 'Quito, Ecuador'
+                defaultLocation: 'Quito, Ecuador',
+                zoomControl: false
             });
             this.mapService.addSearchAreaButton(
                 (bounds) => this.searchCustomersInCurrentArea(bounds)
@@ -500,7 +500,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     }
     //==============================================================================================//
 
-    //===============MÉTODO PARA OBTENER TODOS LOS USERS===========================================//
+    //===============MÉTODO PARA OBTENER TODOS LOS USUARIOS===========================================//
 
     getAllUsers(): void {
         this.loading = true;
@@ -706,9 +706,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
 
     //=====MÉTODO DE REFRESH (LOADING) MAPA/DATA==================================================================//
 
-
-
-
     resetMapView(): void {
         this.mapService.resetMapView();
     }
@@ -727,13 +724,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         this.resetMapView();
         this.customers = [];
 
-
-        this.msgService.add({
-            severity: 'info',
-            summary: 'Datos actualizados',
-            detail: 'La vista del mapa y usuarios ha sido restablecida',
-            life: 1000
-        });
     }
     //=============================================================================================//
     focusCustomerOnMap(customer: CustomerResponseDto): void {

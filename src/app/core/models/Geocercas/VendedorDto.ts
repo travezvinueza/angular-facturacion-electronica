@@ -29,7 +29,7 @@ export interface VendedorDto {
     nombreVendedor: string;
     emailVendedor: string;
     codigoVendedorSecundario: string;
-    ubicacionActual?: UbicacionDto;
+    ubicacionActual: UbicacionDto;
     geocercas: GeocercaDto[];
     totalGeocercas: number;
 }

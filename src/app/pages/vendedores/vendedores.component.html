@@ -54,11 +54,13 @@
                                             <i class="pi pi-arrow-left text-surface-600 dark:text-surface-400 group-hover:text-primary-600 dark:group-hover:text-primary-400 text-sm"></i>
                                         </button>
 
-                                        <!-- Badge de estado EN USO -->
-                                        <span class="inline-flex items-center px-3 py-1.5 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-semibold shadow-lg border border-green-400/30">
-                                    <div class="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
-                                    EN USO
-                                </span>
+                                        @if (selectedUser.ubicacionActual.geublat && selectedUser.ubicacionActual.geublon) {
+                                            <button
+                                                (click)="selectUser(selectedUser)"
+                                                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary-100/80 dark:bg-primary-900/40 hover:bg-primary-200/80 dark:hover:bg-primary-900/60 border border-primary-200/60 dark:border-primary-700/60 text-primary-700 dark:text-primary-300 text-xs font-medium transition-all duration-200">
+                                                <i class="pi pi-map-marker text-xs"></i>
+                                            </button>
+                                        }
                                     </div>
 
                                     <div class="flex items-center gap-3 mb-3">
@@ -694,7 +696,6 @@
             </ng-template>
         </p-dialog>
 
-        <!-- Panel Derecho - Mapa -->
         <!-- Panel Derecho - Mapa -->
         <div class="w-full lg:flex-1 flex flex-col order-1 lg:order-2">
             <div class="flex flex-col flex-1 overflow-hidden h-full bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg shadow-sm">

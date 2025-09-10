@@ -16,6 +16,7 @@ export interface MapConfig {
     center: [number, number];
     zoom: number;
     defaultLocation: string;
+    zoomControl: boolean;
 
 }
 
@@ -64,7 +65,8 @@ export class MapService {
     private readonly defaultConfig: MapConfig = {
         center: [-0.2298, -78.5249], // Quito, Ecuador
         zoom: 13,
-        defaultLocation: 'Quito, Ecuador'
+        defaultLocation: 'Quito, Ecuador',
+        zoomControl: true
     };
 
     // Observables para el estado
@@ -411,6 +413,10 @@ export class MapService {
     focusOnUserWithRange(user: UserDto, radiusMeters: number = 1000): RangeDisplayInfo | null {
         if (!this.map || !user.ubicacion) return null;
 
+
+        this.hideAllUserMarkersExcept(user.usucod);
+
+
         const centerLat = user.ubicacion.geublat;
         const centerLng = user.ubicacion.geublon;
 
@@ -432,6 +438,23 @@ export class MapService {
         }
 
         return rangeInfo;
+    }
+
+    private hideAllUserMarkersExcept(selectedUserCode: string): void {
+        if (!this.markerClusterGroup) return;
+
+        this.userMarkers.forEach((marker, userCode) => {
+            if (userCode !== selectedUserCode) {
+                this.markerClusterGroup?.removeLayer(marker);
+            }
+        });
+    }
+    restoreAllUserMarkers(): void {
+        if (!this.markerClusterGroup) return;
+
+        this.userMarkers.forEach((marker) => {
+            this.markerClusterGroup?.addLayer(marker);
+        });
     }
 
     private calculateUserRange(lat: number, lng: number, radiusMeters: number): UserRange {
@@ -575,7 +598,8 @@ export class MapService {
 
                 this.map = L.map(element, {
                     center: mapConfig.center,
-                    zoom: mapConfig.zoom
+                    zoom: mapConfig.zoom,
+                    zoomControl: mapConfig.zoomControl
                 });
 
 
@@ -1112,6 +1136,7 @@ export class MapService {
 
         // Limpiar rangos de usuario si existen
         this.clearUserRange();
+        this.restoreAllUserMarkers();
 
         // Resetear resultados de búsqueda
         this.searchResults$.next([]);

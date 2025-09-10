@@ -172,7 +172,7 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
 
     //======= VARIABLES DE PAGINACION DE GEOCERCAS ==================//
     first: number = 0;
-    itemsPerPage: number = 4;
+    itemsPerPage: number = 5;
     enterpriseName: string = '';     // Propiedades de empresa
 
 
@@ -196,7 +196,8 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
             await this.mapService.initializeMap(this.mapContainer, {
                 center: [-0.2298, -78.5249],
                 zoom: 13,
-                defaultLocation: 'Quito, Ecuador'
+                defaultLocation: 'Quito, Ecuador',
+                zoomControl: false,
             });
 
             if (!this.loading && this.geocercas.length > 0) {

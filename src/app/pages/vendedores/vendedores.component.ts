@@ -363,6 +363,7 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
 
         if (this.map) {
             this.showSelectedUserGeocercas(user);
+            this.hideAllUserMarkersExcept(user.codigoVendedor);
 
             if (user.totalGeocercas > 0) {
                 this.fitMapToUserGeocercas(user);
@@ -375,6 +376,31 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
                 marker.openPopup();
             }
         }
+    }
+
+
+    private hideAllUserMarkersExcept(selectedUserCode: string): void {
+        this.userMarkers.forEach((marker, userCode) => {
+            if (userCode !== selectedUserCode) {
+                // Si usas cluster group
+                if (this.markerClusterGroup) {
+                    this.markerClusterGroup.removeLayer(marker);
+                } else {
+                    // Si los markers están directamente en el mapa
+                    this.map?.removeLayer(marker);
+                }
+            }
+        });
+    }
+
+    restoreAllUserMarkers(): void {
+        this.userMarkers.forEach((marker) => {
+            if (this.markerClusterGroup) {
+                this.markerClusterGroup.addLayer(marker);
+            } else {
+                marker.addTo(this.map!);
+            }
+        });
     }
     //==========================================================================//
 
@@ -586,6 +612,7 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
 
         this.selectedUser = null;
         this.clearAllGeocercas();
+        this.restoreAllUserMarkers();
         this.map.setView([-0.2298, -78.5249], 13);
         this.clearLocationSearch();
 
@@ -602,8 +629,12 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
      * Muestra solo las geocercas del vendedor seleccionado
      * Las geocercas se resaltan con mayor opacidad y grosor
      */
+    /**
+     * Muestra solo las geocercas del vendedor seleccionado
+     */
     showSelectedUserGeocercas(user: VendedorDto): void {
         if (!this.map) return;
+
         this.clearAllGeocercas();
 
         user.geocercas.forEach((geocerca) => {
@@ -612,13 +643,12 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
                 if (coordinates && coordinates.length > 0) {
                     const latlngs: [number, number][] = coordinates.map((coord: any) => [coord.lat, coord.lng]);
 
-                    const isEditMode = this.editMode;
                     const polygon = L.polygon(latlngs, {
-                        color: isEditMode ? '#3B82F6' : this.getGeocercaColor(geocerca.geocpri),
-                        fillColor: isEditMode ? '#3B82F6' : this.getGeocercaColor(geocerca.geocpri),
-                        fillOpacity: isEditMode ? 0.2 : 0.3,
-                        weight: isEditMode ? 3 : 3,
-                        opacity: isEditMode ? 0.8 : 0.8
+                        color: this.getGeocercaColor(geocerca.geocpri),
+                        fillColor: this.getGeocercaColor(geocerca.geocpri),
+                        fillOpacity: 0.3,
+                        weight: 3,
+                        opacity: 0.8
                     }).addTo(this.map!);
 
                     const popupContent = this.createGeocercaPopupContent(geocerca, user);
@@ -630,28 +660,27 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
                     const key = `${user.codigoVendedor}-${geocerca.geoccod}`;
                     this.geocercaLayers.set(key, polygon);
 
-                    if (!isEditMode) {
-                        polygon.on('mouseover', () => {
-                            polygon.setStyle({
-                                fillOpacity: 0.5,
-                                weight: 4
-                            });
+                    // Efectos hover
+                    polygon.on('mouseover', () => {
+                        polygon.setStyle({
+                            fillOpacity: 0.5,
+                            weight: 4
                         });
+                    });
 
-                        polygon.on('mouseout', () => {
-                            polygon.setStyle({
-                                fillOpacity: 0.3,
-                                weight: 3
-                            });
+                    polygon.on('mouseout', () => {
+                        polygon.setStyle({
+                            fillOpacity: 0.3,
+                            weight: 3
                         });
-                    }
+                    });
                 }
             } catch (error) {
                 console.error('Error parsing geocerca coordinates:', error);
             }
         });
 
-        if (!this.editMode && user.totalGeocercas > 0) {
+        if (user.totalGeocercas > 0) {
             this.msgService.add({
                 severity: 'info',
                 summary: 'Geocercas mostradas',
