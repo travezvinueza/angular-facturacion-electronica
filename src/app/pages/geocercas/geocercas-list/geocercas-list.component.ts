@@ -143,7 +143,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     searchingLocation: boolean = false;
     searchResults: SearchResult[] = [];
     mapInitialized: boolean = false;
-    map: L.Map | null = null;
 
     // Nuevas propiedades para el drawer
     openFilterDrawer: boolean = false;
@@ -176,6 +175,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     }
 
     async initializeMap(): Promise<void> {
+        this.mapInitialized = true;
         try {
             await this.mapService.initializeMap(this.mapContainer, {
                 center: [-0.2298, -78.5249],

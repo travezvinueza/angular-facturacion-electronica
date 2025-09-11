@@ -69,7 +69,6 @@ export class GeocercaService {
         enterpriseName: string,
         pageNumber: number = 1,
         pageSize: number = 10,
-        activo: boolean = true
     ): Observable<GeocercaValidationResponse> {
         const token = this.authService.getToken();
         const headers = new HttpHeaders({
@@ -81,7 +80,6 @@ export class GeocercaService {
             .set('pageNumber', pageNumber)
             .set('pageSize', pageSize)
             .set('enterpriseName', enterpriseName)
-            .set('activo', activo);
 
 
         return this.http.get<GeocercaValidationResponse>(

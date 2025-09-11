@@ -20,16 +20,24 @@
                                         placeholder="Buscar geocercas..."
                                         (input)="onSearch($event)"
                                         [disabled]="modoEliminacion"
-                                        class="w-full py-3 pl-11 pr-4 text-sm rounded-xl border-2 border-surface-200/80 dark:border-surface-600/80 bg-gradient-to-r from-white to-surface-50/50 dark:from-surface-800 dark:to-surface-800/80 hover:border-primary-300/60 dark:hover:border-primary-600/60 focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/80 transition-all duration-200 shadow-sm">
-                                    <div class="absolute left-3.5 top-1/2 transform -translate-y-1/2">
-                                        <i class="pi pi-search text-primary-400 dark:text-primary-500"></i>
-                                    </div>
+                                        class="w-full py-3 pl-11 pr-12 text-sm rounded-xl border-2 border-surface-200/80 dark:border-surface-600/80 bg-gradient-to-r from-white to-surface-50/50 dark:from-surface-800 dark:to-surface-800/80 hover:border-primary-300/60 dark:hover:border-primary-600/60 focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/80 transition-all duration-200
+                                         shadow-sm">
+                                        <div class="absolute left-3.5 top-1/2 transform -translate-y-1/2">
+                                            <i class="pi pi-search text-primary-400 dark:text-primary-500"></i>
+                                        </div>
                                 </div>
+                                @if (filteredGeocercas.length > 0) {
+                                    <div class="mt-3 flex justify-between items-center text-xs text-surface-600 dark:text-surface-400">
+                                        <span>{{ filteredGeocercas.length }} geocercas encontradas</span>
+                                    </div>
+
+                                }
                             </div>
+
 
                             <!-- Botón de modo eliminación mejorado -->
                             <button
-                                [class]="'relative overflow-hidden w-12 h-12 flex items-center justify-center rounded-xl border-2 transition-all duration-300 shadow-sm ' + (modoEliminacion ? 'bg-gradient-to-br from-red-500 to-red-600 border-red-400/30 text-white hover:from-red-600 hover:to-red-700' : 'bg-gradient-to-br from-surface-100 to-surface-200/60 dark:from-surface-700 dark:to-surface-800/60 border-surface-200/80 dark:border-surface-600/80 text-surface-600 dark:text-surface-400 hover:border-surface-300/80 dark:hover:border-surface-500/80')"
+                                [class]="'relative overflow-hidden mb-6 w-12 h-12 flex items-center justify-center rounded-xl border-2 transition-all duration-300 shadow-sm ' + (modoEliminacion ? 'bg-gradient-to-br from-red-500 to-red-600 border-red-400/30 text-white hover:from-red-600 hover:to-red-700' : 'bg-gradient-to-br from-surface-100 to-surface-200/60 dark:from-surface-700 dark:to-surface-800/60 border-surface-200/80 dark:border-surface-600/80 text-surface-600 dark:text-surface-400 hover:border-surface-300/80 dark:hover:border-surface-500/80')"
                                 (click)="toggleModoEliminacion()"
                                 [disabled]="loading || creandoGeocerca || editandoGeocerca"
                                 [pTooltip]="modoEliminacion ? 'Cancelar eliminación' : 'Eliminar geocercas'"
@@ -163,6 +171,10 @@
                                             @if (geocerca.geocact) {
                                                 <div class="absolute -top-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white dark:border-surface-700 rounded-full">
                                                     <div class="w-full h-full bg-green-400 rounded-full animate-ping opacity-75"></div>
+                                                </div>
+                                            } @else {
+                                                <div class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 border-2 border-white dark:border-surface-700 rounded-full">
+                                                    <div class="w-full h-full bg-red-400 rounded-full animate-ping opacity-75"></div>
                                                 </div>
                                             }
                                         </div>
@@ -316,15 +328,16 @@
                     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-surface-50 to-white dark:from-surface-900 dark:to-surface-800 rounded-lg border border-surface-200 dark:border-surface-700">
 
                         <!-- Bloque de icono + texto -->
-                        <div class="flex items-center gap-3 min-w-0">
+                        <div class="flex items-center gap-2 min-w-0">
                             <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-primary-100 via-primary-200/60 to-primary-300/40 dark:from-primary-900/50 dark:via-primary-800/70 dark:to-primary-700/50 border border-primary-200/60 dark:border-primary-600/40 shadow-lg">
                                 <i class="pi pi-map text-primary-600 dark:text-primary-300 text-xl"></i>
                             </div>
-                            <div class="min-w-0">
-                                <h2 class="text-xl sm:text-2xl font-extrabold text-gray-800 dark:text-white tracking-tight">
+                            <div class="min-w-0 ">
+                                <p class="text-gray-800 dark:text-white text-xl sm:text-2xl font-bold leading-snug tracking-tight">
                                     Geocercas
-                                </h2>
-                                <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-snug mt-0.5">
+                                </p>
+
+                                <p style="margin-top:-15px;" class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-snug">
                                     Mapa de geolocalización de geocercas activas
                                 </p>
                             </div>
@@ -548,17 +561,32 @@
                 <div class="flex-1 relative overflow-hidden min-h-0">
                     <!-- Loading del mapa -->
                     @if (!mapInitialized) {
-                        <div class="absolute inset-0 flex items-center justify-center bg-surface-100 dark:bg-surface-800 rounded-lg z-10">
-                            <div class="text-center p-4">
-                                <i class="pi pi-spin pi-spinner text-2xl text-primary mb-2"></i>
-                                <p class="text-sm sm:text-base text-surface-600 dark:text-surface-400">Cargando mapa...</p>
+                        <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-surface-100/50 via-transparent to-surface-200/30 dark:from-surface-800/30 dark:to-surface-900/50 z-10">
+                            <div class="text-center p-8">
+                                <div class="relative">
+                                    <!-- Background decorativo -->
+                                    <div class="absolute inset-0 bg-gradient-to-br from-surface-100/50 via-transparent to-surface-200/30 dark:from-surface-800/30 dark:to-surface-900/50 rounded-2xl"></div>
+
+                                    <!-- Contenido -->
+                                    <div class="relative p-8">
+                                        <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-primary-100 to-primary-200 dark:from-primary-900/40 dark:to-primary-800/60 rounded-2xl flex items-center justify-center border border-primary-200/60 dark:border-primary-700/40">
+                                            <i class="pi pi-spin pi-spinner text-2xl text-primary-600 dark:text-primary-400"></i>
+                                        </div>
+                                        <h6 class="text-surface-700 dark:text-surface-300 font-bold mb-2">
+                                            Cargando mapa
+                                        </h6>
+                                        <p class="text-sm text-surface-500 dark:text-surface-500 max-w-sm mx-auto leading-relaxed">
+                                            Preparando la visualización de ubicaciones...
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     }
 
                     <!-- Mapa de Leaflet -->
                     <div #mapContainer
-                         class="w-full h-full rounded-lg"
+                         class="w-full h-full rounded-b-lg"
                          style="min-height: 700px; height: 100%; width: 100%;">
                     </div>
                 </div>

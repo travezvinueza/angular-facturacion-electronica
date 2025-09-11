@@ -13,11 +13,11 @@
                     <div class="relative">
                         <!-- Vista: Lista de Usuarios -->
                         @if (!selectedUser) {
-                            <!-- Buscador mejorado (sin header) -->
+                            <!-- Buscador mejorado -->
                             <div class="relative">
                                 <input
                                     type="text"
-                                    placeholder="Buscar usuarios..."
+                                    placeholder="Buscar vendedores..."
                                     (input)="onSearch($event)"
                                     class="w-full py-3 pl-11 pr-12 text-sm rounded-xl border-2 border-surface-200/80 dark:border-surface-600/80 bg-gradient-to-r from-white to-surface-50/50 dark:from-surface-800 dark:to-surface-800/80 hover:border-primary-300/60 dark:hover:border-primary-600/60 focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/80 transition-all duration-200 shadow-sm">
 
@@ -33,6 +33,13 @@
                                     <i class="pi pi-times text-xs"></i>
                                 </button>
                             </div>
+
+                            <!-- Información de estado -->
+                            @if (filteredUsers.length > 0) {
+                                <div class="mt-3 flex justify-between items-center text-xs text-surface-600 dark:text-surface-400">
+                                    <span>{{ filteredUsers.length }} vendedores disponibles</span>
+                                </div>
+                            }
                         }
 
                         <!-- Vista: Información del Usuario Seleccionado -->
@@ -236,20 +243,20 @@
                                                 <!-- Info del Usuario -->
                                                 <div class="flex-1 min-w-0">
                                                     <!-- Códigos primero -->
-                                                    <div class="flex items-center gap-2 mb-2">
-                                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-surface-100/80 dark:bg-surface-600/60 border border-surface-200/60 dark:border-surface-500/60 text-xs font-mono font-medium text-surface-700 dark:text-surface-300">
-                                                    <i class="pi pi-id-card mr-1.5 text-xs"></i>
-                                                    {{ user.usucod }}
-                                                </span>
-                                                        <span class="inline-flex items-center px-2 py-1 rounded-md bg-surface-200/60 dark:bg-surface-600/40 text-xs font-mono text-surface-600 dark:text-surface-400">
-                                                    {{ user.usucodv }}
-                                                </span>
-                                                    </div>
 
                                                     <!-- Nombre del usuario (h6) -->
                                                     <h6 class="font-bold text-surface-900 dark:text-surface-0 mb-2 group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors leading-tight">
                                                         {{ user.usunombre }}
                                                     </h6>
+                                                    <div class="flex items-center gap-2 mb-2">
+                                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-surface-100/80 dark:bg-surface-600/60 border border-surface-200/60 dark:border-surface-500/60 text-xs font-mono font-medium text-surface-700 dark:text-surface-300">
+                                                            <i class="pi pi-id-card mr-1.5 text-xs"></i>
+                                                            {{ user.usucod }}
+                                                        </span>
+                                                        <span class="inline-flex items-center px-2 py-1 rounded-md bg-surface-200/60 dark:bg-surface-600/40 text-xs font-mono text-surface-600 dark:text-surface-400">
+                                                            {{ user.usucodv }}
+                                                        </span>
+                                                    </div>
 
                                                     <!-- Indicadores de estado -->
                                                     <div class="space-y-2">
@@ -452,15 +459,16 @@
                     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-surface-50 to-white dark:from-surface-900 dark:to-surface-800 rounded-lg border border-surface-200 dark:border-surface-700">
 
                         <!-- Bloque de icono + texto -->
-                        <div class="flex items-center gap-3 min-w-0">
+                        <div class="flex items-center gap-2 min-w-0">
                             <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-primary-100 via-primary-200/60 to-primary-300/40 dark:from-primary-900/50 dark:via-primary-800/70 dark:to-primary-700/50 border border-primary-200/60 dark:border-primary-600/40 shadow-lg">
                                 <i class="pi pi-users text-primary-600 dark:text-primary-300 text-xl"></i>
                             </div>
-                            <div class="min-w-0">
+                            <div class="min-w-0 ">
                                 <p class="text-gray-800 dark:text-white text-xl sm:text-2xl font-bold leading-snug tracking-tight">
                                     Vendedores
                                 </p>
-                                <p class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-snug mt-0.5">
+
+                                <p style="margin-top:-15px;" class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-snug">
                                     Mapa de geolocalización de vendedores activos
                                 </p>
                             </div>

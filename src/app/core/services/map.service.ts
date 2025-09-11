@@ -343,18 +343,18 @@ export class MapService {
 
         return L.divIcon({
             html: `
-        <div class="relative">
-            <div class="w-7 h-7 ${bgColor} rounded-full border-2 border-white shadow-md flex items-center justify-center">
-                <svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
-                </svg>
-            </div>
-            <div class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 ${indicatorColor} border border-white rounded-full"></div>
+    <div class="relative">
+        <div class="w-10 h-10 ${bgColor} rounded-full border-2 border-white shadow-md flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+            </svg>
         </div>
-        `,
+        <div class="absolute -top-0.5 -right-0.5 w-3 h-3 ${indicatorColor} border border-white rounded-full"></div>
+    </div>
+    `,
             className: 'custom-customer-marker',
-            iconSize: [28, 28],
-            iconAnchor: [14, 14]
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
         });
     }
 
@@ -585,7 +585,7 @@ export class MapService {
     /**
      * Inicializa el mapa en el contenedor especificado
      */
-    initializeMap(container: ElementRef, config?: Partial<MapConfig>): Promise<boolean> {
+   async initializeMap(container: ElementRef, config?: Partial<MapConfig>): Promise<boolean> {
         return new Promise((resolve, reject) => {
             try {
                 const mapConfig = { ...this.defaultConfig, ...config };
@@ -625,7 +625,7 @@ export class MapService {
 
                 setTimeout(() => {
                     this.map?.invalidateSize();
-                }, 0);
+                }, 100);
 
                 this.mapInitialized$.next(true);
                 console.log('Mapa inicializado correctamente');

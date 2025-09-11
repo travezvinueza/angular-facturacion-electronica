@@ -151,11 +151,10 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
 
     //======= VARIABLES PARA EL MAPA ===================//
     // Mapa (delegadas al servicio)
-    map: L.Map | null = null;
     searchLocation: string = '';
     searchingLocation: boolean = false;
     searchResults: SearchResult[] = [];
-        mapInitialized: boolean = false;
+    mapInitialized: boolean = false;
     //=================================================================//
 
 
@@ -192,6 +191,7 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
     //============== MÉTODOS DE INICIALIZACIÓN ===================
 
     async initializeMap(): Promise<void> {
+        this.mapInitialized = true;
         try {
             await this.mapService.initializeMap(this.mapContainer, {
                 center: [-0.2298, -78.5249],
@@ -269,7 +269,6 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
      * Suscribe a los observables del servicio de mapas
      */
     private subscribeToMapService(): void {
-        // Estado de inicialización del mapa
         this.mapService.isMapInitialized$.pipe(takeUntil(this.destroy$)).subscribe((initialized) => {
             this.mapInitialized = initialized;
             if (initialized && this.mapService['map']) {
@@ -1089,7 +1088,7 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
         }
 
         this.loading = true;
-        this.geocercaService.getOnlyGeocercasByEnterpriseName(this.enterpriseName, 1, 50, true).subscribe({
+        this.geocercaService.getOnlyGeocercasByEnterpriseName(this.enterpriseName, 1, 50).subscribe({
             next: (response: GeocercaValidationResponse) => {
                 if (response.success && response.data?.data) {
                     this.geocercas = response.data.data;
