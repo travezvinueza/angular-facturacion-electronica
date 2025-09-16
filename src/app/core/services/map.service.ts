@@ -11,7 +11,7 @@ import { GeofenceDto } from '@/core/models/Geocercas/GeocercaValidationResponseD
 import { ChargeDto, LocationDto, OrderDto } from '../models/Filter/TrackingResponse';
 
 
-//===== INTERFACES =====//
+//===== INTERFACES ======//
 export interface MapConfig {
     center: [number, number];
     zoom: number;
