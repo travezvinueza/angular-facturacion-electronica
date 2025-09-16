@@ -1,46 +1,26 @@
-# Dockerfile simplificado para debugging
-
-# Etapa 1: Build de la aplicación
 FROM node:22.14.0-alpine as build-stage
 
-# Establecer el directorio de trabajo
 WORKDIR /app
-
-# Instalar Angular CLI
 RUN npm install -g @angular/cli@latest
 
-# Copiar archivos de configuración
 COPY package*.json ./
-
-# Instalar dependencias
 RUN npm ci --silent
 
-# Copiar código fuente
 COPY . .
 
-# Build de la aplicación
-RUN npm run build
+RUN ng build --configuration=production
 
-# Verificar que el build se creó correctamente
-RUN ls -la /app/dist/
+# Verificaciones
 RUN ls -la /app/dist/sakai-ng/
+RUN find /app/dist/sakai-ng -name "*.js" | head -5
 
-# Etapa 2: Servidor nginx
-FROM nginx:1.25-alpine as production-stage
+FROM nginx:1.25-alpine AS production-stage
 
-# PASO 1: Eliminar TODO el contenido por defecto de nginx
 RUN rm -rf /usr/share/nginx/html/*
 RUN rm -rf /etc/nginx/conf.d/*
 
-# PASO 2: Copiar nuestra configuración
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
-
-# PASO 3: Copiar archivos de Angular
 COPY --from=build-stage /app/dist/sakai-ng /usr/share/nginx/html
 
-
-# Exponer puerto
 EXPOSE 80
-
-# Comando para ejecutar nginx
 CMD ["nginx", "-g", "daemon off;"]

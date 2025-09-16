@@ -186,7 +186,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
                 return;
             }
 
-            // No necesitamos calcular altura manualmente, el CSS lo maneja
             delete (L.Icon.Default.prototype as any)._getIconUrl;
             L.Icon.Default.mergeOptions({
                 iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
@@ -226,9 +225,6 @@ export class VendedoresComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.map?.invalidateSize();
             }, 100);
 
-            setTimeout(() => {
-                this.map?.invalidateSize();
-            }, 500);
 
             console.log('Mapa inicializado correctamente');
         } catch (error) {

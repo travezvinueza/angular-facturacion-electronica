@@ -39,6 +39,8 @@ import { Checkbox } from 'primeng/checkbox';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { Accordion, AccordionContent, AccordionHeader, AccordionPanel } from 'primeng/accordion';
 import { NominatimReverseResponse } from '@/core/models/nominatim-response.interface';
+import { FilterRequest, ZonaClientes } from '@/core/models/Filter/FilterRequest';
+import { TrackingResponse } from '@/core/models/Filter/TrackingResponse';
 
 @Component({
     selector: 'app-geocercas',
@@ -93,8 +95,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     // Para scroll infinito
     loadingMore: boolean = false;
     hasReachedEnd: boolean = false;
-    currentPage: number = 0;
-    allUsers: UserDto[] = []; // Mantener usuarios originales
+    currentPage: number = 0;// Mantener usuarios originales
     private scrollThreshold: number = 100;
     private debounceTimer: any;
 
@@ -106,9 +107,14 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     geofenceEnabled: boolean = false;
     pedidosEnabled: boolean = false;
     collectionsEnabled: boolean = false;
+    clientesNone: boolean = false;
+    clientesAll: boolean = false;
+    clientesAssigned: boolean = false;
 
-    // Opciones para autoComplete
+
     timeUnitOptions: any[] = [];
+
+
     geofenceOptions: any[] = [];
 
     // Propiedades para geocercas
@@ -145,7 +151,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     mapInitialized: boolean = false;
 
     // Nuevas propiedades para el drawer
-    openFilterDrawer: boolean = false;
     showRangeDrawer: boolean = false;
     userRange: RangeDisplayInfo | null = null;
     showRangeDialog: boolean = false;
@@ -262,7 +267,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
 
         // Procesar la cola si no se está procesando
         if (!this.isProcessingQueue) {
-            this.processGeocodingQueue();
+            this.processGeocodingQueue().then();
         }
     }
 
@@ -312,37 +317,40 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     private performGeocodingRequest(lat: number, lon: number, userId: string): Promise<void> {
         const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`;
 
-        return this.http.get<NominatimReverseResponse>(url, {
-        }).pipe(
-            timeout(10000), // 10 segundos timeout
-            retry({
-                count: this.MAX_RETRIES,
-                delay: (error, retryCount) => {
-                    // Delay exponencial: 2s, 4s, 8s
-                    const delayMs = Math.pow(2, retryCount) * 1000;
-                    console.log(`Reintentando geocoding para ${userId} en ${delayMs}ms (intento ${retryCount})`);
-                    return timer(delayMs);
-                }
-            }),
-            catchError(error => {
-                console.warn(`Error en geocoding para ${userId} después de ${this.MAX_RETRIES} intentos:`, error);
-                return of(null); // Continuar sin error
-            }),
-            finalize(() => {
-                this.loadingLocations.delete(userId);
-            })
-        ).toPromise().then(response => {
-            if (response && response.address) {
-                const locationName = this.buildLocationName(response);
-                this.userLocations.set(userId, locationName);
+        return this.http
+            .get<NominatimReverseResponse>(url, {})
+            .pipe(
+                timeout(10000), // 10 segundos timeout
+                retry({
+                    count: this.MAX_RETRIES,
+                    delay: (_error, retryCount) => {
+                        // Delay exponencial: 2s, 4s, 8s
+                        const delayMs = Math.pow(2, retryCount) * 1000;
+                        console.log(`Reintentando geocoding para ${userId} en ${delayMs}ms (intento ${retryCount})`);
+                        return timer(delayMs);
+                    }
+                }),
+                catchError((error) => {
+                    console.warn(`Error en geocoding para ${userId} después de ${this.MAX_RETRIES} intentos:`, error);
+                    return of(null); // Continuar sin error
+                }),
+                finalize(() => {
+                    this.loadingLocations.delete(userId);
+                })
+            )
+            .toPromise()
+            .then((response) => {
+                if (response && response.address) {
+                    const locationName = this.buildLocationName(response);
+                    this.userLocations.set(userId, locationName);
 
-                // Limpiar contador de errores si fue exitoso
-                this.failedRequests.delete(userId);
-            } else {
-                // Marcar como fallido pero no mostrar error
-                this.userLocations.set(userId, 'Ubicación no disponible');
-            }
-        });
+                    // Limpiar contador de errores si fue exitoso
+                    this.failedRequests.delete(userId);
+                } else {
+                    // Marcar como fallido pero no mostrar error
+                    this.userLocations.set(userId, 'Ubicación no disponible');
+                }
+            });
     }
 
     /**
@@ -561,6 +569,11 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         this.loadVendorGeocercas(user.usucodv);
     }
 
+    selectOnlyUser(user: UserDto): void {
+        this.selectedUser = user;
+        this.mapService.focusOnUser(user);
+    }
+
     //===MÉTODO PARA CARGAR LAS GEOCERCAS DEL VENDEDOR====================================================//
 
     private loadVendorGeocercas(vendorCode: string): void {
@@ -636,40 +649,10 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     }
 
     //===============MÉTODO PARA CONFIGURAR EL RANGO/SACAR COORDENADAS NORHWEST AND SOUTHWEST/CONFIGURACION DEL MODULO DRAWER====================================================//
-    /**
-     * Aplica el radio personalizado
-     */
-    applyCustomRadius(): void {
-        if (this.selectedUser && this.customRadius > 0) {
-            this.defaultRadius = this.customRadius;
-
-            // Recalcular el rango con el nuevo radio
-            const rangeInfo = this.mapService.focusOnUserWithRange(this.selectedUser, this.customRadius);
-
-            this.showRangeDialog = false;
-
-            if (rangeInfo) {
-                // Mantener el drawer abierto para mostrar los cambios
-                this.showRangeDrawer = true;
-
-                this.msgService.add({
-                    severity: 'success',
-                    summary: 'Radio actualizado',
-                    detail: `Nuevo radio aplicado: ${this.customRadius} metros`,
-                    life: 4000
-                });
-            }
-        }
-    }
-    cancelRangeConfig(): void {
-        this.showRangeDialog = false;
-        this.customRadius = this.defaultRadius;
-    }
     get hasUserRange(): boolean {
         return this.userRange !== null;
     }
 
-    //=============================================================================================//
 
     //=====MÉTODO PARA EL BUSCADOR DEL MAPA========================================================//
     searchLocationOnMap(): void {
@@ -722,6 +705,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         this.filteredCustomers = [];
         this.getAllUsers();
         this.resetMapView();
+        this.clearFilters();
         this.customers = [];
 
     }
@@ -738,16 +722,19 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     }
 
 
-    // Métodos para autoComplete
     searchTimeUnit(event: any): void {
         const query = event.query.toLowerCase();
-        const allTimeUnits = [
-            { label: 'Horas', value: 'Horas' },
+        this.timeUnitOptions = [
+            { label: 'Segundos', value: 'Segundos' },
             { label: 'Minutos', value: 'Minutos' },
-            { label: 'Días', value: 'Días' }
-        ];
-
-        this.timeUnitOptions = allTimeUnits.filter((option) => option.label.toLowerCase().includes(query));
+            { label: 'Horas', value: 'Horas' },
+            { label: 'Días', value: 'Días' },
+            { label: 'Semanas', value: 'Semanas' },
+            { label: 'Meses', value: 'Meses' },
+            { label: 'Años', value: 'Años' }
+        ].filter(option =>
+            option.label.toLowerCase().includes(query)
+        );
     }
 
     searchGeofence(event: any): void {
@@ -768,6 +755,29 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
                 geocerca: geocerca
             }));
     }
+    /**
+     * Maneja el cambio de checkboxes de clientes (mutuamente excluyentes)
+     */
+    onClientFilterChange(filterType: 'none' | 'all' | 'assigned'): void {
+        // Resetear todos
+        this.clientesNone = false;
+        this.clientesAll = false;
+        this.clientesAssigned = false;
+
+        // Activar el seleccionado
+        switch (filterType) {
+            case 'none':
+                this.clientesNone = true;
+                this.mapService.clearCustomerMarkers();
+                break;
+            case 'all':
+                this.clientesAll = true;
+                break;
+            case 'assigned':
+                this.clientesAssigned = true;
+                break;
+        }
+    }
 
     getActiveFiltersCount(): number {
         let count = 0;
@@ -776,21 +786,266 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         if (this.pedidosEnabled) count++;
         if (this.collectionsEnabled) count++;
         if (this.timeValue && this.selectedTimeUnit) count++;
+        if (this.clientesNone || this.clientesAll || this.clientesAssigned) count++;
         return count;
     }
 
     clearFilters(): void {
+        // Filtros temporales
         this.filterFrom = null;
+        this.selectedTimeUnit = null;
+        this.timeValue = null;
+
+        // Filtros espaciales
         this.geofenceEnabled = false;
         this.selectedGeofence = null;
+
+        // Filtros de transacciones
         this.pedidosEnabled = false;
         this.collectionsEnabled = false;
-        this.timeValue = null;
-        this.selectedTimeUnit = null;
+
+        // Filtros de clientes
+        this.clientesNone = false;
+        this.clientesAll = false;
+        this.clientesAssigned = false;
+
+        this.msgService.add({
+            severity: 'info',
+            summary: 'Filtros',
+            detail: 'Todos los filtros han sido limpiados'
+        });
     }
 
+    /**
+     * Aplica los filtros seleccionados y realiza la petición
+     */
     applyFilters(): void {
-        // Tu lógica de filtrado
+        if (!this.selectedUser) {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Advertencia',
+                detail: 'Seleccione un usuario primero'
+            });
+            return;
+        }
+
+        // Validar filtros requeridos
+        if (!this.validateFilters()) {
+            return;
+        }
+
+        // Construir el DTO
+        const filterRequest: FilterRequest = {
+            mostrarvendedor: !!this.selectedUser,
+            codusuario: this.selectedUser.usucod,
+            codvendedor: this.selectedUser.usucodv,
+            fechainicio: this.buildFechaInicio(),
+            tipotiempo: this.selectedTimeUnit?.value ?? 3, // Default: días
+            valortiempo: this.timeValue ?? 1,
+            clientes: this.buildClientesFilter(),
+            transacciones: {
+                pedidos: this.pedidosEnabled,
+                cobros: this.collectionsEnabled
+            },
+            zonaclientes: this.buildZonaClientes()
+        };
+
+
+
+        // Realizar la petición
+        this.loading = true;
+        this.customerService.getTrackingDetails(filterRequest)
+            .pipe(
+                takeUntil(this.destroy$),
+                finalize(() => this.loading = false)
+            )
+
+            .subscribe({
+                next: (response: TrackingResponse) => {
+                    this.processTrackingResponse(response);
+                    this.msgService.add({
+                        severity: 'success',
+                        summary: 'Éxito',
+                        detail: 'Filtros aplicados correctamente'
+                    });
+                },
+
+                error: (error: HttpErrorResponse) => {
+                    console.error('Error al aplicar filtros:', error);
+                    this.msgService.add({
+                        severity: 'error',
+                        summary: 'Error',
+                        detail: 'No se pudieron aplicar los filtros'
+                    });
+                }
+            });
+    }
+
+    /**
+     * Construye la fecha de inicio en formato ISO
+     */
+    private buildFechaInicio(): string {
+        if (this.filterFrom) {
+            return this.filterFrom.toISOString();
+        }
+        // Default: fecha actual
+        return new Date().toISOString();
+    }
+
+    /**
+     * Construye el valor de filtro de clientes (0=ninguno, 1=todos, 2=asignados)
+     */
+    private buildClientesFilter(): number {
+        if (this.clientesNone) return 0;
+        if (this.clientesAll) return 1;
+        if (this.clientesAssigned) return 2;
+        return 0;
+    }
+
+    /**
+     * Construye la zona de clientes basada en la geocerca o área actual
+     */
+    private buildZonaClientes(): ZonaClientes {
+        let bounds: L.LatLngBounds;
+
+        if (this.geofenceEnabled && this.selectedGeofence) {
+            // Usar coordenadas de la geocerca seleccionada
+            bounds = new L.LatLngBounds(
+                [this.selectedGeofence.latmin, this.selectedGeofence.lonmin],
+                [this.selectedGeofence.latmax, this.selectedGeofence.lonmax]
+            );
+        } else {
+            // Usar área visible actual del mapa
+            bounds = this.mapService.getCurrentBounds();
+        }
+
+        return {
+            codvend: this.selectedUser!.usucodv,
+            latmax: bounds.getSouth(),
+            latmin: bounds.getNorth(),
+            lonmax: bounds.getWest(),
+            lonmin: bounds.getEast()
+        };
+    }
+
+    /**
+     * Valida que los filtros requeridos estén completos
+     */
+    private validateFilters(): boolean {
+        // Validar que al menos una transacción esté habilitada
+        if (!this.pedidosEnabled && !this.collectionsEnabled) {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Validación',
+                detail: 'Seleccione al menos un tipo de transacción'
+            });
+            return false;
+        }
+
+        // Validar tiempo si está especificado
+        if (this.selectedTimeUnit && (!this.timeValue || this.timeValue <= 0)) {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Validación',
+                detail: 'Ingrese un valor válido para el tiempo'
+            });
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Procesa la respuesta del tracking y actualiza el mapa
+     */
+    private processTrackingResponse(response: TrackingResponse): void {
+
+        this.validateTrackingDataAvailability(response);
+
+        // Actualizar marcadores en el mapa con las ubicaciones
+        if (response.ubicaciones && response.ubicaciones.length > 0) {
+            this.mapService.addTrackingMarkers(response.ubicaciones);
+        }
+
+        // Actualizar clientes si es necesario
+        if (response.clientes && response.clientes.length > 0) {
+            this.mapService.addCustomerMarkers(response.clientes);
+        }
+
+        // Agregar marcadores de cobros
+        if (response.cobros && response.cobros.length > 0) {
+            this.mapService.addChargeMarkers(response.cobros);
+        }
+
+        // Agregar marcadores de pedidos
+        if (response.pedidos && response.pedidos.length > 0) {
+            this.mapService.addOrderMarkers(response.pedidos);
+        }
+
+        console.log('Tracking response processed:', {
+            ubicaciones: response.ubicaciones?.length ?? 0,
+            clientes: response.clientes?.length ?? 0,
+            cobros: response.cobros?.length ?? 0,
+            pedidos: response.pedidos?.length ?? 0
+        });
+    }
+    /**
+     * Valida la disponibilidad de datos en la respuesta y muestra mensajes informativos
+     */
+    private validateTrackingDataAvailability(response: TrackingResponse): void {
+        const emptyData: string[] = [];
+
+        // Verificar pedidos si están habilitados
+        if (this.pedidosEnabled) {
+            if (!response.pedidos || response.pedidos.length === 0) {
+                emptyData.push('Pedidos');
+            }
+        }
+
+        // Verificar cobros si están habilitados
+        if (this.collectionsEnabled) {
+            if (!response.cobros || response.cobros.length === 0) {
+                emptyData.push('Cobros');
+            }
+        }
+
+
+
+        // Mostrar mensaje sobre qué tipos de datos están vacíos
+        if (emptyData.length > 0) {
+            this.msgService.add({
+                severity: 'info',
+                summary: 'Datos no disponibles',
+                detail: `No se encontraron datos para: ${emptyData.join(', ')}`,
+                life: 5000
+            });
+        }
+
+        // Verificar si no hay datos en absoluto
+        const hasAnyData = (response.ubicaciones?.length ?? 0) > 0 ||
+            (response.clientes?.length ?? 0) > 0 ||
+            (response.cobros?.length ?? 0) > 0 ||
+            (response.pedidos?.length ?? 0) > 0;
+
+        if (response.clientes.length  === 0)
+        {
+            this.msgService.add({
+                severity: 'info',
+                summary: 'Sin clientes',
+                detail: 'No se encontraron clientes para mostrar con los filtros aplicados',
+                life: 2000
+            });
+        }
+
+        if (!hasAnyData) {
+            this.msgService.add({
+                severity: 'warn',
+                summary: 'Sin datos',
+                detail: 'No se encontraron datos para mostrar con los filtros aplicados. Intente con diferentes criterios de búsqueda',
+                life: 6000
+            });
+        }
+
     }
 
     //===============NUEVOS MÉTODOS PARA SCROLL INFINITO========================================//
@@ -878,17 +1133,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         }
     }
 
-    /**
-     * Scroll suave al inicio (útil después de filtros)
-     */
-    scrollToTop(): void {
-        if (this.scrollContainer?.nativeElement) {
-            this.scrollContainer.nativeElement.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        }
-    }
 
     formatLocationDate(dateString: string): string {
         if (!dateString) return 'Sin fecha';

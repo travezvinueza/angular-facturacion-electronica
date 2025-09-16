@@ -17,6 +17,15 @@ export class GeocercaService {
     constructor(private readonly http: HttpClient) { }
 
 
+    consultarGeocerca(codigoGeocerca: string): Observable<GeocercaResponseDto> {
+        const token = this.authService.getToken();
+        const headers = new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
+        return this.http.get<GeocercaResponseDto>(`${this.baseUrl}/ConsultarRelacion/${codigoGeocerca}`, { headers });
+    }
+
     desvincularGeocerca(codigoGeocerca: string): Observable<void> {
         const token = this.authService.getToken();
         const headers = new HttpHeaders({

@@ -3,6 +3,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { MessageService } from 'primeng/api';
 import * as L from 'leaflet';
 import { GeocercaDrawing, GeocercaDrawingState } from '@/core/models/Draw/DrawingCoordinate';
+
 @Injectable({
     providedIn: 'root'
 })
@@ -18,7 +19,7 @@ export class GeocercaDrawingService {
         centro: null
     };
 
-    // Arrays para manejo de elementos temporales (tu lógica)
+    // Arrays para manejo de elementos temporales
     private marcadoresPuntos: L.Marker[] = [];
     private lineasTemporales: L.Polyline[] = [];
     private formaActual: L.Layer | null = null;
@@ -50,7 +51,7 @@ export class GeocercaDrawingService {
     initialize(map: L.Map): void {
         this.map = map;
 
-        // Crear layer para dibujo (tu approach)
+        // Crear layer para dibujo
         this.dibujoLayer = L.featureGroup().addTo(this.map);
 
         console.log('GeocercaDrawingService inicializado');
@@ -113,7 +114,7 @@ export class GeocercaDrawingService {
     }
 
     /**
-     * Handle click para círculo - Tu función exacta
+     * Handle click para círculo
      */
     private onMapClickCircular(e: L.LeafletMouseEvent): void {
         if (!this.estadoDibujo.creando) return;
@@ -151,7 +152,7 @@ export class GeocercaDrawingService {
     }
 
     /**
-     * Handle click para polígono - Tu función exacta
+     * Handle click para polígono
      */
     private onMapClickPoligono(e: L.LeafletMouseEvent): void {
         if (!this.estadoDibujo.creando) return;
@@ -159,10 +160,10 @@ export class GeocercaDrawingService {
         const { lat, lng } = e.latlng;
         this.estadoDibujo.coordenadas.push({ lat, lng });
 
-        // Agregar marcador usando tu función
+        // Agregar marcador
         this.agregarMarcadorPunto(lat, lng, this.estadoDibujo.coordenadas.length);
 
-        // Actualizar polígono usando tu función
+        // Actualizar polígono
         this.actualizarPoligono();
 
         // Actualizar estado reactivo
@@ -178,7 +179,7 @@ export class GeocercaDrawingService {
     }
 
     /**
-     * Agregar marcador de punto - Tu función exacta con mejoras
+     * Agregar marcador de punto
      */
     private agregarMarcadorPunto(lat: number, lng: number, numero: number): void {
         if (!this.dibujoLayer) return;
@@ -187,21 +188,21 @@ export class GeocercaDrawingService {
             className: 'numero-punto-custom',
             iconSize: [30, 30],
             html: `<div style="
-        background-color: #8b5cf6;
-        color: white;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 3px solid white;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        font-weight: bold;
-        font-size: 14px;
-        box-sizing: border-box;
-        cursor: move;
-      ">${numero}</div>`,
+            background-color: #8b5cf6;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            font-weight: bold;
+            font-size: 14px;
+            box-sizing: border-box;
+            cursor: move;
+          ">${numero}</div>`,
             iconAnchor: [15, 15]
         });
 
@@ -218,7 +219,7 @@ export class GeocercaDrawingService {
             direction: 'top'
         });
 
-        // Eventos de drag - Tu lógica exacta
+        // Eventos de drag
         marcador.on('dragstart', () => {
             marcador.closeTooltip();
             const iconElement = (marcador as any)._icon;
@@ -263,7 +264,7 @@ export class GeocercaDrawingService {
     }
 
     /**
-     * Crear líneas punteadas - Tu función exacta
+     * Crear líneas punteadas
      */
     private crearLineasPunteadas(): void {
         if (this.estadoDibujo.coordenadas.length < 2) return;
@@ -293,7 +294,7 @@ export class GeocercaDrawingService {
     }
 
     /**
-     * Actualizar polígono - Tu función exacta
+     * Actualizar polígono
      */
     private actualizarPoligono(): void {
         if (this.estadoDibujo.coordenadas.length < 2) return;
@@ -328,12 +329,12 @@ export class GeocercaDrawingService {
             this.dibujoLayer!.addLayer(polygon);
         }
 
-        // Calcular centro usando tu función
+        // Calcular centro
         this.calcularCentroPoligono();
     }
 
     /**
-     * Calcular centro del polígono - Tu función exacta
+     * Calcular centro del polígono
      */
     private calcularCentroPoligono(): void {
         if (this.estadoDibujo.coordenadas.length === 0) return;
@@ -348,7 +349,7 @@ export class GeocercaDrawingService {
     }
 
     /**
-     * Generar coordenadas de círculo - Tu función exacta
+     * Generar coordenadas de círculo
      */
     private generarCoordenadasCirculo(lat: number, lng: number, radio: number): void {
         this.estadoDibujo.coordenadas = [];
@@ -368,7 +369,7 @@ export class GeocercaDrawingService {
     }
 
     /**
-     * Calcular área usando la fórmula de Shoelace (añadido)
+     * Calcular área usando la fórmula de Shoelace
      */
     private calcularArea(): number {
         if (this.estadoDibujo.coordenadas.length < 3) return 0;
@@ -523,13 +524,6 @@ export class GeocercaDrawingService {
         return `geocerca_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
 
-    /**
-     * Obtener todas las geocercas
-     */
-    obtenerGeocercas(): GeocercaDrawing[] {
-        return Array.from(this.geocercasCreadas.values());
-    }
-
 
     /**
      * Cargar geocerca existente para edición
@@ -605,115 +599,6 @@ export class GeocercaDrawingService {
 
     }
 
-    /**
-     * Actualizar coordenadas de un punto específico (para drag & drop)
-     */
-    actualizarPuntoCoordenas(indice: number, nuevaLat: number, nuevaLng: number): void {
-        if (indice >= 0 && indice < this.estadoDibujo.coordenadas.length) {
-            this.estadoDibujo.coordenadas[indice] = {
-                lat: nuevaLat,
-                lng: nuevaLng
-            };
-
-            // Recalcular centro si es polígono
-            if (this.estadoDibujo.tipo === 'poligono') {
-                this.calcularCentroPoligono();
-            }
-
-            // Actualizar visualización
-            this.actualizarPoligono();
-
-            // Actualizar estado reactivo
-            this.drawing$.next(this.estadoDibujo);
-        }
-    }
-
-    agregarPuntoAPoligono(lat: number, lng: number): void {
-        if (this.estadoDibujo.tipo !== 'poligono') return;
-
-        this.estadoDibujo.coordenadas.push({ lat, lng });
-        this.agregarMarcadorPunto(lat, lng, this.estadoDibujo.coordenadas.length);
-        this.actualizarPoligono();
-        this.drawing$.next(this.estadoDibujo);
-    }
-
-    /**
-     * Eliminar punto de polígono
-     */
-    eliminarPuntoDePoligono(indice: number): void {
-        if (this.estadoDibujo.tipo !== 'poligono' || indice < 0 || indice >= this.estadoDibujo.coordenadas.length) {
-            return;
-        }
-
-        if (this.estadoDibujo.coordenadas.length <= 3) {
-            this.msgService.add({
-                severity: 'warn',
-                summary: 'Advertencia',
-                detail: 'Un polígono debe tener al menos 3 puntos'
-            });
-            return;
-        }
-
-        // Eliminar coordenada
-        this.estadoDibujo.coordenadas.splice(indice, 1);
-
-        // Eliminar marcador correspondiente
-        if (this.marcadoresPuntos[indice] && this.dibujoLayer) {
-            this.dibujoLayer.removeLayer(this.marcadoresPuntos[indice]);
-            this.marcadoresPuntos.splice(indice, 1);
-        }
-
-        // Recrear marcadores con numeración actualizada
-        this.recrearMarcadoresNumerados();
-
-        // Actualizar visualización
-        this.actualizarPoligono();
-        this.drawing$.next(this.estadoDibujo);
-    }
-
-
-    /**
-     * Recrear marcadores con numeración correcta después de eliminar puntos
-     */
-    private recrearMarcadoresNumerados(): void {
-        // Limpiar todos los marcadores
-        this.marcadoresPuntos.forEach(marcador => {
-            if (this.dibujoLayer) {
-                this.dibujoLayer.removeLayer(marcador);
-            }
-        });
-        this.marcadoresPuntos = [];
-
-        // Recrear marcadores con numeración correcta
-        this.estadoDibujo.coordenadas.forEach((coord, index) => {
-            this.agregarMarcadorPunto(coord.lat, coord.lng, index + 1);
-        });
-    }
-
-    /**
-     * Actualizar radio del círculo en modo edición
-     */
-    actualizarRadioEnEdicion(nuevoRadio: number): void {
-        if (this.estadoDibujo.tipo === 'circular' && this.estadoDibujo.centro) {
-            this.radioGeocerca = nuevoRadio;
-
-            // Regenerar coordenadas del círculo
-            this.generarCoordenadasCirculo(
-                this.estadoDibujo.centro.lat,
-                this.estadoDibujo.centro.lng,
-                nuevoRadio
-            );
-
-            // Actualizar visualización
-            if (this.formaActual && this.dibujoLayer) {
-                this.dibujoLayer.removeLayer(this.formaActual);
-                this.dibujarCirculoExistente();
-            }
-
-            this.drawing$.next(this.estadoDibujo);
-        }
-    }
-
 
 
 
@@ -745,7 +630,6 @@ export class GeocercaDrawingService {
 
         this.drawing$.complete();
         this.geocercaDrawing$.complete();
-
         this.map = null;
 
     }

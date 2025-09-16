@@ -9,6 +9,7 @@ import { ToolbarModule } from 'primeng/toolbar';
 import { TextareaModule } from 'primeng/textarea';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { DialogModule } from 'primeng/dialog';
+import { firstValueFrom } from 'rxjs';
 import { TagModule } from 'primeng/tag';
 import { InputIconModule } from 'primeng/inputicon';
 import { IconFieldModule } from 'primeng/iconfield';
@@ -191,7 +192,13 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
     //============== MÉTODOS DE INICIALIZACIÓN ===================
 
     async initializeMap(): Promise<void> {
+
         this.mapInitialized = true;
+        const container = this.mapContainer.nativeElement;
+        if (!container) {
+            console.error('Contenedor del mapa no encontrado');
+            return;
+        }
         try {
             await this.mapService.initializeMap(this.mapContainer, {
                 center: [-0.2298, -78.5249],
@@ -1068,8 +1075,6 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
         }
     }
 
-
-    //=================================================================//
     getGeocercaStatusClasses(geocerca: any): string {
         const baseClasses = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border shadow-sm';
 
@@ -1115,9 +1120,6 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
             }
         });
     }
-
-    //=================================================================//
-
 
 
     //======= FUNCIONES PARA BUSQUEDA DE GEOCERCAS ===================//
@@ -1271,8 +1273,6 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
         this.resetMapView();
     }
 
-    //=================================================================//
-
     //======= FUNCIONES GETTERS PARA OBTENER ESTADO DE GEOCERCA =================//
 
     getGeocercaStatusSeverity(geocerca: GeofenceDto): string {
@@ -1283,188 +1283,238 @@ export class OnlyGeocercasComponent implements OnInit, AfterViewInit, OnDestroy 
         return geocerca.geocact ? 'Activa' : 'Inactiva';
     }
 
-    //=================================================================//
 
     //======= FUNCIONES PARA FORMATEO DE DATOS =========================//
 
-    formatArea(area: number): string {
-        if (area >= 1000000) {
-            return `${(area / 1000000).toFixed(2)} km²`;
+        formatArea(area: number): string {
+            if (area >= 1000000) {
+                return `${(area / 1000000).toFixed(2)} km²`;
+            }
+            return `${area.toLocaleString()} m²`;
         }
-        return `${area.toLocaleString()} m²`;
-    }
 
-    formatPerimeter(perimeter: number): string {
-        if (perimeter >= 1000) {
-            return `${(perimeter / 1000).toFixed(2)} km`;
+        formatPerimeter(perimeter: number): string {
+            if (perimeter >= 1000) {
+                return `${(perimeter / 1000).toFixed(2)} km`;
+            }
+            return `${perimeter} m`;
         }
-        return `${perimeter} m`;
-    }
 
-    //=================================================================//
 
     // =================== MÉTODOS PARA ELIMINACIÓN MÚLTIPLE ===================
 
-    /**
-     * Activar/desactivar modo eliminación
-     */
-    toggleModoEliminacion(): void {
-        this.modoEliminacion = !this.modoEliminacion;
+        /**
+         * Activar/desactivar modo eliminación
+         */
+        toggleModoEliminacion(): void {
+            this.modoEliminacion = !this.modoEliminacion;
 
-        if (!this.modoEliminacion) {
-            // Al desactivar, limpiar selecciones
-            this.limpiarSelecciones();
-        }
-
-        this.msgService.add({
-            severity: this.modoEliminacion ? 'info' : 'success',
-            summary: this.modoEliminacion ? 'Modo eliminación activado' : 'Modo eliminación desactivado',
-            detail: this.modoEliminacion ? 'Seleccione las geocercas que desea eliminar' : 'Selección cancelada',
-            life: 2000
-        });
-    }
-
-    /**
-     * Seleccionar/deseleccionar geocerca individual
-     */
-    toggleSeleccionGeocerca(geoccod: string): void {
-        if (this.geocercasSeleccionadas.has(geoccod)) {
-            this.geocercasSeleccionadas.delete(geoccod);
-        } else {
-            this.geocercasSeleccionadas.add(geoccod);
-        }
-
-        // Actualizar estado de "todas seleccionadas"
-        this.actualizarEstadoTodasSeleccionadas();
-    }
-
-    /**
-     * Seleccionar/deseleccionar todas las geocercas visibles
-     */
-    toggleSeleccionarTodas(): void {
-        if (this.todasSeleccionadas) {
-            // Deseleccionar todas
-            this.limpiarSelecciones();
-        } else {
-            // Seleccionar todas las visibles
-            this.paginatedGeocercas.forEach(geocerca => {
-                this.geocercasSeleccionadas.add(geocerca.geoccod);
-            });
-        }
-
-        this.actualizarEstadoTodasSeleccionadas();
-    }
-
-    /**
-     * Actualizar estado de todas seleccionadas
-     */
-    private actualizarEstadoTodasSeleccionadas(): void {
-        const totalVisibles = this.paginatedGeocercas.length;
-        const seleccionadasVisibles = this.paginatedGeocercas.filter(
-            geocerca => this.geocercasSeleccionadas.has(geocerca.geoccod)
-        ).length;
-
-        this.todasSeleccionadas = totalVisibles > 0 && seleccionadasVisibles === totalVisibles;
-    }
-
-    /**
-     * Verificar si una geocerca está seleccionada
-     */
-    estaSeleccionada(geoccod: string): boolean {
-        return this.geocercasSeleccionadas.has(geoccod);
-    }
-
-    /**
-     * Limpiar todas las selecciones
-     */
-    private limpiarSelecciones(): void {
-        this.geocercasSeleccionadas.clear();
-        this.todasSeleccionadas = false;
-    }
-
-    /**
-     * Confirmar eliminación de geocercas seleccionadas
-     */
-    confirmarEliminacion(): void {
-        if (this.geocercasSeleccionadas.size === 0) {
-            this.msgService.add({
-                severity: 'warn',
-                summary: 'Sin selección',
-                detail: 'Debe seleccionar al menos una geocerca para eliminar'
-            });
-            return;
-        }
-
-        // Obtener nombres de las geocercas seleccionadas para mostrar en el diálogo
-        const nombresSeleccionadas = this.geocercas
-            .filter(g => this.geocercasSeleccionadas.has(g.geoccod))
-            .map(g => `${g.geocnom} (${g.geoccod})`)
-            .join(', ');
-
-        this.confirmationService.confirm({
-            message: `¿Está seguro que desea eliminar ${this.geocercasSeleccionadas.size} geocerca(s)?<br><br><strong>Geocercas seleccionadas:</strong><br>${nombresSeleccionadas}`,
-            header: 'Confirmar Eliminación',
-            icon: 'pi pi-exclamation-triangle',
-            acceptLabel: 'Eliminar',
-            rejectLabel: 'Cancelar',
-            acceptButtonStyleClass: 'p-button-danger',
-            accept: () => {
-                this.eliminarGeocercasSeleccionadas();
+            if (!this.modoEliminacion) {
+                // Al desactivar, limpiar selecciones
+                this.limpiarSelecciones();
             }
-        });
-    }
 
-    /**
-     * Eliminar geocercas seleccionadas
-     */
-    private async eliminarGeocercasSeleccionadas(): Promise<void> {
-        const codigosSeleccionados = Array.from(this.geocercasSeleccionadas);
-        const totalSeleccionadas = codigosSeleccionados.length;
-        let eliminadas = 0;
-        let errores = 0;
+            this.msgService.add({
+                severity: this.modoEliminacion ? 'info' : 'success',
+                summary: this.modoEliminacion ? 'Modo eliminación activado' : 'Modo eliminación desactivado',
+                detail: this.modoEliminacion ? 'Seleccione las geocercas que desea eliminar' : 'Selección cancelada',
+                life: 2000
+            });
+        }
 
-        // Mostrar mensaje de progreso
-        this.msgService.add({
-            severity: 'info',
-            summary: 'Eliminando geocercas',
-            detail: `Eliminando ${totalSeleccionadas} geocerca(s)...`
-        });
-
-        // Eliminar cada geocerca
-        for (const codigo of codigosSeleccionados) {
-            try {
-                await this.geocercaService.eliminarGeocerca(codigo).toPromise();
-                eliminadas++;
-            } catch (error) {
-                console.error(`Error al eliminar geocerca ${codigo}:`, error);
-                errores++;
+        /**
+         * Seleccionar/deseleccionar geocerca individual
+         */
+        toggleSeleccionGeocerca(geoccod: string): void {
+            if (this.geocercasSeleccionadas.has(geoccod)) {
+                this.geocercasSeleccionadas.delete(geoccod);
+            } else {
+                this.geocercasSeleccionadas.add(geoccod);
             }
+
+            // Actualizar estado de "todas seleccionadas"
+            this.actualizarEstadoTodasSeleccionadas();
         }
 
-        // Mostrar resultado
-        if (eliminadas > 0) {
-            this.msgService.add({
-                severity: eliminadas === totalSeleccionadas ? 'success' : 'warn',
-                summary: `${eliminadas} geocerca(s) eliminada(s)`,
-                detail: errores > 0 ? `${errores} geocerca(s) no pudieron eliminarse` : 'Eliminación completada exitosamente'
+        /**
+         * Seleccionar/deseleccionar todas las geocercas visibles
+         */
+        toggleSeleccionarTodas(): void {
+            if (this.todasSeleccionadas) {
+                // Deseleccionar todas
+                this.limpiarSelecciones();
+            } else {
+                // Seleccionar todas las visibles
+                this.paginatedGeocercas.forEach(geocerca => {
+                    this.geocercasSeleccionadas.add(geocerca.geoccod);
+                });
+            }
+
+            this.actualizarEstadoTodasSeleccionadas();
+        }
+
+        /**
+         * Actualizar estado de todas seleccionadas
+         */
+        private actualizarEstadoTodasSeleccionadas(): void {
+            const totalVisibles = this.paginatedGeocercas.length;
+            const seleccionadasVisibles = this.paginatedGeocercas.filter(
+                geocerca => this.geocercasSeleccionadas.has(geocerca.geoccod)
+            ).length;
+
+            this.todasSeleccionadas = totalVisibles > 0 && seleccionadasVisibles === totalVisibles;
+        }
+
+        /**
+         * Verificar si una geocerca está seleccionada
+         */
+        estaSeleccionada(geoccod: string): boolean {
+            return this.geocercasSeleccionadas.has(geoccod);
+        }
+
+        /**
+         * Limpiar todas las selecciones
+         */
+        private limpiarSelecciones(): void {
+            this.geocercasSeleccionadas.clear();
+            this.todasSeleccionadas = false;
+        }
+
+        /**
+         * Validar relaciones antes de eliminar geocercas
+         */
+        private async validarRelacionesGeocercas(): Promise<boolean>
+        {
+            const codigosSeleccionados = Array.from(this.geocercasSeleccionadas);
+            const geocercasConRelacion: string[] = [];
+
+            // Verificar cada geocerca seleccionada
+            for (const codigo of codigosSeleccionados) {
+                try {
+                    await firstValueFrom(this.geocercaService.consultarGeocerca(codigo));
+                    // Si llega aquí, significa que encontró relación (200)
+                    const geocerca = this.geocercas.find(g => g.geoccod === codigo);
+                    geocercasConRelacion.push(geocerca ? `${geocerca.geocnom} (${codigo})` : codigo);
+                } catch (error: any) {
+                    // Si es 404, no hay relación - se puede eliminar sin problema
+                    if (error.status !== 404) {
+                        // Si es otro error, mostrar mensaje
+                        this.msgService.add({
+                            severity: 'error',
+                            summary: 'Error de validación',
+                            detail: `Error al validar la geocerca ${codigo}`
+                        });
+                        return false;
+                    }
+                }
+            }
+
+            // Si hay geocercas con relación, mostrar advertencia
+            if (geocercasConRelacion.length > 0) {
+                return new Promise<boolean>((resolve) => {
+                    this.confirmationService.confirm({
+                        message: `<strong>¡ADVERTENCIA!</strong><br><br>Las siguientes geocercas tienen relaciones con vendedores:<br><br>${geocercasConRelacion.join('<br>')}<br><br>Eliminar estas geocercas también <strong>eliminará sus relaciones</strong>. ¿Desea continuar?`,
+                        header: 'Geocercas con Relaciones Detectadas',
+                        icon: 'pi pi-exclamation-triangle',
+                        acceptLabel: 'Eliminar de todas formas',
+                        rejectLabel: 'Cancelar',
+                        acceptButtonStyleClass: 'p-button-danger',
+                        accept: () => {
+                            this.eliminarGeocercasSeleccionadas().then();
+                        },
+                        reject: () => {
+                            resolve(false);
+                        }
+                    });
+                });
+            }
+            return true;
+        }
+
+        /**
+         * Confirmar eliminación de geocercas seleccionadas
+         */
+        async confirmarEliminacion(): Promise<void> {
+            if (this.geocercasSeleccionadas.size === 0) {
+                this.msgService.add({
+                    severity: 'warn',
+                    summary: 'Sin selección',
+                    detail: 'Debe seleccionar al menos una geocerca para eliminar'
+                });
+                return;
+            }
+
+            // Validar relaciones primero
+            const puedeEliminar = await this.validarRelacionesGeocercas();
+            if (!puedeEliminar) {
+                return; // El usuario canceló o hubo error
+            }
+
+            // Obtener nombres de las geocercas seleccionadas para mostrar en el diálogo
+            const nombresSeleccionadas = this.geocercas
+                .filter(g => this.geocercasSeleccionadas.has(g.geoccod))
+                .map(g => `${g.geocnom} (${g.geoccod})`)
+                .join(', ');
+
+            this.confirmationService.confirm({
+                message: `¿Está seguro que desea eliminar ${this.geocercasSeleccionadas.size} geocerca(s)?<br><br><strong>Geocercas seleccionadas:</strong><br>${nombresSeleccionadas}`,
+                header: 'Confirmar Eliminación',
+                icon: 'pi pi-exclamation-triangle',
+                acceptLabel: 'Eliminar',
+                rejectLabel: 'Cancelar',
+                acceptButtonStyleClass: 'p-button-danger',
+                accept: () => {
+                    this.eliminarGeocercasSeleccionadas().then();
+                }
             });
         }
 
-        if (errores > 0 && eliminadas === 0) {
+        /**
+         * Eliminar geocercas seleccionadas
+         */
+        private async eliminarGeocercasSeleccionadas(): Promise<void>
+        {
+            const codigosSeleccionados = Array.from(this.geocercasSeleccionadas);
+            const totalSeleccionadas = codigosSeleccionados.length;
+
             this.msgService.add({
-                severity: 'error',
-                summary: 'Error en eliminación',
-                detail: 'No se pudo eliminar ninguna geocerca'
+                severity: 'info',
+                summary: 'Eliminando geocercas',
+                detail: `Eliminando ${totalSeleccionadas} geocerca(s)...`
             });
+
+            // Crear un array de promesas (todas se lanzan a la vez)
+            const promesas = codigosSeleccionados.map(codigo =>
+                firstValueFrom(this.geocercaService.eliminarGeocerca(codigo))
+            );
+
+            // Esperar a que todas terminen (éxito o error)
+            const resultados = await Promise.allSettled(promesas);
+
+            const eliminadas = resultados.filter(r => r.status === 'fulfilled').length;
+            const errores = resultados.filter(r => r.status === 'rejected').length;
+
+            // Mostrar resultado
+            if (eliminadas > 0) {
+                this.msgService.add({
+                    severity: eliminadas === totalSeleccionadas ? 'success' : 'warn',
+                    summary: `${eliminadas} geocerca(s) eliminada(s)`,
+                    detail: errores > 0 ? `${errores} geocerca(s) no pudieron eliminarse` : 'Eliminación completada exitosamente'
+                });
+            }
+
+            if (errores > 0 && eliminadas === 0) {
+                this.msgService.add({
+                    severity: 'error',
+                    summary: 'Error en eliminación',
+                    detail: 'No se pudo eliminar ninguna geocerca'
+                });
+            }
+
+            this.limpiarSelecciones();
+            this.modoEliminacion = false;
+            this.refreshData();
         }
-
-        // Limpiar selecciones y desactivar modo eliminación
-        this.limpiarSelecciones();
-        this.modoEliminacion = false;
-
-        // Recargar datos
-        this.refreshData();
-    }
 
     /**
      * Getter para verificar si hay geocercas seleccionadas

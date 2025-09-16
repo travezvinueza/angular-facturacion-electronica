@@ -56,7 +56,7 @@
 
                                         @if (selectedUser.ubicacion.geublat && selectedUser.ubicacion.geublon) {
                                             <button
-                                                (click)="selectUser(selectedUser)"
+                                                (click)="selectOnlyUser(selectedUser)"
                                                 class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary-100/80 dark:bg-primary-900/40 hover:bg-primary-200/80 dark:hover:bg-primary-900/60 border border-primary-200/60 dark:border-primary-700/60 text-primary-700 dark:text-primary-300 text-xs font-medium transition-all duration-200">
                                                 <i class="pi pi-map-marker text-xs"></i>
                                             </button>
@@ -608,32 +608,23 @@
                                             </div>
                                         </div>
                                     }
-
-                                    <!-- Tipos de Datos -->
+                                    <!-- Tipo de Transacción -->
                                     <div class="mb-4">
                                         <div class="flex align-items-center gap-2 mb-3">
                                             <i class="pi pi-database text-green-600 dark:text-green-400 text-sm"></i>
-                                            <span class="font-medium text-surface-700 dark:text-surface-200 text-sm">Datos</span>
+                                            <span class="font-medium text-surface-700 dark:text-surface-200 text-sm">Tipo de Transacción</span>
                                             <div class="flex-1 border-bottom-1 border-surface-200 dark:border-surface-700"></div>
                                         </div>
 
                                         <div class="flex gap-4 p-2 bg-surface-50 dark:bg-surface-800 border-round">
                                             <div class="flex align-items-center gap-2">
-                                                <p-checkbox
-                                                    inputId="pedidos-compact"
-                                                    [(ngModel)]="pedidosEnabled"
-                                                    [binary]="true">
-                                                </p-checkbox>
+                                                <p-checkbox inputId="pedidos-compact" [(ngModel)]="pedidosEnabled" [binary]="true"></p-checkbox>
                                                 <label for="pedidos-compact" class="text-sm text-surface-700 dark:text-surface-300 cursor-pointer">
                                                     <i class="pi pi-shopping-cart mr-1"></i>Pedidos
                                                 </label>
                                             </div>
                                             <div class="flex align-items-center gap-2">
-                                                <p-checkbox
-                                                    inputId="cobros-compact"
-                                                    [(ngModel)]="collectionsEnabled"
-                                                    [binary]="true">
-                                                </p-checkbox>
+                                                <p-checkbox inputId="cobros-compact" [(ngModel)]="collectionsEnabled" [binary]="true"></p-checkbox>
                                                 <label for="cobros-compact" class="text-sm text-surface-700 dark:text-surface-300 cursor-pointer">
                                                     <i class="pi pi-dollar mr-1"></i>Cobros
                                                 </label>
@@ -641,6 +632,50 @@
                                         </div>
                                     </div>
 
+                                    <!-- Clientes -->
+                                    <div class="mb-4">
+                                        <div class="flex align-items-center gap-2 mb-3">
+                                            <i class="pi pi-users text-green-600 dark:text-green-400 text-sm"></i>
+                                            <span class="font-medium text-surface-700 dark:text-surface-200 text-sm">Clientes</span>
+                                            <div class="flex-1 border-bottom-1 border-surface-200 dark:border-surface-700"></div>
+                                        </div>
+
+                                        <div class="flex gap-4 p-2 bg-surface-50 dark:bg-surface-800 border-round">
+                                            <div class="flex align-items-center gap-2">
+                                                <p-checkbox
+                                                    inputId="clientes-none"
+                                                    [(ngModel)]="clientesNone"
+                                                    [binary]="true"
+                                                    (onChange)="onClientFilterChange('none')">
+                                                </p-checkbox>
+                                                <label for="clientes-none" class="text-sm text-surface-700 dark:text-surface-300 cursor-pointer">
+                                                    <i class="pi pi-ban mr-1"></i>Ninguno
+                                                </label>
+                                            </div>
+                                            <div class="flex align-items-center gap-2">
+                                                <p-checkbox
+                                                    inputId="clientes-all"
+                                                    [(ngModel)]="clientesAll"
+                                                    [binary]="true"
+                                                    (onChange)="onClientFilterChange('all')">
+                                                </p-checkbox>
+                                                <label for="clientes-all" class="text-sm text-surface-700 dark:text-surface-300 cursor-pointer">
+                                                    <i class="pi pi-users mr-1"></i>Todos
+                                                </label>
+                                            </div>
+                                            <div class="flex align-items-center gap-2">
+                                                <p-checkbox
+                                                    inputId="clientes-assigned"
+                                                    [(ngModel)]="clientesAssigned"
+                                                    [binary]="true"
+                                                    (onChange)="onClientFilterChange('assigned')">
+                                                </p-checkbox>
+                                                <label for="clientes-assigned" class="text-sm text-surface-700 dark:text-surface-300 cursor-pointer">
+                                                    <i class="pi pi-user-check mr-1"></i>Asignados
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <!-- Botones compactos -->
                                     <div class="flex justify-content-end gap-2">
                                         <p-button
