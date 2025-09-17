@@ -575,34 +575,56 @@
                                             <div class="grid grid-cols-12 gap-2 align-items-end">
                                                 <!-- Toggle compacto -->
                                                 <div class="col-span-12 sm:col-span-4">
-                                                    <div class="flex align-items-center gap-2 p-2 bg-surface-50 dark:bg-surface-800 border-round">
+                                                    <div class="flex align-items-center gap-2 p-2 bg-surface-50 dark:bg-surface-800 border-round mt-3">
                                                         <p-toggleswitch [(ngModel)]="geofenceEnabled" size="small">
                                                         </p-toggleswitch>
                                                         <div>
                                                             <span class="block text-xs font-medium text-surface-700 dark:text-surface-200">Activa</span>
                                                             <span class="text-xs" [ngClass]="geofenceEnabled ? 'text-green-600' : 'text-surface-500'">
-                                                        {{ geofenceEnabled ? 'Sí' : 'No' }}
-                                                    </span>
+                                                                {{ geofenceEnabled ? 'Sí' : 'No' }}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 <!-- Selector compacto -->
+                                                <!-- Selector MultiSelect -->
                                                 @if (geofenceEnabled) {
                                                     <div class="col-span-12 sm:col-span-8">
                                                         <label class="block text-xs font-medium text-surface-600 dark:text-surface-300 mb-1">
-                                                            Seleccionar
+                                                            Seleccionar Geocercas
                                                         </label>
-                                                        <p-autoComplete
+                                                        <p-multiSelect
                                                             [(ngModel)]="selectedGeofence"
-                                                            [suggestions]="geofenceOptions"
-                                                            (completeMethod)="searchGeofence($event)"
+                                                            [options]="geofenceOptions"
                                                             optionLabel="label"
-                                                            placeholder="Elegir geocerca..."
-                                                            [dropdown]="true"
+                                                            optionValue="value"
+                                                            placeholder="Elegir geocercas..."
+                                                            [filter]="true"
+                                                            filterBy="label"
                                                             [disabled]="!geofenceEnabled"
-                                                            class="w-full">
-                                                        </p-autoComplete>
+                                                            [showToggleAll]="true"
+                                                            [showHeader]="true"
+                                                            [maxSelectedLabels]="2"
+                                                            selectedItemsLabel="{0} geocercas seleccionadas"
+                                                            class="w-full"
+                                                            (onChange)="onGeofencesChange($event)">
+
+                                                            <!-- Template personalizado para mostrar más información -->
+                                                            <ng-template pTemplate="item" let-option>
+                                                                <div class="flex flex-col">
+                                                                    <span class="font-medium">{{ option.geocerca?.geocnom }}</span>
+                                                                    <small class="text-surface-500">{{ option.geocerca?.geocciud }} - {{ option.geocerca?.geocprov }}</small>
+                                                                </div>
+                                                            </ng-template>
+
+                                                            <!-- Template para elementos seleccionados -->
+                                                            <ng-template pTemplate="selectedItems" let-selectedOptions>
+                                                                @if (selectedOptions && selectedOptions.length > 0) {
+                                                                    <span>{{ selectedOptions.length }} geocerca{{ selectedOptions.length === 1 ? '' : 's' }} seleccionada{{ selectedOptions.length === 1 ? '' : 's' }}</span>
+                                                                }
+                                                            </ng-template>
+                                                        </p-multiSelect>
                                                     </div>
                                                 }
                                             </div>

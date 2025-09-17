@@ -784,6 +784,38 @@ export class MapService {
     }
 
     /**
+     * Centra el mapa para mostrar todas las coordenadas proporcionadas
+     */
+    fitBoundsToCoordinates(coordinates: [number, number][]): void {
+        if (!this.map || coordinates.length === 0) return;
+
+        try {
+            if (coordinates.length === 1) {
+                // Si solo hay una coordenada, centrar con zoom específico
+                this.map.setView(coordinates[0], 15);
+            } else {
+                // Si hay múltiples coordenadas, crear bounds para incluir todas
+                const group = new L.FeatureGroup();
+
+                coordinates.forEach(coord => {
+                    L.marker(coord).addTo(group);
+                });
+
+                // Ajustar el mapa para mostrar todos los puntos con padding
+                this.map.fitBounds(group.getBounds(), {
+                    padding: [20, 20], // Padding en píxeles
+                    maxZoom: 16 // Zoom máximo para evitar acercarse demasiado
+                });
+
+                // Limpiar el grupo temporal
+                group.clearLayers();
+            }
+        } catch (error) {
+            console.error('Error al centrar el mapa:', error);
+        }
+    }
+
+    /**
      * Crea un marcador para un usuario específico
      */
     private createUserMarker(user: UserDto): L.Marker {

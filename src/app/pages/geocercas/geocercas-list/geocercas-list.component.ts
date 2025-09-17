@@ -41,6 +41,7 @@ import { Accordion, AccordionContent, AccordionHeader, AccordionPanel } from 'pr
 import { NominatimReverseResponse } from '@/core/models/nominatim-response.interface';
 import { FilterRequest, ZonaClientes } from '@/core/models/Filter/FilterRequest';
 import { TrackingResponse } from '@/core/models/Filter/TrackingResponse';
+import { MultiSelect } from 'primeng/multiselect';
 
 @Component({
     selector: 'app-geocercas',
@@ -71,7 +72,8 @@ import { TrackingResponse } from '@/core/models/Filter/TrackingResponse';
         Accordion,
         AccordionContent,
         AccordionPanel,
-        AccordionHeader
+        AccordionHeader,
+        MultiSelect
     ],
     standalone: true,
     templateUrl: './geocercas-list.component.html',
@@ -81,11 +83,10 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
     @ViewChild('scrollContainer') scrollContainer!: ElementRef;
 
-
     customerSearchTerm: string = '';
     userLocations: Map<string, string> = new Map();
     loadingLocations: Set<string> = new Set();
-    private geocodingQueue: Array<{userId: string, lat: number, lon: number}> = [];
+    private geocodingQueue: Array<{ userId: string; lat: number; lon: number }> = [];
     private isProcessingQueue: boolean = false;
     private lastRequestTime: number = 0;
     private readonly MIN_REQUEST_INTERVAL = 1500; // 1.5 segundos entre peticiones
@@ -95,7 +96,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     // Para scroll infinito
     loadingMore: boolean = false;
     hasReachedEnd: boolean = false;
-    currentPage: number = 0;// Mantener usuarios originales
+    currentPage: number = 0; // Mantener usuarios originales
     private scrollThreshold: number = 100;
     private debounceTimer: any;
 
@@ -103,7 +104,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     filterFrom: Date | null = null;
     selectedTimeUnit: any = null;
     timeValue: number | null = null;
-    selectedGeofence: any = null;
+    selectedGeofence: string[] = [];
     geofenceEnabled: boolean = false;
     pedidosEnabled: boolean = false;
     collectionsEnabled: boolean = false;
@@ -111,9 +112,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     clientesAll: boolean = false;
     clientesAssigned: boolean = false;
 
-
     timeUnitOptions: any[] = [];
-
 
     geofenceOptions: any[] = [];
 
@@ -157,7 +156,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     defaultRadius: number = 1000;
     customRadius: number = 1000;
 
-
     constructor(
         private readonly userService: UserService,
         private readonly msgService: MessageService,
@@ -188,9 +186,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
                 defaultLocation: 'Quito, Ecuador',
                 zoomControl: false
             });
-            this.mapService.addSearchAreaButton(
-                (bounds) => this.searchCustomersInCurrentArea(bounds)
-            );
+            this.mapService.addSearchAreaButton((bounds) => this.searchCustomersInCurrentArea(bounds));
             if (!this.loading && this.users.length > 0) {
                 this.mapService.addUserMarkers(this.users);
             }
@@ -239,11 +235,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         if (user.ubicacion.geublat && user.ubicacion.geublon) {
             // Agregar a la cola si no existe
             setTimeout(() => {
-                this.addToGeocodingQueue(
-                    parseFloat(String(user.ubicacion!.geublat)),
-                    parseFloat(String(user.ubicacion!.geublon)),
-                    user.usucodv
-                );
+                this.addToGeocodingQueue(parseFloat(String(user.ubicacion!.geublat)), parseFloat(String(user.ubicacion!.geublon)), user.usucodv);
             }, 100);
 
             return 'Cargando ubicación...';
@@ -256,7 +248,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
      */
     private addToGeocodingQueue(lat: number, lon: number, userId: string): void {
         // Evitar duplicados en la cola
-        const exists = this.geocodingQueue.some(item => item.userId === userId);
+        const exists = this.geocodingQueue.some((item) => item.userId === userId);
         if (exists || this.loadingLocations.has(userId) || this.userLocations.has(userId)) {
             return;
         }
@@ -298,7 +290,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
                 // Realizar la petición
                 await this.performGeocodingRequest(item.lat, item.lon, item.userId);
                 this.lastRequestTime = Date.now();
-
             } catch (error) {
                 console.warn(`Error procesando geocoding para ${item.userId}:`, error);
                 this.handleGeocodingError(item);
@@ -383,13 +374,13 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
      * Utility para delays
      */
     private delay(ms: number): Promise<void> {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
     /**
      * Maneja errores de geocoding con reintentos inteligentes
      */
-    private handleGeocodingError(item: {userId: string, lat: number, lon: number}): void {
+    private handleGeocodingError(item: { userId: string; lat: number; lon: number }): void {
         const failures = this.failedRequests.get(item.userId) || 0;
 
         if (failures < this.MAX_RETRIES) {
@@ -404,7 +395,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
                     this.processGeocodingQueue();
                 }
             }, retryDelay);
-
         } else {
             // Máximo de reintentos alcanzado, marcar como no disponible
             this.loadingLocations.delete(item.userId);
@@ -449,14 +439,8 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         }
 
         const searchTerm = this.customerSearchTerm.toLowerCase();
-        this.filteredCustomers = this.customers.filter(customer =>
-            customer.dirnombre.toLowerCase().includes(searchTerm) ||
-            customer.dirruc.toLowerCase().includes(searchTerm) ||
-            customer.dirdirec.toLowerCase().includes(searchTerm)
-        );
+        this.filteredCustomers = this.customers.filter((customer) => customer.dirnombre.toLowerCase().includes(searchTerm) || customer.dirruc.toLowerCase().includes(searchTerm) || customer.dirdirec.toLowerCase().includes(searchTerm));
     }
-
-
 
     private getCustomersInArea(vendorCode: string, range: any): void {
         this.loadingCustomers = true;
@@ -510,31 +494,25 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
 
     //===============MÉTODO PARA OBTENER TODOS LOS USUARIOS===========================================//
 
-    getAllUsers(): void {
+    getAllUsers = (): void => {
         this.loading = true;
         this.userService.getAllListUser().subscribe({
-            next: (data: UserDto[]) => {
-                this.users = data;
-                this.filteredUsers = [...this.users];
+            next: users => {
+                this.users = users;
+                this.filteredUsers = [...users];
                 this.resetInfiniteScroll();
                 this.updatePagination();
+                if (this.mapInitialized) this.mapService.addUserMarkers(users);
                 this.loading = false;
-
-                if (this.mapInitialized) {
-                    this.mapService.addUserMarkers(this.users);
-                }
             },
-            error: (error: HttpErrorResponse) => {
-                console.error('Error al cargar usuarios:', error);
+            error: err => {
+                console.error('Error al cargar usuarios:', err);
+                this.msgService.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron cargar los usuarios' });
                 this.loading = false;
-                this.msgService.add({
-                    severity: 'error',
-                    summary: 'Error',
-                    detail: 'No se pudieron cargar los usuarios'
-                });
             }
         });
-    }
+    };
+
     //=============================================================================================//
 
     //===============MÉTODO PARA BUSCAR USUARIOS/PAGINACIÓN====================================================//
@@ -560,6 +538,9 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
 
     selectUser(user: UserDto): void {
         this.selectedUser = user;
+
+        this.selectedGeofence = [];
+
         const rangeInfo = this.mapService.focusOnUserWithRange(user, this.defaultRadius);
 
         if (rangeInfo) {
@@ -596,6 +577,8 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
                     if (vendorData && vendorData.geocercas.length > 0) {
                         this.selectedVendor = vendorData;
                         this.vendorGeocercas = vendorData.geocercas;
+
+                        this.loadGeofenceOptions();
 
                         // Mostrar geocercas en el mapa
                         this.mapService.displayVendorGeocercas(this.vendorGeocercas);
@@ -653,7 +636,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         return this.userRange !== null;
     }
 
-
     //=====MÉTODO PARA EL BUSCADOR DEL MAPA========================================================//
     searchLocationOnMap(): void {
         if (!this.searchLocation.trim()) return;
@@ -693,7 +675,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         this.mapService.resetMapView();
     }
 
-
     // Función para regresar a la lista de usuarios
     backToUsersList(): void {
         this.refreshData();
@@ -707,7 +688,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         this.resetMapView();
         this.clearFilters();
         this.customers = [];
-
     }
     //=============================================================================================//
     focusCustomerOnMap(customer: CustomerResponseDto): void {
@@ -721,7 +701,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         });
     }
 
-
     searchTimeUnit(event: any): void {
         const query = event.query.toLowerCase();
         this.timeUnitOptions = [
@@ -732,9 +711,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
             { label: 'Semanas', value: 'Semanas' },
             { label: 'Meses', value: 'Meses' },
             { label: 'Años', value: 'Años' }
-        ].filter(option =>
-            option.label.toLowerCase().includes(query)
-        );
+        ].filter((option) => option.label.toLowerCase().includes(query));
     }
 
     searchGeofence(event: any): void {
@@ -798,7 +775,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
 
         // Filtros espaciales
         this.geofenceEnabled = false;
-        this.selectedGeofence = null;
+        this.selectedGeofence = [];
 
         // Filtros de transacciones
         this.pedidosEnabled = false;
@@ -850,14 +827,13 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
             zonaclientes: this.buildZonaClientes()
         };
 
-
-
         // Realizar la petición
         this.loading = true;
-        this.customerService.getTrackingDetails(filterRequest)
+        this.customerService
+            .getTrackingDetails(filterRequest)
             .pipe(
                 takeUntil(this.destroy$),
-                finalize(() => this.loading = false)
+                finalize(() => (this.loading = false))
             )
 
             .subscribe({
@@ -906,18 +882,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
      * Construye la zona de clientes basada en la geocerca o área actual
      */
     private buildZonaClientes(): ZonaClientes {
-        let bounds: L.LatLngBounds;
-
-        if (this.geofenceEnabled && this.selectedGeofence) {
-            // Usar coordenadas de la geocerca seleccionada
-            bounds = new L.LatLngBounds(
-                [this.selectedGeofence.latmin, this.selectedGeofence.lonmin],
-                [this.selectedGeofence.latmax, this.selectedGeofence.lonmax]
-            );
-        } else {
-            // Usar área visible actual del mapa
-            bounds = this.mapService.getCurrentBounds();
-        }
+        const bounds = this.mapService.getCurrentBounds();
 
         return {
             codvend: this.selectedUser!.usucodv,
@@ -959,7 +924,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
      * Procesa la respuesta del tracking y actualiza el mapa
      */
     private processTrackingResponse(response: TrackingResponse): void {
-
         this.validateTrackingDataAvailability(response);
 
         // Actualizar marcadores en el mapa con las ubicaciones
@@ -982,12 +946,54 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
             this.mapService.addOrderMarkers(response.pedidos);
         }
 
-        console.log('Tracking response processed:', {
-            ubicaciones: response.ubicaciones?.length ?? 0,
-            clientes: response.clientes?.length ?? 0,
-            cobros: response.cobros?.length ?? 0,
-            pedidos: response.pedidos?.length ?? 0
-        });
+        this.centerMapOnFilteredData(response);
+    }
+
+    /**
+     * Centra el mapa en base a los datos filtrados
+     */
+    private centerMapOnFilteredData(response: TrackingResponse): void {
+        const allCoordinates: [number, number][] = [];
+
+        // Recopilar todas las coordenadas disponibles
+        if (response.ubicaciones && response.ubicaciones.length > 0) {
+            response.ubicaciones.forEach((location) => {
+                if (location.latitud && location.longitud) {
+                    allCoordinates.push([location.latitud, location.longitud]);
+                }
+            });
+        }
+
+        if (response.clientes && response.clientes.length > 0) {
+            response.clientes.forEach((cliente) => {
+                if (cliente.latitud && cliente.longitud) {
+                    allCoordinates.push([cliente.latitud, cliente.longitud]);
+                }
+            });
+        }
+
+        if (response.cobros && response.cobros.length > 0) {
+            response.cobros.forEach((cobro) => {
+                if (cobro.cablat && cobro.cablon) {
+                    allCoordinates.push([cobro.cablat, cobro.cablon]);
+                }
+            });
+        }
+
+        if (response.pedidos && response.pedidos.length > 0) {
+            response.pedidos.forEach((pedido) => {
+                if (pedido.pdtlat && pedido.pdtlon) {
+                    allCoordinates.push([pedido.pdtlat, pedido.pdtlon]);
+                }
+            });
+        }
+
+        // Centrar mapa según las coordenadas encontradas
+        if (allCoordinates.length > 0) {
+            this.mapService.fitBoundsToCoordinates(allCoordinates);
+        } else if (this.selectedUser) {
+            this.mapService.focusOnUser(this.selectedUser);
+        }
     }
     /**
      * Valida la disponibilidad de datos en la respuesta y muestra mensajes informativos
@@ -1009,8 +1015,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
             }
         }
 
-
-
         // Mostrar mensaje sobre qué tipos de datos están vacíos
         if (emptyData.length > 0) {
             this.msgService.add({
@@ -1022,13 +1026,9 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         }
 
         // Verificar si no hay datos en absoluto
-        const hasAnyData = (response.ubicaciones?.length ?? 0) > 0 ||
-            (response.clientes?.length ?? 0) > 0 ||
-            (response.cobros?.length ?? 0) > 0 ||
-            (response.pedidos?.length ?? 0) > 0;
+        const hasAnyData = (response.ubicaciones?.length ?? 0) > 0 || (response.clientes?.length ?? 0) > 0 || (response.cobros?.length ?? 0) > 0 || (response.pedidos?.length ?? 0) > 0;
 
-        if (response.clientes.length  === 0)
-        {
+        if (response.clientes.length === 0) {
             this.msgService.add({
                 severity: 'info',
                 summary: 'Sin clientes',
@@ -1045,7 +1045,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
                 life: 6000
             });
         }
-
     }
 
     //===============NUEVOS MÉTODOS PARA SCROLL INFINITO========================================//
@@ -1123,7 +1122,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
      * Carga los usuarios iniciales
      */
     private loadInitialUsers(): void {
-
         this.paginatedUsers = this.filteredUsers.slice(0, this.itemsPerPage);
         this.currentPage = 1;
 
@@ -1132,7 +1130,6 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
             this.hasReachedEnd = true;
         }
     }
-
 
     formatLocationDate(dateString: string): string {
         if (!dateString) return 'Sin fecha';
@@ -1197,6 +1194,43 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         }
     }
 
+    // Método actualizado para cargar las opciones del multiselect
+    private loadGeofenceOptions(): void {
+        if (!this.vendorGeocercas.length) {
+            this.geofenceOptions = [];
+            return;
+        }
+
+        // Convertir todas las geocercas del vendor a opciones
+        this.geofenceOptions = this.vendorGeocercas.map((geocerca) => ({
+            label: `${geocerca.geocnom} - ${geocerca.geocciud}`,
+            value: geocerca.geoccod,
+            geocerca: geocerca
+        }));
+    }
+
+    // Método para manejar cambios en la selección
+    onGeofencesChange(event: any): void {
+        const selectedCodes = event.value; // Array de códigos seleccionados
+
+        // Obtener las geocercas completas seleccionadas
+        const selectedGeocercasData = this.vendorGeocercas.filter((geocerca) => selectedCodes.includes(geocerca.geoccod));
+
+        // Mostrar las geocercas seleccionadas en el mapa
+        if (selectedGeocercasData.length > 0) {
+            this.mapService.displayVendorGeocercas(selectedGeocercasData);
+
+            this.msgService.add({
+                severity: 'info',
+                summary: 'Geocercas seleccionadas',
+                detail: `${selectedGeocercasData.length} geocerca${selectedGeocercasData.length === 1 ? '' : 's'} seleccionada${selectedGeocercasData.length === 1 ? '' : 's'}`,
+                life: 3000
+            });
+        } else {
+            // Si no hay selección, mostrar todas las geocercas del vendedor
+            this.mapService.displayVendorGeocercas(this.vendorGeocercas);
+        }
+    }
 
     ngOnDestroy(): void {
         if (this.debounceTimer) {

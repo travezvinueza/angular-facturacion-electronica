@@ -7,7 +7,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { RippleModule } from 'primeng/ripple';
 import { CardModule } from 'primeng/card';
-import { AppFloatingConfigurator } from '../../layout/component/app.floatingconfigurator';
+import { AppFloatingConfigurator } from '@/layout/component/app.floatingconfigurator';
 import { AuthService } from '@/core/services/auth.service';
 import { MessageService } from 'primeng/api';
 import { CommonModule } from '@angular/common';
@@ -51,82 +51,98 @@ import { CommonModule } from '@angular/common';
                         </div>
 
                         <!-- PASO 1: Formulario de Login -->
-                        <div *ngIf="!mostrarSelectorEmpresa()">
+                        @if (!mostrarSelectorEmpresa()) {
                             <form [formGroup]="userDetailForm" (ngSubmit)="login()">
+
                                 <label for="nombreUsuario"
-                                       class="block text-surface-900 dark:text-surface-0 text-xl font-medium">Nombre Usuario</label>
-                                <input pInputText type="text" formControlName="nombreUsuario" id="nombreUsuario" placeholder="Nombre de usuario"
-                                       class="w-full md:w-[30rem] mb-4" required />
+                                       class="block text-surface-900 dark:text-surface-0 text-xl font-medium">
+                                    Nombre Usuario
+                                </label>
+                                <input pInputText
+                                       type="text"
+                                       formControlName="nombreUsuario"
+                                       id="nombreUsuario"
+                                       placeholder="Nombre de usuario"
+                                       class="w-full md:w-[30rem] mb-4"
+                                       required />
 
                                 <label for="contrasena"
-                                       class="block text-surface-900 dark:text-surface-0 font-medium text-xl">Contraseña</label>
-                                <p-password type="password" formControlName="contrasena" id="contrasena" placeholder="Contraseña"
-                                            [toggleMask]="true" styleClass="mb-4" [fluid]="true" [feedback]="false"
-                                            required></p-password>
-
-                                <div class="flex items-center justify-between mt-2 mb-6 gap-8">
-                                    <span routerLink="/auth/forgot-password"
-                                          class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">¿Olvidaste tu contraseña?</span>
-                                </div>
-
-                                <p-button type="submit" [loading]="cargandoLogin()" styleClass="w-full">Iniciar Sesión</p-button>
-
+                                       class="block text-surface-900 dark:text-surface-0 font-medium text-xl">
+                                    Contraseña
+                                </label>
+                                <p-password type="password"
+                                            formControlName="contrasena"
+                                            id="contrasena"
+                                            placeholder="Contraseña"
+                                            [toggleMask]="true"
+                                            class="mb-4"
+                                            [fluid]="true"
+                                            [feedback]="false"
+                                            required>
+                                </p-password>
+                                <p-button type="submit"
+                                          [loading]="cargandoLogin()"
+                                          styleClass="w-full">
+                                    Iniciar Sesión
+                                </p-button>
                             </form>
-                        </div>
+                        }
+
 
                         <!-- PASO 2: Selector de Empresa -->
-                        <div *ngIf="mostrarSelectorEmpresa()">
-                            <div class="text-center mb-6">
-                                <p class="text-surface-700 dark:text-surface-300">
-                                    Credenciales válidas. Selecciona la empresa con la que deseas ingresar:
-                                </p>
-                            </div>
+                        @if (mostrarSelectorEmpresa()) {
+                            <div>
+                                <div class="text-center mb-8">
+                                    <p class="text-surface-600 dark:text-surface-400 text-base">
+                                        Credenciales válidas. Selecciona la empresa con la que deseas ingresar:
+                                    </p>
+                                </div>
 
-                            <div class="space-y-3">
-                                @for (empresa of empresasDisponibles(); track empresa.id) {
-                                    <p-card
-                                        class="cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-800 transition-all duration-200 border-1 hover:border-primary-300"
-                                        (click)="seleccionarEmpresa(empresa.id)">
+                                <div class="space-y-4">
+                                    @for (empresa of empresasDisponibles(); track empresa.id) {
+                                        <div
+                                            class="cursor-pointer rounded-xl bg-white dark:bg-surface-800/50 border border-surface-200/60 dark:border-surface-700/50 hover:bg-surface-50 dark:hover:bg-surface-700/70 hover:border-surface-300/80 dark:hover:border-surface-600/70 transition-all duration-300 p-5 group hover:shadow-sm dark:hover:shadow-lg"
+                                            (click)="seleccionarEmpresa(empresa.id)">
 
-                                        <div class="flex items-center gap-4">
-                                            <!-- Icono de empresa -->
-                                            <div class="flex items-center justify-center w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30">
-                                                <i class="pi pi-building text-primary text-xl"></i>
-                                            </div>
+                                            <div class="flex items-center gap-5">
+                                                <!-- Icono de empresa -->
+                                                <div class="flex items-center justify-center w-14 h-14 rounded-full bg-primary-500/10 dark:bg-primary-400/10 flex-shrink-0 group-hover:bg-primary-500/15 dark:group-hover:bg-primary-400/15 transition-colors duration-300">
+                                                    <i class="pi pi-building text-primary-600 dark:text-primary-400 text-xl"></i>
+                                                </div>
 
-                                            <!-- Información de la empresa -->
-                                            <div class="flex-1">
-                                                <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-1">
-                                                    {{ empresa.nomempresa }}
-                                                </h3>
-                                                <div class="flex items-center gap-2">
-                                                    <i class="pi pi-tag text-surface-500 text-sm"></i>
-                                                    <p class="text-sm text-surface-600 dark:text-surface-400">
-                                                        ID: {{ empresa.id }}
-                                                    </p>
+                                                <!-- Información de la empresa -->
+                                                <div class="flex-1 min-w-0">
+                                                    <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2 truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-300">
+                                                        {{ empresa.nomempresa }}
+                                                    </h3>
+                                                    <div class="flex items-center gap-2">
+                                                        <i class="pi pi-tag text-surface-400 dark:text-surface-500 text-xs"></i>
+                                                        <p class="text-sm text-surface-500 dark:text-surface-400 truncate">
+                                                            ID: {{ empresa.id }}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Flecha de acceso -->
+                                                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-surface-200/50 dark:bg-surface-600/50 flex-shrink-0 group-hover:bg-primary-500/15 dark:group-hover:bg-primary-400/15 transition-all duration-300">
+                                                    <i class="pi pi-arrow-right text-surface-600 dark:text-surface-400 text-sm group-hover:text-primary-600 dark:group-hover:text-primary-400 group-hover:translate-x-0.5 transition-all duration-300"></i>
                                                 </div>
                                             </div>
-
-                                            <!-- Flecha de acceso -->
-                                            <div class="flex items-center justify-center w-8 h-8 rounded-full bg-surface-100 dark:bg-surface-700">
-                                                <i class="pi pi-arrow-right text-primary text-sm"></i>
-                                            </div>
                                         </div>
-                                    </p-card>
-                                }
+                                    }
+                                </div>
 
+                                <div class="mt-8">
+                                    <p-button
+                                        type="button"
+                                        styleClass="w-full !rounded-xl !py-3"
+                                        severity="secondary"
+                                        (click)="cancelarSeleccion()">
+                                        Cancelar
+                                    </p-button>
+                                </div>
                             </div>
-
-                            <div class="mt-6">
-                                <p-button
-                                    type="button"
-                                    styleClass="w-full"
-                                    severity="secondary"
-                                    (click)="cancelarSeleccion()">
-                                    Cancelar
-                                </p-button>
-                            </div>
-                        </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -206,7 +222,7 @@ export class Login {
                 });
 
                 // Redirigir al dashboard
-                this.router.navigate(['/vendedores']);
+                this.router.navigate(['/vendedores']).then();
             },
             error: (error) => {
                 this.cargandoLogin.set(false);
