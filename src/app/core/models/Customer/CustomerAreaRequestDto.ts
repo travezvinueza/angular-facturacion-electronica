@@ -1,7 +1,12 @@
-export interface CustomerAreaRequestDto  {
-    codvend: string;
-    latmax: number;
-    latmin: number;
-    lonmax: number;
-    lonmin: number;
+export interface CustomerAreaRequestDto {
+    clientes: {
+        tipoelementos: number;
+        codvendedor: string;
+    };
+    zonasbusqueda: {
+        latmax: number;
+        latmin: number;
+        lonmax: number;
+        lonmin: number;
+    };
 }

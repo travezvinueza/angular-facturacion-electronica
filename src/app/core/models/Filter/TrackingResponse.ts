@@ -1,5 +1,5 @@
 export interface TrackingResponse {
-    ubicaciones: LocationDto[];
+    ubicaciones: UserLocationDto[];
     clientes: ClientDto[];
     cobros: ChargeDto[];
     pedidos: OrderDto[];
@@ -9,6 +9,11 @@ export interface LocationDto {
     latitud: number;
     longitud: number;
     tiempo: string; // ISO string, e.g., "2025-09-15T14:42:05"
+}
+
+export interface UserLocationDto {
+    usuario: string;
+    ubicaciones: LocationDto[];
 }
 
 export interface ClientDto {

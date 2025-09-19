@@ -8,7 +8,7 @@ import { UserDto } from '@/core/models/UserDto';
 import { CustomerResponseDto } from '@/core/models/Customer/CustomerResponseDto';
 import { GeocercaDto } from '@/core/models/Geocercas/VendedorDto';
 import { GeofenceDto } from '@/core/models/Geocercas/GeocercaValidationResponseDto';
-import { ChargeDto, LocationDto, OrderDto } from '../models/Filter/TrackingResponse';
+import { ChargeDto, LocationDto, OrderDto, UserLocationDto } from '../models/Filter/TrackingResponse';
 
 
 //===== INTERFACES ======//
@@ -44,7 +44,6 @@ export interface RangeDisplayInfo {
     providedIn: 'root'
 })
 export class MapService {
-
     //Variables para el filtrado de Especial
     private trackingMarkers = new Map<string, L.Marker>();
     private chargeMarkers = new Map<string, L.Marker>();
@@ -80,108 +79,102 @@ export class MapService {
         zoomControl: true
     };
 
-        // Observables para el estado
-        private mapInitialized$ = new BehaviorSubject<boolean>(false);
-        private searchingLocation$ = new BehaviorSubject<boolean>(false);
-        private searchResults$ = new BehaviorSubject<SearchResult[]>([]);
-        private boundsSubject = new BehaviorSubject<L.LatLngBounds | null>(null);
+    // Observables para el estado
+    private mapInitialized$ = new BehaviorSubject<boolean>(false);
+    private searchingLocation$ = new BehaviorSubject<boolean>(false);
+    private searchResults$ = new BehaviorSubject<SearchResult[]>([]);
+    private boundsSubject = new BehaviorSubject<L.LatLngBounds | null>(null);
 
-        constructor(
-            private http: HttpClient,
-            private msgService: MessageService
-        ) {
-            this.configureLeafletIcons();
-        }
+    constructor(
+        private http: HttpClient,
+        private msgService: MessageService
+    ) {
+        this.configureLeafletIcons();
+    }
 
-        get currentUserRange$(): Observable<RangeDisplayInfo | null>
-        {
-            return this.userRange$.asObservable();
-        }
+    get currentUserRange$(): Observable<RangeDisplayInfo | null> {
+        return this.userRange$.asObservable();
+    }
 
+    displayVendorGeocercas(geocercas: GeocercaDto[]): void {
+        if (!this.map) return;
 
-        displayVendorGeocercas(geocercas: GeocercaDto[]): void
-        {
-            if (!this.map) return;
+        this.clearGeocercas();
+        this.geocercasLayer = L.featureGroup().addTo(this.map);
 
-            this.clearGeocercas();
-            this.geocercasLayer = L.featureGroup().addTo(this.map);
-
-            geocercas.forEach((geocerca) => {
-                if (geocerca.geocact) {
-                    const layer = this.createGeocercaLayer(geocerca);
-                    if (layer) {
-                        this.geocercasMarkers.set(geocerca.geoccod, layer);
-                        this.geocercasLayer?.addLayer(layer);
-                    }
+        geocercas.forEach((geocerca) => {
+            if (geocerca.geocact) {
+                const layer = this.createGeocercaLayer(geocerca);
+                if (layer) {
+                    this.geocercasMarkers.set(geocerca.geoccod, layer);
+                    this.geocercasLayer?.addLayer(layer);
                 }
-            });
+            }
+        });
 
-            this.fitGeocercasBounds();
-        }
+        this.fitGeocercasBounds();
+    }
 
-        /**
-         * Crea la capa visual para una geocerca
-         */
-        private createGeocercaLayer(geocerca: GeocercaDto): L.Layer | null
-        {
-            try {
-                // Parsear coordenadas del polígono
-                const coordinates = JSON.parse(geocerca.geoccoor);
+    /**
+     * Crea la capa visual para una geocerca
+     */
+    private createGeocercaLayer(geocerca: GeocercaDto): L.Layer | null {
+        try {
+            // Parsear coordenadas del polígono
+            const coordinates = JSON.parse(geocerca.geoccoor);
 
-                if (!Array.isArray(coordinates) || coordinates.length === 0) {
-                    return null;
-                }
-
-                // Convertir a formato Leaflet
-                const latLngs: [number, number][] = coordinates.map((coord) => [coord.lat, coord.lng]);
-
-                // Crear polígono
-                const polygon = L.polygon(latLngs, {
-                    color: '#f32a2a',
-                    fillColor: '#f32a2a',
-                    fillOpacity: 0.15,
-                    weight: 2,
-                    opacity: 0.8
-                });
-
-                // Agregar popup con información
-                polygon.bindPopup(this.createGeocercaPopup(geocerca), {
-                    maxWidth: 280,
-                    className: 'geocerca-popup'
-                });
-
-                // Agregar marcador central
-                const centerMarker = L.circleMarker([geocerca.geoclat, geocerca.geoclon], {
-                    radius: 6,
-                    color: '#8b5cf6',
-                    fillColor: '#ffffff',
-                    fillOpacity: 1,
-                    weight: 2
-                });
-
-                centerMarker.bindTooltip(`Geocerca: ${geocerca.geocnom}`, {
-                    permanent: false,
-                    direction: 'top'
-                });
-
-                // Crear grupo con polígono y marcador central
-
-
-                return L.layerGroup([polygon, centerMarker]);
-            } catch (error) {
-                console.error('Error al crear geocerca:', error);
+            if (!Array.isArray(coordinates) || coordinates.length === 0) {
                 return null;
             }
+
+            // Convertir a formato Leaflet
+            const latLngs: [number, number][] = coordinates.map((coord) => [coord.lat, coord.lng]);
+
+            // Crear polígono
+            const polygon = L.polygon(latLngs, {
+                color: '#f32a2a',
+                fillColor: '#f32a2a',
+                fillOpacity: 0.15,
+                weight: 2,
+                opacity: 0.8
+            });
+
+            // Agregar popup con información
+            polygon.bindPopup(this.createGeocercaPopup(geocerca), {
+                maxWidth: 280,
+                className: 'geocerca-popup'
+            });
+
+            // Agregar marcador central
+            const centerMarker = L.circleMarker([geocerca.geoclat, geocerca.geoclon], {
+                radius: 6,
+                color: '#8b5cf6',
+                fillColor: '#ffffff',
+                fillOpacity: 1,
+                weight: 2
+            });
+
+            centerMarker.bindTooltip(`Geocerca: ${geocerca.geocnom}`, {
+                permanent: false,
+                direction: 'top'
+            });
+
+            // Crear grupo con polígono y marcador central
+
+            return L.layerGroup([polygon, centerMarker]);
+        } catch (error) {
+            console.error('Error al crear geocerca:', error);
+            return null;
         }
+    }
 
-        /**
-         * Crea popup para geocerca
-         */
-        private createGeocercaPopup(geocerca: GeocercaDto): string
-        {
-            const fechaAsignacion = new Date(geocerca.fechaAsignacion).toLocaleDateString('es-EC');
+    /**
+     * Crea popup para geocerca
+     */
+    private createGeocercaPopup(geocerca: GeocercaDto): string {
+        const fechaAsignacion = new Date(geocerca.fechaAsignacion).toLocaleDateString('es-EC');
 
-            return `
+        return `
             <div class="bg-white rounded-lg shadow-sm border-0 overflow-hidden">
                 <div class="bg-purple-500 text-white px-3 py-2">
                     <h3 class="font-semibold text-sm">${geocerca.geocnom}</h3>
@@ -222,143 +215,136 @@ export class MapService {
                 </div>
             </div>
         `;
-        }
+    }
 
-        /**
-         * Ajusta la vista para mostrar todas las geocercas
-         */
-        private fitGeocercasBounds(): void
-        {
-            if (!this.map || this.geocercasMarkers.size === 0) return;
+    /**
+     * Ajusta la vista para mostrar todas las geocercas
+     */
+    private fitGeocercasBounds(): void {
+        if (!this.map || this.geocercasMarkers.size === 0) return;
 
-            const bounds = L.latLngBounds([]);
+        const bounds = L.latLngBounds([]);
 
-            // Iterar sobre las geocercas y expandir los bounds
-            this.geocercasMarkers.forEach(layer => {
-                if (layer instanceof L.Polygon) {
-                    bounds.extend(layer.getBounds());
-                } else if (layer instanceof L.LayerGroup) {
-                    layer.eachLayer(subLayer => {
-                        if (subLayer instanceof L.Polygon) {
-                            bounds.extend(subLayer.getBounds());
-                        }
-                    });
-                }
-            });
-
-            if (bounds.isValid()) {
-                this.map.fitBounds(bounds, { padding: [20, 20] });
-            }
-        }
-        /**
-         * Limpia las geocercas del mapa
-         */
-        clearGeocercas(): void
-        {
-            if (this.geocercasLayer && this.map) {
-                this.map.removeLayer(this.geocercasLayer);
-                this.geocercasLayer = null;
-            }
-            this.geocercasMarkers.clear();
-        }
-
-        /**
-         * Agrega marcadores de clientes al mapa
-         */
-        addCustomerMarkers(customers: CustomerResponseDto[]): void
-        {
-            if (!this.map) return;
-
-            this.clearCustomerMarkers();
-            this.initializeCustomerCluster();
-
-            customers.forEach((customer) => {
-                if (customer.latitud && customer.longitud) {
-                    try {
-                        const marker = this.createCustomerMarker(customer);
-                        this.customerMarkers.set(customer.dirclave, marker);
-                        this.customerClusterGroup?.addLayer(marker);
-                    } catch (error) {
-                        console.error('❌ Error al agregar marcador de cliente:', error);
+        // Iterar sobre las geocercas y expandir los bounds
+        this.geocercasMarkers.forEach((layer) => {
+            if (layer instanceof L.Polygon) {
+                bounds.extend(layer.getBounds());
+            } else if (layer instanceof L.LayerGroup) {
+                layer.eachLayer((subLayer) => {
+                    if (subLayer instanceof L.Polygon) {
+                        bounds.extend(subLayer.getBounds());
                     }
-                }
-            });
-            setTimeout(() => {
-                this.map?.invalidateSize();
-            }, 100);
-        }
-
-        /**
-         * Inicializa el cluster de clientes
-         */
-        private initializeCustomerCluster(): void
-        {
-            if (!this.map) return;
-
-            // Siempre limpiar el cluster existente primero
-            if (this.customerClusterGroup) {
-                this.map.removeLayer(this.customerClusterGroup);
-                this.customerClusterGroup = null;
+                });
             }
+        });
 
-            // Crear nuevo cluster
-            this.customerClusterGroup = L.markerClusterGroup({
-                showCoverageOnHover: false,
-                maxClusterRadius: 40,
-                spiderfyOnMaxZoom: true,
-                iconCreateFunction: (cluster) => {
-                    const count = cluster.getChildCount();
-                    return L.divIcon({
-                        html: `<div class="w-8 h-8 bg-purple-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-xs font-bold">${count}</div>`,
-                        className: 'custom-customer-cluster',
-                        iconSize: [32, 32],
-                        iconAnchor: [16, 16]
-                    });
+        if (bounds.isValid()) {
+            this.map.fitBounds(bounds, { padding: [20, 20] });
+        }
+    }
+    /**
+     * Limpia las geocercas del mapa
+     */
+    clearGeocercas(): void {
+        if (this.geocercasLayer && this.map) {
+            this.map.removeLayer(this.geocercasLayer);
+            this.geocercasLayer = null;
+        }
+        this.geocercasMarkers.clear();
+    }
+
+    /**
+     * Agrega marcadores de clientes al mapa
+     */
+    addCustomerMarkers(customers: CustomerResponseDto[]): void {
+        if (!this.map) return;
+
+        this.clearCustomerMarkers();
+        this.initializeCustomerCluster();
+
+        customers.forEach((customer) => {
+            if (customer.latitud && customer.longitud) {
+                try {
+                    const marker = this.createCustomerMarker(customer);
+                    this.customerMarkers.set(customer.dirclave, marker);
+                    this.customerClusterGroup?.addLayer(marker);
+                } catch (error) {
+                    console.error('❌ Error al agregar marcador de cliente:', error);
                 }
-            });
-
-            this.map.addLayer(this.customerClusterGroup);
-        }
-
-        /**
-         * Crea marcador para cliente
-         */
-        private createCustomerMarker(customer: CustomerResponseDto): L.Marker
-        {
-            const customIcon = this.createCustomerIcon(customer.asignado);
-            const marker = L.marker([customer.latitud, customer.longitud], {
-                icon: customIcon
-            });
-
-            const popupContent = this.createCustomerPopupContent(customer);
-            marker.bindPopup(popupContent, {
-                maxWidth: 260,
-                className: 'custom-customer-popup'
-            });
-
-            return marker;
-        }
-
-        /**
-         * Centra el mapa en un cliente específico
-         */
-        focusOnCustomer(customer: CustomerResponseDto): void
-        {
-            if (!this.map || !customer.latitud || !customer.longitud) return;
-
-            this.map.setView([customer.latitud, customer.longitud], 17);
-
-            const marker = this.customerMarkers.get(customer.dirclave);
-            if (marker) {
-                marker.openPopup();
             }
+        });
+        setTimeout(() => {
+            this.map?.invalidateSize();
+        }, 100);
+    }
+
+    /**
+     * Inicializa el cluster de clientes
+     */
+    private initializeCustomerCluster(): void {
+        if (!this.map) return;
+
+        // Siempre limpiar el cluster existente primero
+        if (this.customerClusterGroup) {
+            this.map.removeLayer(this.customerClusterGroup);
+            this.customerClusterGroup = null;
         }
+
+        // Crear nuevo cluster
+        this.customerClusterGroup = L.markerClusterGroup({
+            showCoverageOnHover: false,
+            maxClusterRadius: 40,
+            spiderfyOnMaxZoom: true,
+            iconCreateFunction: (cluster) => {
+                const count = cluster.getChildCount();
+                return L.divIcon({
+                    html: `<div class="w-8 h-8 bg-purple-500 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-xs font-bold">${count}</div>`,
+                    className: 'custom-customer-cluster',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                });
+            }
+        });
+
+        this.map.addLayer(this.customerClusterGroup);
+    }
+
+    /**
+     * Crea marcador para cliente
+     */
+    private createCustomerMarker(customer: CustomerResponseDto): L.Marker {
+        const customIcon = this.createCustomerIcon(customer.asignado);
+        const marker = L.marker([customer.latitud, customer.longitud], {
+            icon: customIcon
+        });
+
+        const popupContent = this.createCustomerPopupContent(customer);
+        marker.bindPopup(popupContent, {
+            maxWidth: 260,
+            className: 'custom-customer-popup'
+        });
+
+        return marker;
+    }
+
+    /**
+     * Centra el mapa en un cliente específico
+     */
+    focusOnCustomer(customer: CustomerResponseDto): void {
+        if (!this.map || !customer.latitud || !customer.longitud) return;
+
+        this.map.setView([customer.latitud, customer.longitud], 20);
+
+        const marker = this.customerMarkers.get(customer.dirclave);
+        if (marker) {
+            marker.openPopup();
+        }
+    }
 
     /**
      * Crea icono para cliente
      */
-    private createCustomerIcon(isAssigned: boolean): L.DivIcon
-    {
+    private createCustomerIcon(isAssigned: boolean): L.DivIcon {
         const bgColor = isAssigned ? 'bg-green-500' : 'bg-red-500';
         const indicatorColor = isAssigned ? 'bg-green-400' : 'bg-yellow-400';
 
@@ -378,12 +364,10 @@ export class MapService {
         });
     }
 
-
     /**
      * Crea popup para cliente
      */
-    private createCustomerPopupContent(customer: CustomerResponseDto): string
-    {
+    private createCustomerPopupContent(customer: CustomerResponseDto): string {
         const statusColor = customer.asignado ? 'text-blue-600' : 'text-gray-600';
         const statusText = customer.asignado ? 'Asignado' : 'No asignado';
         const statusIcon = customer.asignado ? 'text-green-500' : 'text-yellow-500';
@@ -421,8 +405,7 @@ export class MapService {
     /**
      * Limpia marcadores de clientes
      */
-    clearCustomerMarkers(): void
-    {
+    clearCustomerMarkers(): void {
         if (this.customerClusterGroup && this.map) {
             this.customerClusterGroup.clearLayers();
             this.map.removeLayer(this.customerClusterGroup);
@@ -432,13 +415,10 @@ export class MapService {
         this.customerMarkers.clear();
     }
 
-    focusOnUserWithRange(user: UserDto, radiusMeters: number = 1000): RangeDisplayInfo | null
-    {
+    focusOnUserWithRange(user: UserDto, radiusMeters: number = 1000): RangeDisplayInfo | null {
         if (!this.map || !user.ubicacion) return null;
 
-
         this.hideAllUserMarkersExcept(user.usucod);
-
 
         const centerLat = user.ubicacion.geublat;
         const centerLng = user.ubicacion.geublon;
@@ -463,8 +443,7 @@ export class MapService {
         return rangeInfo;
     }
 
-    private hideAllUserMarkersExcept(selectedUserCode: string): void
-    {
+    private hideAllUserMarkersExcept(selectedUserCode: string): void {
         if (!this.markerClusterGroup) return;
 
         this.userMarkers.forEach((marker, userCode) => {
@@ -474,8 +453,7 @@ export class MapService {
         });
     }
 
-    restoreAllUserMarkers(): void
-    {
+    restoreAllUserMarkers(): void {
         if (!this.markerClusterGroup) return;
 
         this.userMarkers.forEach((marker) => {
@@ -483,8 +461,7 @@ export class MapService {
         });
     }
 
-    private calculateUserRange(lat: number, lng: number, radiusMeters: number): UserRange
-    {
+    private calculateUserRange(lat: number, lng: number, radiusMeters: number): UserRange {
         const earthRadius = 6371000; // Radio de la Tierra en metros
         const latDelta = (radiusMeters / earthRadius) * (180 / Math.PI);
         const lngDelta = latDelta / Math.cos((lat * Math.PI) / 180);
@@ -501,15 +478,12 @@ export class MapService {
         };
     }
 
-    private displayUserRange(rangeInfo: RangeDisplayInfo): void
-    {
+    private displayUserRange(rangeInfo: RangeDisplayInfo): void {
         if (!this.map) return;
         this.clearUserRange();
         this.userRangeLayer = L.layerGroup().addTo(this.map);
 
         const { range } = rangeInfo;
-
-
 
         // Crear rectángulo para mostrar los bounds exactos
         const rectangle = L.rectangle(
@@ -520,8 +494,8 @@ export class MapService {
             {
                 color: '#ef4444',
                 fillColor: '#ef4444',
-                fillOpacity: 0,  // Relleno transparente
-                opacity: 0,      // Borde transparente
+                fillOpacity: 0, // Relleno transparente
+                opacity: 0, // Borde transparente
                 weight: 1,
                 dashArray: '3, 3'
             }
@@ -530,8 +504,7 @@ export class MapService {
         this.addCornerMarkers(range);
     }
 
-    private addCornerMarkers(range: UserRange): void
-    {
+    private addCornerMarkers(range: UserRange): void {
         if (!this.userRangeLayer) return;
 
         // Marcador esquina superior derecha (NorthEast)
@@ -589,8 +562,7 @@ export class MapService {
         this.userRangeLayer.addLayer(swMarker);
     }
 
-    clearUserRange(): void
-    {
+    clearUserRange(): void {
         if (this.userRangeLayer && this.map) {
             this.map.removeLayer(this.userRangeLayer);
             this.userRangeLayer = null;
@@ -600,149 +572,141 @@ export class MapService {
     }
 
     // Getters para observables
-    get isMapInitialized$(): Observable<boolean>
-    {
+    get isMapInitialized$(): Observable<boolean> {
         return this.mapInitialized$.asObservable();
     }
 
-    get isSearchingLocation$(): Observable<boolean>
-    {
+    get isSearchingLocation$(): Observable<boolean> {
         return this.searchingLocation$.asObservable();
     }
 
-    get searchResultsList$(): Observable<SearchResult[]>
-    {
+    get searchResultsList$(): Observable<SearchResult[]> {
         return this.searchResults$.asObservable();
     }
 
-        /**
-         * Inicializa el mapa en el contenedor especificado
-         */
-        async initializeMap(container: ElementRef, config?: Partial<MapConfig>): Promise<boolean> {
-            return new Promise((resolve, reject) => {
-                try {
-                    const mapConfig = { ...this.defaultConfig, ...config };
-                    const element = container.nativeElement;
+    /**
+     * Inicializa el mapa en el contenedor especificado
+     */
+    async initializeMap(container: ElementRef, config?: Partial<MapConfig>): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            try {
+                const mapConfig = { ...this.defaultConfig, ...config };
+                const element = container.nativeElement;
 
-                    if (!element) {
-                        this.showMapFallback(container);
-                        resolve(false);
-                    }
-
-                    this.map = L.map(element, {
-                        center: mapConfig.center,
-                        zoom: mapConfig.zoom,
-                        zoomControl: mapConfig.zoomControl
-                    });
-
-
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        maxZoom: 19,
-                        attribution: '© OpenStreetMap contributors'
-                    }).addTo(this.map);
-
-                    const mapInstance = this.map;
-                    mapInstance.on('moveend zoomend', () => {
-                        const bounds = mapInstance.getBounds();
-                        this.boundsSubject.next(bounds); // Emitir cambios
-                        console.log('Nuevas coordenadas:', {
-                            southWest: bounds.getSouthWest(),
-                            northEast: bounds.getNorthEast()
-                        });
-                    });
-
-                    const mainMarker = L.marker(mapConfig.center).addTo(this.map);
-                    mainMarker.bindPopup(`<b>${mapConfig.defaultLocation}</b><br>Ubicación principal`).openPopup();
-
-                    this.initializeMarkerCluster();
-
-                    setTimeout(() => {
-                        this.map?.invalidateSize();
-                    }, 100);
-
-                    this.mapInitialized$.next(true);
-                    console.log('Mapa inicializado correctamente');
-                    resolve(true);
-                } catch (error) {
-                    console.error('Error inicializando el mapa:', error);
+                if (!element) {
                     this.showMapFallback(container);
-                    this.mapInitialized$.next(false);
-                    reject(error);
+                    resolve(false);
                 }
-            });
-        }
 
-        addSearchAreaButton(onSearchClick: (bounds: L.LatLngBounds) => void): void
-        {
-            if (!this.map) return;
+                this.map = L.map(element, {
+                    center: mapConfig.center,
+                    zoom: mapConfig.zoom,
+                    zoomControl: mapConfig.zoomControl
+                });
 
-            const mapContainer = this.map.getContainer();
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(this.map);
 
-            // Crear contenedor principal flotante
-            const container = L.DomUtil.create('div', 'leaflet-control leaflet-control-custom', mapContainer);
+                const mapInstance = this.map;
+                mapInstance.on('moveend zoomend', () => {
+                    const bounds = mapInstance.getBounds();
+                    this.boundsSubject.next(bounds); // Emitir cambios
+                    console.log('Nuevas coordenadas:', {
+                        southWest: bounds.getSouthWest(),
+                        northEast: bounds.getNorthEast()
+                    });
+                });
 
-            // Estilos base
-            container.style.position = 'absolute';
-            container.style.top = '10px';
-            container.style.left = '50%';
-            container.style.transform = 'translateX(-50%)';
-            container.style.backgroundColor = 'white';
-            container.style.padding = '6px 12px';
-            container.style.display = 'flex';
-            container.style.alignItems = 'center';
-            container.style.gap = '6px';
-            container.style.cursor = 'pointer';
-            container.style.fontSize = '13px';
-            container.style.fontWeight = '600'; // más peso
-            container.style.fontFamily = 'Segoe UI, Roboto, sans-serif'; // tipografía distinta
-            container.style.border = '2px solid rgba(0,0,0,0.2)';
-            container.style.borderRadius = '10px'; // bordes suaves
-            container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)'; // sombra ligera
-            container.style.transition = 'all 0.2s ease'; // transición suave
+                const mainMarker = L.marker(mapConfig.center).addTo(this.map);
+                mainMarker.bindPopup(`<b>${mapConfig.defaultLocation}</b><br>Ubicación principal`).openPopup();
 
-            // Agregar icono y texto
-            container.innerHTML = `
+                this.initializeMarkerCluster();
+
+                setTimeout(() => {
+                    this.map?.invalidateSize();
+                }, 100);
+
+                this.mapInitialized$.next(true);
+                console.log('Mapa inicializado correctamente');
+                resolve(true);
+            } catch (error) {
+                console.error('Error inicializando el mapa:', error);
+                this.showMapFallback(container);
+                this.mapInitialized$.next(false);
+                reject(error);
+            }
+        });
+    }
+
+    addSearchAreaButton(onSearchClick: (bounds: L.LatLngBounds) => void): void {
+        if (!this.map) return;
+
+        const mapContainer = this.map.getContainer();
+
+        // Crear contenedor principal flotante
+        const container = L.DomUtil.create('div', 'leaflet-control leaflet-control-custom', mapContainer);
+
+        // Estilos base
+        container.style.position = 'absolute';
+        container.style.top = '10px';
+        container.style.left = '50%';
+        container.style.transform = 'translateX(-50%)';
+        container.style.backgroundColor = 'white';
+        container.style.padding = '6px 12px';
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.gap = '6px';
+        container.style.cursor = 'pointer';
+        container.style.fontSize = '13px';
+        container.style.fontWeight = '600'; // más peso
+        container.style.fontFamily = 'Segoe UI, Roboto, sans-serif'; // tipografía distinta
+        container.style.border = '2px solid rgba(0,0,0,0.2)';
+        container.style.borderRadius = '10px'; // bordes suaves
+        container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)'; // sombra ligera
+        container.style.transition = 'all 0.2s ease'; // transición suave
+
+        // Agregar icono y texto
+        container.innerHTML = `
             <i class="pi pi-search" style="font-size: 15px; color: #4f46e5;"></i>
             <span style="color: #374151;">Buscar en esta área</span>
         `;
 
-            // Hover
-            container.onmouseenter = () => {
-                container.style.backgroundColor = '#f3f4f6'; // gris clarito
-                container.style.borderColor = '#4f46e5'; // morado del ícono
-                container.style.boxShadow = '0 3px 8px rgba(0,0,0,0.25)';
-            };
+        // Hover
+        container.onmouseenter = () => {
+            container.style.backgroundColor = '#f3f4f6'; // gris clarito
+            container.style.borderColor = '#4f46e5'; // morado del ícono
+            container.style.boxShadow = '0 3px 8px rgba(0,0,0,0.25)';
+        };
 
-            container.onmouseleave = () => {
-                container.style.backgroundColor = 'white';
-                container.style.borderColor = 'rgba(0,0,0,0.2)';
-                container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
-            };
+        container.onmouseleave = () => {
+            container.style.backgroundColor = 'white';
+            container.style.borderColor = 'rgba(0,0,0,0.2)';
+            container.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+        };
 
-            // Click
-            container.onclick = () => {
-                const currentBounds = this.map!.getBounds();
-                onSearchClick(currentBounds);
-            };
+        // Click
+        container.onclick = () => {
+            const currentBounds = this.map!.getBounds();
+            onSearchClick(currentBounds);
+        };
 
-            // Prevenir propagación
-            L.DomEvent.disableClickPropagation(container);
-        }
+        // Prevenir propagación
+        L.DomEvent.disableClickPropagation(container);
+    }
 
-
-
-        /**
-         * Configura los iconos de Leaflet
-         */
-        private configureLeafletIcons(): void
-        {
-            delete (L.Icon.Default.prototype as any)._getIconUrl;
-            L.Icon.Default.mergeOptions({
-                iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-                iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
-            });
-        }
+    /**
+     * Configura los iconos de Leaflet
+     */
+    private configureLeafletIcons(): void {
+        delete (L.Icon.Default.prototype as any)._getIconUrl;
+        L.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+            iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
+        });
+    }
 
     private initializeMarkerCluster(): void {
         if (!this.map) return;
@@ -755,7 +719,6 @@ export class MapService {
 
         this.map.addLayer(this.markerClusterGroup);
     }
-
 
     /**
      * Agrega marcadores de usuarios al mapa
@@ -797,7 +760,7 @@ export class MapService {
                 // Si hay múltiples coordenadas, crear bounds para incluir todas
                 const group = new L.FeatureGroup();
 
-                coordinates.forEach(coord => {
+                coordinates.forEach((coord) => {
                     L.marker(coord).addTo(group);
                 });
 
@@ -1105,8 +1068,7 @@ export class MapService {
     /**
      * Crea popup para geocerca del tipo GeocercaResponseDto
      */
-    private createGeocercaResponsePopup(geocerca: GeofenceDto): string
-    {
+    private createGeocercaResponsePopup(geocerca: GeofenceDto): string {
         const fechaCreacion = new Date(geocerca.geocfcre).toLocaleDateString('es-EC', {
             day: '2-digit',
             month: '2-digit',
@@ -1166,8 +1128,7 @@ export class MapService {
     /**
      * Centra el mapa en una geocerca específica
      */
-    focusOnGeocerca(geocerca: GeofenceDto): void
-    {
+    focusOnGeocerca(geocerca: GeofenceDto): void {
         if (!this.map || !geocerca.geoclat || !geocerca.geoclon) return;
 
         // Centrar en la geocerca con zoom apropiado
@@ -1201,8 +1162,7 @@ export class MapService {
     /**
      * Resetea la vista del mapa a la configuración inicial
      */
-    resetMapView(): void
-    {
+    resetMapView(): void {
         if (!this.map) return;
 
         // Restablecer vista a la configuración por defecto
@@ -1218,7 +1178,6 @@ export class MapService {
         this.clearCustomerMarkers();
 
         this.clearGeocercas();
-
 
         // Limpiar rangos de usuario si existen
         this.clearUserRange();
@@ -1243,11 +1202,14 @@ export class MapService {
     /**
      * Agrega marcadores de tracking (ubicaciones del vendedor) al mapa
      */
-    addTrackingMarkers(locations: LocationDto[]): void {
-        if (!this.map) return;
+    addTrackingMarkers(userLocations: UserLocationDto[]): void {
+        if (!this.map || userLocations.length === 0) return;
 
         this.clearTrackingMarkers();
         this.initializeTrackingCluster();
+
+        const userLocation = userLocations[0]; // Solo un usuario
+        const locations = userLocation.ubicaciones;
 
         // Crear marcadores para cada ubicación
         locations.forEach((location, index) => {
@@ -1258,11 +1220,12 @@ export class MapService {
                     this.trackingMarkers.set(markerId, marker);
                     this.trackingClusterGroup?.addLayer(marker);
                 } catch (error) {
-                    console.error('❌ Error al agregar marcador de tracking:', error);
+                    console.error('Error al agregar marcador de tracking:', error);
                 }
             }
         });
-        this.createTrackingPath(locations);
+
+        this.createTrackingPath(userLocations);
 
         setTimeout(() => {
             this.map?.invalidateSize();
@@ -1321,7 +1284,7 @@ export class MapService {
         }, 100);
     }
 
-// ============= MÉTODOS PRIVADOS PARA CREAR MARCADORES =============
+    // ============= MÉTODOS PRIVADOS PARA CREAR MARCADORES =============
 
     /**
      * Crea marcador para ubicación de tracking
@@ -1378,7 +1341,7 @@ export class MapService {
         return marker;
     }
 
-// ============= MÉTODOS PARA CREAR ICONOS =============
+    // ============= MÉTODOS PARA CREAR ICONOS =============
 
     /**
      * Crea icono para ubicación de tracking
@@ -1487,10 +1450,11 @@ export class MapService {
             <div class="${headerColor} px-3 py-2">
                 <div class="flex items-center space-x-2 text-white">
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                        ${isLastLocation ?
-                '<path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/>' :
-                '<path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>'
-            }
+                        ${
+                            isLastLocation
+                                ? '<path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/>'
+                                : '<path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>'
+                        }
                     </svg>
                     <span class="font-semibold text-sm">${title}</span>
                     ${isLastLocation ? '<div class="w-2 h-2 bg-green-300 rounded-full animate-pulse ml-1"></div>' : ''}
@@ -1573,18 +1537,18 @@ export class MapService {
     `;
     }
 
-        /**
-         * Crea popup para pedido
-         */
-        private createOrderPopupContent(order: OrderDto): string {
-            const date = new Date(order.pdtfechaf);
-            const formattedDate = date.toLocaleDateString('es-ES');
-            const formattedTime = date.toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+    /**
+     * Crea popup para pedido
+     */
+    private createOrderPopupContent(order: OrderDto): string {
+        const date = new Date(order.pdtfechaf);
+        const formattedDate = date.toLocaleDateString('es-ES');
+        const formattedTime = date.toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
 
-            return `
+        return `
         <div class="bg-white rounded-lg shadow-sm border-0 overflow-hidden">
             <div class="bg-purple-600 px-3 py-2">
                 <div class="flex items-center space-x-2 text-white">
@@ -1622,12 +1586,9 @@ export class MapService {
             </div>
         </div>
         `;
-        }
+    }
 
-
-
-
-        // ============= MÉTODOS PARA CREAR CLUSTERS Y LIMPIAR =============
+    // ============= MÉTODOS PARA CREAR CLUSTERS Y LIMPIAR =============
     /**
      * Inicializa cluster para marcadores de tracking
      */
@@ -1635,6 +1596,7 @@ export class MapService {
         if (!this.map) return;
 
         this.trackingClusterGroup = new L.MarkerClusterGroup({
+            disableClusteringAtZoom: 0,
             iconCreateFunction: (cluster) => {
                 const count = cluster.getChildCount();
                 return L.divIcon({
@@ -1700,18 +1662,17 @@ export class MapService {
     /**
      * Crea línea de recorrido del vendedor
      */
-    private createTrackingPath(locations: LocationDto[]): void {
-        if (!this.map || locations.length < 2) return;
+    private createTrackingPath(userLocations: UserLocationDto[]): void {
+        if (!this.map || userLocations.length === 0) return;
+
+        const userLocation = userLocations[0]; // Solo un usuario
+        if (userLocation.ubicaciones.length < 2) return;
 
         // Ordenar ubicaciones por tiempo
-        const sortedLocations = locations.sort((a, b) =>
-            new Date(a.tiempo).getTime() - new Date(b.tiempo).getTime()
-        );
+        const sortedLocations = userLocation.ubicaciones.sort((a, b) => new Date(a.tiempo).getTime() - new Date(b.tiempo).getTime());
 
         // Crear coordenadas para la línea
-        const pathCoordinates: [number, number][] = sortedLocations.map(location =>
-            [location.latitud, location.longitud]
-        );
+        const pathCoordinates: [number, number][] = sortedLocations.map((location) => [location.latitud, location.longitud]);
 
         // Crear polyline
         this.trackingPath = L.polyline(pathCoordinates, {
@@ -1780,8 +1741,7 @@ export class MapService {
     /**
      * Destruye el mapa y limpia recursos
      */
-    destroyMap(): void
-    {
+    destroyMap(): void {
         this.clearSearchMarker();
         this.clearAllTrackingData();
         this.clearUserMarkers();
@@ -1800,6 +1760,5 @@ export class MapService {
         }
 
         this.mapInitialized$.next(false);
-
     }
 }

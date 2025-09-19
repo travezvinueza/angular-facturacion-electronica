@@ -1,28 +1,37 @@
 export interface FilterRequest {
-    mostrarvendedor: boolean;
-    codusuario: string;
+    usuarios: UsuariosFilter;
+    transacciones: TransaccionesFilter;
+    lapzotiempo: TiempoFilter;
+    clientes: ClientesFilter;
+    zonasbusqueda: ZonaBusquedaFilter;
+}
+
+export interface UsuariosFilter {
+    tipoelementos: number;
+    usuarios: string[];
+    buscaxzona: number;
+}
+
+export interface TransaccionesFilter {
     codvendedor: string;
-    fechainicio: string; // ISO date string
-    tipotiempo: number;  // 0=segundos,1=minutos,...,6=año
-    valortiempo: number; // valor asociado al tipo de tiempo
-    clientes: number;    // 0=ninguno,1=todos,2=asignados
-    geocercasif?: boolean;
-    geocercas?: Geocerca[];
-    transacciones: Transacciones;
-    zonaclientes: ZonaClientes;
-}
-
-export interface Geocerca {
-    // Definir campos cuando conozcas la estructura real de cada geocerca
-}
-
-export interface Transacciones {
-    pedidos: boolean;
     cobros: boolean;
+    pedidos: boolean;
 }
 
-export interface ZonaClientes {
-    codvend: string;
+export interface TiempoFilter {
+    tipofiltro: number;
+    fechainicio: string;
+    fechafinal?: string;
+    tipotiempo: number;
+    valortiempo: number;
+}
+
+export interface ClientesFilter {
+    tipoelementos: number;
+    codvendedor: string;
+}
+
+export interface ZonaBusquedaFilter {
     latmax: number;
     latmin: number;
     lonmax: number;

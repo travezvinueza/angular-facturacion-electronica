@@ -180,8 +180,8 @@
                                             <span class="text-sm font-medium text-surface-700 dark:text-surface-300">Clientes asignados</span>
                                         </div>
                                         <span class="inline-flex items-center px-3 py-1.5 rounded-lg bg-purple-100/80 dark:bg-purple-900/40 border border-purple-200/60 dark:border-purple-700/60 text-sm font-medium text-purple-700 dark:text-purple-300">
-                                    {{ filteredCustomers.length }} / {{ customers.length }}
-                                </span>
+                                            {{ filteredCustomers.length }} / {{ customers.length }}
+                                        </span>
                                     </div>
                                 }
                             </div>
@@ -376,10 +376,10 @@
                                                 <span
                                                     class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium"
                                                     [class]="customer.asignado
-                                        ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700'
-                                        : 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-700'">
-                                        {{ customer.asignado ? 'Asignado' : 'No asignado' }}
-                                    </span>
+                                                    ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700'
+                                                    : 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-700'">
+                                                    {{ customer.asignado ? 'Asignado' : 'No asignado' }}
+                                                </span>
                                             </div>
 
                                             <!-- Información del cliente -->
@@ -548,7 +548,7 @@
                                                         optionLabel="label"
                                                         placeholder="días"
                                                         [dropdown]="true"
-                                                        class="w-full">
+                                                        class="w-[300px]">
                                                     </p-autoComplete>
 
                                                     <input
@@ -576,7 +576,10 @@
                                                 <!-- Toggle compacto -->
                                                 <div class="col-span-12 sm:col-span-4">
                                                     <div class="flex align-items-center gap-2 p-2 bg-surface-50 dark:bg-surface-800 border-round mt-3">
-                                                        <p-toggleswitch [(ngModel)]="geofenceEnabled" size="small">
+                                                        <p-toggleswitch
+                                                            [(ngModel)]="geofenceEnabled"
+                                                            size="small"
+                                                            (onChange)="onToggleChange()">
                                                         </p-toggleswitch>
                                                         <div>
                                                             <span class="block text-xs font-medium text-surface-700 dark:text-surface-200">Activa</span>
@@ -586,9 +589,7 @@
                                                         </div>
                                                     </div>
                                                 </div>
-
                                                 <!-- Selector compacto -->
-                                                <!-- Selector MultiSelect -->
                                                 @if (geofenceEnabled) {
                                                     <div class="col-span-12 sm:col-span-8">
                                                         <label class="block text-xs font-medium text-surface-600 dark:text-surface-300 mb-1">
@@ -663,17 +664,6 @@
                                         </div>
 
                                         <div class="flex gap-4 p-2 bg-surface-50 dark:bg-surface-800 border-round">
-                                            <div class="flex align-items-center gap-2">
-                                                <p-checkbox
-                                                    inputId="clientes-none"
-                                                    [(ngModel)]="clientesNone"
-                                                    [binary]="true"
-                                                    (onChange)="onClientFilterChange('none')">
-                                                </p-checkbox>
-                                                <label for="clientes-none" class="text-sm text-surface-700 dark:text-surface-300 cursor-pointer">
-                                                    <i class="pi pi-ban mr-1"></i>Ninguno
-                                                </label>
-                                            </div>
                                             <div class="flex align-items-center gap-2">
                                                 <p-checkbox
                                                     inputId="clientes-all"
