@@ -24,6 +24,18 @@ export class UserService {
         });
         return this.http.get<UserDto[]>(`${this.baseUrl}/listacompleta`, { headers });
     }
+    getAllListUser2(skipLoader = false): Observable<UserDto[]> {
+        const token = this.authService.getToken();
+        let headers = new HttpHeaders({
+            Authorization: `Bearer ${token}`
+        });
+
+        if (skipLoader) {
+            headers = headers.set('X-Skip-Loader', 'true');
+        }
+
+        return this.http.get<UserDto[]>(`${this.baseUrl}/listacompleta`, { headers });
+    }
     getVendedoresConGeocercas(params?: VendedoresQueryParams): Observable<VendedoresResponse> {
         const token = this.authService.getToken();
         const headers = new HttpHeaders({
