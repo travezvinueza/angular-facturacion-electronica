@@ -1,26 +1,12 @@
-FROM node:22.14.0-alpine as build-stage
-
+# Etapa 1: Construir el proyecto Angular
+FROM node:20 AS build
 WORKDIR /app
-RUN npm install -g @angular/cli@latest
-
-COPY package*.json ./
-RUN npm ci --silent
-
+COPY package.json package-lock.json ./
+RUN npm install --legacy-peer-deps
 COPY . .
+RUN npm run build --prod
 
-RUN ng build --configuration=production
-
-# Verificaciones
-RUN ls -la /app/dist/sakai-ng/
-RUN find /app/dist/sakai-ng -name "*.js" | head -5
-
-FROM nginx:1.25-alpine AS production-stage
-
-RUN rm -rf /usr/share/nginx/html/*
-RUN rm -rf /etc/nginx/conf.d/*
-
-COPY nginx/nginx.conf /etc/nginx/nginx.conf
-COPY --from=build-stage /app/dist/sakai-ng /usr/share/nginx/html
-
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Etapa 2: Configurar Nginx para servir la aplicación
+FROM nginx:alpine
+COPY --from=build /app/dist/geolocalizacion/browser /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf

@@ -1738,6 +1738,31 @@ export class MapService {
         this.clearOrderMarkers();
     }
 
+    updateUserMarkersLocation(users: UserDto[]): void {
+        if (!this.map || !this.markerClusterGroup) return;
+
+        users.forEach(user => {
+            if (user.ubicacion?.geublat && user.ubicacion?.geublon) {
+                const existingMarker = this.userMarkers.get(user.usucod);
+
+                if (existingMarker) {
+                    // Actualizar posición del marcador existente
+                    const newLatLng = L.latLng(user.ubicacion.geublat, user.ubicacion.geublon);
+                    existingMarker.setLatLng(newLatLng);
+
+                    // Actualizar popup si es necesario
+                    const popupContent = this.createUserPopupContent(user);
+                    existingMarker.setPopupContent(popupContent);
+                } else {
+                    // Crear nuevo marcador si no existe
+                    const marker = this.createUserMarker(user);
+                    this.userMarkers.set(user.usucod, marker);
+                    this.markerClusterGroup?.addLayer(marker);
+                }
+            }
+        });
+    }
+
     /**
      * Destruye el mapa y limpia recursos
      */

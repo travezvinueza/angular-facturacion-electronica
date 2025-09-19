@@ -62,7 +62,7 @@ export class AppMenu {
                         isAuthenticated: true,
                         icon: 'pi pi-fw pi-cog',
                         items: [
-                            { label: 'Detalles del Registro', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/detalles-registro'] },
+                            { label: 'Detalles del Registro', isAuthenticated: true, icon: 'pi pi-fw pi-map-marker', routerLink: ['/pages/item-detail'] },
                             { label: 'Vendedores', isAuthenticated: true, icon: 'pi pi-fw pi-id-card', routerLink: ['/pages/vendedores'] },
                         ]
                     },

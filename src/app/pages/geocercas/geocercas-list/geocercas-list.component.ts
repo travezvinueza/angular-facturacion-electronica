@@ -19,7 +19,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { DialogModule } from 'primeng/dialog';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { catchError, finalize, of, retry, Subject, takeUntil, timeout, timer } from 'rxjs';
+import { catchError, finalize, of, retry, startWith, Subject, switchMap, takeUntil, timeout, timer } from 'rxjs';
 import { UserDto } from '@/core/models/UserDto';
 import { UserService } from '@/core/services/user.service';
 import { MapService, RangeDisplayInfo, SearchResult } from '@/core/services/map.service';
@@ -83,7 +83,13 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
     @ViewChild('scrollContainer') scrollContainer!: ElementRef;
 
-    
+
+    //Propiedades para el polling/ refresh de coordenadas en el mapa en tiempo real
+
+    private pollingSubscription$ = new Subject<void>();
+    private readonly POLLING_INTERVAL = 30000; // 30 segundos
+    private isPollingActive = false;
+
     //Propiedades de geocoding
     userLocations: Map<string, string> = new Map();
     loadingLocations: Set<string> = new Set();
@@ -170,6 +176,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     ngOnInit(): void {
         this.getAllUsers();
         this.subscribeToMapService();
+        this.startUserLocationPolling();
     }
 
     ngAfterViewInit(): void {
@@ -613,6 +620,7 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
     selectSearchResult(result: SearchResult): void {
         this.mapService.selectSearchResult(result);
     }
+
 
     clearLocationSearch(): void {
         this.searchLocation = '';
@@ -1195,7 +1203,91 @@ export class GeocercasListComponent implements OnInit, AfterViewInit, OnDestroy 
         }
     }
 
+    //Métodos para el polling/ refresh de coordenadas en el mapa en tiempo real
+
+    private startUserLocationPolling(): void {
+        if (this.isPollingActive) return;
+
+        this.isPollingActive = true;
+
+        this.pollingSubscription$
+            .pipe(
+                startWith(0), // Ejecutar inmediatamente
+                switchMap(() => this.userService.getAllListUser2(true)),
+                takeUntil(this.destroy$),
+                catchError((error) => {
+                    console.error('Error en polling de usuarios:', error);
+                    return of([]);
+                })
+            )
+            .subscribe({
+                next: (users) => {
+                    this.updateUsersLocation(users);
+                },
+                error: (error) => {
+                    console.error('Error crítico en polling:', error);
+                    this.restartPolling();
+                }
+            });
+        this.scheduleNextPoll();
+    }
+
+    private scheduleNextPoll(): void {
+        if (!this.isPollingActive) return;
+
+        setTimeout(() => {
+            if (this.isPollingActive) {
+                this.pollingSubscription$.next();
+                this.scheduleNextPoll();
+            }
+        }, this.POLLING_INTERVAL);
+    }
+
+    private updateUsersLocation(users: UserDto[]): void {
+        users.forEach(updatedUser => {
+            const existingUserIndex = this.users.findIndex(u => u.usucod === updatedUser.usucod);
+            if (existingUserIndex !== -1) {
+                this.users[existingUserIndex].ubicacion = updatedUser.ubicacion;
+            }
+        });
+
+        this.filteredUsers = this.filteredUsers.map(user => {
+            const updatedUser = users.find(u => u.usucod === user.usucod);
+            return updatedUser ? { ...user, ubicacion: updatedUser.ubicacion } : user;
+        });
+
+        if (this.mapInitialized) {
+            this.mapService.updateUserMarkersLocation(users);
+        }
+    }
+    //Controles
+    stopUserLocationPolling(): void {
+        this.isPollingActive = false;
+        this.pollingSubscription$.complete();
+    }
+
+    restartPolling(): void {
+        this.stopUserLocationPolling();
+        this.pollingSubscription$ = new Subject<void>();
+        setTimeout(() => this.startUserLocationPolling(), 5000); // Reiniciar en 5 segundos
+    }
+
+    pausePolling(): void {
+        this.isPollingActive = false;
+    }
+
+    resumePolling(): void {
+        if (!this.isPollingActive) {
+            this.startUserLocationPolling();
+        }
+    }
+
+
+
     ngOnDestroy(): void {
+
+        this.stopUserLocationPolling()
+
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer);
         }
