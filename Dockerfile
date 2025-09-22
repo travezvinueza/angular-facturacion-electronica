@@ -1,4 +1,4 @@
-# Etapa 1: Construir el proyecto Angular
+# Etapa 1: Construir el proyecto Angular.
 FROM node:20 AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
