@@ -1,45 +1,52 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
 import { environment } from 'src/environments/environment';
 import { UserDto } from '../models/UserDto';
+import { ApiResponse } from '../models/ApiResponse';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { CreateUserDto } from '@/core/models/CreateUserDto';
+import { UpdateUserDto } from '@/core/models/UpdateUserDto';
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class UserService {
-  private readonly baseUrl = environment.apiUrl + '/usuarios';
+    private readonly baseUrl = environment.apiUrl + '/Users';
+    private readonly http = inject(HttpClient);
 
-constructor(private readonly http: HttpClient) { }
-
- getAllListUser(): Observable<UserDto[]> {
-    return this.http.get<UserDto[]>(`${this.baseUrl}`);
-  }
-
-  createUser(userDto: UserDto, image?: File): Observable<UserDto> {
-    const formData = new FormData();
-    formData.append('userDto', new Blob([JSON.stringify(userDto)], { type: 'application/json' }));
-    if (image) {
-      formData.append('image_us', image);
+    private getHeaders(): HttpHeaders {
+        const token = localStorage.getItem('token');
+        return new HttpHeaders({
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        });
     }
-    return this.http.post<UserDto>(`${this.baseUrl}`, formData);
-  }
 
-  getUserById(id: number): Observable<UserDto> {
-    return this.http.get<UserDto>(`${this.baseUrl}/${id}`);
-  }
-
-  updateUser(id: number, userDto: UserDto, image?: File): Observable<UserDto> {
-    const formData = new FormData();
-    formData.append('userDto', new Blob([JSON.stringify(userDto)], { type: 'application/json' }));
-    if (image) {
-      formData.append('newImage', image);
+    getAllListUser(): Observable<UserDto[]> {
+        return this.http.get<ApiResponse<UserDto[]>>(`${this.baseUrl}/all`, { headers: this.getHeaders() }).pipe(
+            map(response => response.data)
+        );
     }
-    return this.http.put<UserDto>(`${this.baseUrl}/${id}`, formData);
-  }
 
-  deleteUser(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${id}`);
-  }
-
+    createUser(createDto: CreateUserDto): Observable<UserDto> {
+        return this.http.post<ApiResponse<UserDto>>(`${this.baseUrl}/createUser`, createDto, { headers: this.getHeaders() }).pipe(
+            map(response => response.data)
+        );
+    }
+    updateUser(id: number, updateDto: UpdateUserDto): Observable<UserDto> {
+        return this.http.put<ApiResponse<UserDto>>(`${this.baseUrl}/updateUserById/${id}`, updateDto, { headers: this.getHeaders() }).pipe(
+            map(response => response.data)
+        );
+    }
+    deleteUser(id: number): Observable<UserDto> {
+        return this.http.delete<ApiResponse<UserDto>>(`${this.baseUrl}/deleteLogicUserById/${id}`, { headers: this.getHeaders() }).pipe(
+            map(response => response.data)
+        );
+    }
+    deleteForceUser(id: number): Observable<UserDto> {
+        return this.http.delete<ApiResponse<UserDto>>(`${this.baseUrl}/deleteForceUserById/${id}`, { headers: this.getHeaders() }).pipe(
+            map(response => response.data)
+        );
+    }
 }

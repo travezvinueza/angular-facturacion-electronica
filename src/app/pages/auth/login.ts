@@ -44,40 +44,24 @@ import { CommonModule } from '@angular/common';
                         </div>
 
                         <div>
-                    <form [formGroup]="userDetailForm" (ngSubmit)="login()">
+                            <form [formGroup]="userDetailForm" (ngSubmit)="login()">
+                                <label for="usernameOrEmail" class="block text-surface-900 dark:text-surface-0 text-xl font-medium">Username or Email</label>
+                                <input pInputText type="text" formControlName="usernameOrEmail" id="usernameOrEmail" placeholder="Username or Email" class="w-full md:w-[30rem] mb-4" />
 
-                        <label for="cedula"
-                            class="block text-surface-900 dark:text-surface-0 text-xl font-medium">Cedula</label>
-                        <input pInputText type="cedula" formControlName="cedula" id="cedula" placeholder="cedula"
-                            class="w-full md:w-[30rem] mb-4" required />
+                                <label for="password" class="block text-surface-900 dark:text-surface-0 font-medium text-xl">Password</label>
+                                <p-password type="password" formControlName="password" id="password" placeholder="Password" [toggleMask]="true" styleClass="mb-4" [fluid]="true" [feedback]="false"></p-password>
 
-                        <label for="password"
-                            class="block text-surface-900 dark:text-surface-0 font-medium text-xl">Password</label>
-                        <p-password type="password" formControlName="password" id="password" placeholder="Password"
-                            [toggleMask]="true" styleClass="mb-4" [fluid]="true" [feedback]="false"
-                            required></p-password>
+                                <div class="flex items-center justify-between mt-2 mb-6 gap-8">
+                                    <span routerLink="/auth/forgot-password" class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">Forgot password?</span>
+                                </div>
 
-                        <label for="role"
-                            class="block text-surface-900 dark:text-surface-0 text-xl font-medium">Role</label>
-                        <input pInputText type="role" formControlName="role" id="role" placeholder="role"
-                            class="w-full md:w-[30rem] mb-4" required />
+                                <p-button type="submit" styleClass="w-full">Sign In</p-button>
 
-                        <div class="flex items-center justify-between mt-2 mb-6 gap-8">
-                            <span routerLink="/auth/forgot-password"
-                                class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">Forgot
-                                password?</span>
+                                <div class="mt-3 text-center">Don't have an account?
+                                    <span routerLink="/auth/register" class="font-medium no-underline ml-2 cursor-pointer text-primary">Register</span>
+                                </div>
+                            </form>
                         </div>
-
-                        <p-button type="submit" styleClass="w-full">Sign In</p-button>
-
-                        <div class="mt-3 text-center">Don't have an account?
-                            <span routerLink="/auth/register" class="font-medium no-underline ml-2 cursor-pointer text-primary">
-                                Register
-                            </span>
-                        </div>
-                        
-                    </form>
-                </div>
                     </div>
                 </div>
             </div>
@@ -85,15 +69,14 @@ import { CommonModule } from '@angular/common';
     `
 })
 export class Login {
-    readonly formBuilder = inject(FormBuilder);
-    readonly msgService = inject(MessageService);
-    readonly authService = inject(AuthService);
-    readonly router = inject(Router);
+    private readonly formBuilder = inject(FormBuilder);
+    private readonly msgService = inject(MessageService);
+    private readonly authService = inject(AuthService);
+    private readonly router = inject(Router);
 
     userDetailForm = this.formBuilder.group({
-        cedula: ['', [Validators.required, Validators.pattern('^[0-9]+$')]],
-        password: ['', [Validators.required, Validators.minLength(6)]],
-        role: ['', [Validators.required, Validators.minLength(3)]],
+        usernameOrEmail: ['', [Validators.required]],
+        password: ['', [Validators.required, Validators.minLength(6)]]
     });
 
     login(): void {
@@ -102,19 +85,20 @@ export class Login {
             return;
         }
 
-        const { cedula, password, role } = this.userDetailForm.value;
+        const { usernameOrEmail, password } = this.userDetailForm.value;
 
-        this.authService.login(cedula!, password!, role!).subscribe({
-            next: () => {
-                const roles = this.authService.getRolesSignal()();
-                if (roles.includes('Admin')) {
-                    this.router.navigate(['/admin/dashboard']);
-                } else if (roles) {
-                    this.router.navigate(['/dashboard']);
+        this.authService.login(usernameOrEmail!, password!).subscribe({
+            next: (response) => {
+                if (response.success) {
+                    this.msgService.add({ severity: 'success', summary: 'Éxito', detail: response.message });
+                    this.router.navigate(['/pages/user-list']);
                 } else {
-                    this.msgService.add({ severity: 'error', summary: 'Error', detail: 'Rol no encontrado' });
+                    this.msgService.add({ severity: 'error', summary: 'Error', detail: response.message });
                 }
             },
+            error: (error) => {
+                this.msgService.add({ severity: 'error', summary: 'Error', detail: error.error?.message || 'Error al iniciar sesión' });
+            }
         });
     }
 }

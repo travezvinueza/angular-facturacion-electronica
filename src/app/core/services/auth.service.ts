@@ -5,76 +5,68 @@ import { Observable, tap } from 'rxjs';
 import { LoginDto } from '../models/LoginDto';
 
 @Injectable({
-  providedIn: 'root'
+    providedIn: 'root'
 })
 export class AuthService {
 
-  private readonly baseUrl = environment.apiUrl + '/auth';
-   private readonly rolesSignal = signal<string[]>(this.getDecodedToken()?.roles || []);
+    private readonly baseUrl = environment.apiUrl + '/auth';
+    private readonly userIdSignal = signal<number | null>(this.getDecodedToken()?.userId || null);
 
-  constructor(private readonly http: HttpClient) { }
+    constructor(private readonly http: HttpClient) { }
 
-  login(cedula: string, password: string, role: string): Observable<LoginDto> {
-    const body = { cedula, password, role };
-    return this.http.post<LoginDto>(`${this.baseUrl}/login-with-role`, body).pipe(
-      tap((user: LoginDto) => {
-        localStorage.setItem('token', user.token);
-
-        this.updateRolesFromToken(user.token);
-      })
-    );
-  }
-
-    /** Decodifica el token JWT */
-  private decodeToken(token: string): any {
-    try {
-      const payload = token.split('.')[1];
-      return JSON.parse(atob(payload));
-    } catch (e) {
-      console.error('Error al decodificar el token:', e);
-      return null;
+    login(usernameOrEmail: string, password: string): Observable<LoginDto> {
+        const body = { usernameOrEmail, password };
+        return this.http.post<LoginDto>(`${this.baseUrl}/login`, body).pipe(
+            tap((response: LoginDto) => {
+                if (response.success && response.data) {
+                    localStorage.setItem('token', response.data.accessToken);
+                    localStorage.setItem('user', JSON.stringify(response.data));
+                    this.updateUserIdFromToken(response.data.accessToken);
+                }
+            })
+        );
     }
-  }
 
-  /** Obtiene el token decodificado */
-  private getDecodedToken(): any {
-    const token = localStorage.getItem('token');
-    return token ? this.decodeToken(token) : null;
-  }
-  
-  /** Verifica si el token ha expirado */
-  isTokenExpired(): boolean {
-    const decoded = this.getDecodedToken();
-    const expiration = decoded?.exp ? decoded.exp * 1000 : 0;
-    return Date.now() > expiration;
-  }
+    private decodeToken(token: string): any {
+        try {
+            const payload = token.split('.')[1];
+            return JSON.parse(atob(payload));
+        } catch (e) {
+            console.error('Error al decodificar el token:', e);
+            return null;
+        }
+    }
 
-  /** Verifica si el usuario tiene un rol específico */
-  hasRole(role: string): boolean {
-    return this.rolesSignal().includes(role);
-  }
+    private getDecodedToken(): any {
+        const token = localStorage.getItem('token');
+        return token ? this.decodeToken(token) : null;
+    }
 
-  /** Obtiene los roles del usuario (como signal) */
-  getRolesSignal(): Signal<string[]> {
-    return this.rolesSignal;
-  }
+    isTokenExpired(): boolean {
+        const decoded = this.getDecodedToken();
+        const expiration = decoded?.exp ? decoded.exp * 1000 : 0;
+        return Date.now() > expiration;
+    }
 
-  updateRolesFromToken(token: string): void {
-    const decodedToken = this.decodeToken(token);
-    const roles = decodedToken?.roles || [];
+    getUserIdSignal(): Signal<number | null> {
+        return this.userIdSignal;
+    }
 
-    this.rolesSignal.set(roles); // Actualizar el signal
-  }
+    updateUserIdFromToken(token: string): void {
+        const decodedToken = this.decodeToken(token);
+        const userId = decodedToken?.userId || null;
+        this.userIdSignal.set(userId);
+    }
 
-  /** Verifica si el usuario está autenticado */
-  isAuthenticated(): boolean {
-    const token = this.rolesSignal();
-    return token ? !this.isTokenExpired() : false;
-  }
+    isAuthenticated(): boolean {
+        const token = localStorage.getItem('token');
+        return token ? !this.isTokenExpired() : false;
+    }
 
-  logOut() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-  }
+    logOut(): void {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        this.userIdSignal.set(null);
+    }
 
 }

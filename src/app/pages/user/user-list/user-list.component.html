@@ -1,166 +1,485 @@
-<div class="grid">
-  <div class="col-8">
-    <div class="card px-6 py-6">
-      <p-toolbar styleClass="mb-6">
-        <ng-template #start>
-          <p-button label="New" icon="pi pi-plus" severity="secondary" class="mr-2" (onClick)="openNew()" />
-        </ng-template>
+<div class="card">
+    <p-confirmDialog [style]="{ width: '450px' }"></p-confirmDialog>
 
-        <ng-template #end>
-          <p-button label="Export" icon="pi pi-upload" severity="secondary" (onClick)="exportCSV()" />
-        </ng-template>
-      </p-toolbar>
+    <div class="flex flex-col gap-8 w-full">
 
-      <p-table #dt [value]="users" responsiveLayout="scroll" [rows]="10" [paginator]="true"
-        [globalFilterFields]="['name_us']" [tableStyle]="{ 'min-width': '75rem' }" [rowHover]="true" dataKey="id"
-        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} users" [showCurrentPageReport]="true"
-        [rowsPerPageOptions]="[10, 20, 30]">
-        <ng-template pTemplate="header">
-          <tr>
-            <th pSortableColumn="id_us" scope="col">
-              Id <p-sortIcon field="id_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="name_us" scope="col">
-              Name <p-sortIcon field="name_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="lastname_us" scope="col">
-              Lastname <p-sortIcon field="lastname_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="email_us" scope="col">
-              Email <p-sortIcon field="email_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="rol" scope="col">
-              Rol <p-sortIcon field="rol"></p-sortIcon>
-            </th>
-            <th pSortableColumn="dni_us" scope="col">
-              Dni <p-sortIcon field="dni_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="phone_us" scope="col">
-              Phone <p-sortIcon field="phone_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="nationality_us" scope="col">
-              Nationality <p-sortIcon field="nationality_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="gender_us" scope="col">
-              Gender <p-sortIcon field="gender_us"></p-sortIcon>
-            </th>
-            <th pSortableColumn="terms_and_conditions" scope="col">
-              Terms and Conditions <p-sortIcon field="terms_and_conditions"></p-sortIcon>
-            </th>
-          </tr>
-        </ng-template>
+        <!-- Header con título -->
+        <div class="flex items-center gap-2 min-w-0">
+            <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-primary-100 via-primary-200/60 to-primary-300/40 dark:from-primary-900/50 dark:via-primary-800/70 dark:to-primary-700/50 border border-primary-200/60 dark:border-primary-600/40 shadow-lg">
+                <i class="pi pi-users text-primary-600 dark:text-primary-300 text-xl"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-gray-800 dark:text-white text-xl sm:text-2xl font-bold leading-snug tracking-tight">
+                    Gestión de Usuarios
+                </p>
+                <p style="margin-top:-15px;" class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-snug">
+                    Administración y control de usuarios del sistema
+                </p>
+            </div>
+        </div>
 
-        <ng-template pTemplate="body" let-user>
-          <tr>
-            <td style="min-width: 10rem">{{ user.id }}</td>
-            <td style="min-width: 10rem">{{ user.name_us }}</td>
-            <td style="min-width: 10rem">{{ user.lastname_us }}</td>
-            <td style="min-width: 10rem">{{ user.email_us }}</td>
-            <td style="min-width: 10rem">{{ user.rol }}</td>
-            <td style="min-width: 10rem">{{ user.dni_us }}</td>
-            <td style="min-width: 10rem">{{ user.phone_us }}</td>
-            <td style="min-width: 10rem">{{ user.nationality_us }}</td>
-            <td style="min-width: 10rem">{{ user.gender_us }}</td>
-            <td style="min-width: 10rem">{{ user.terms_and_conditions }}</td>
-          </tr>
-        </ng-template>
-      </p-table>
+        <!-- Panel Único con Background Suave -->
+        <div class="bg-surface-50/50 dark:bg-surface-900/50 backdrop-blur-sm rounded-xl border border-surface-200/50 dark:border-surface-700/50 p-6">
 
+            <!-- Tabla de Usuarios -->
+            <div class="w-full">
+
+                <!-- Header de la tabla -->
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 via-blue-200/60 to-blue-300/40 dark:from-blue-900/50 dark:via-blue-800/70 dark:to-blue-700/50 border border-blue-200/60 dark:border-blue-600/40 shadow-lg">
+                            <i class="pi pi-table text-blue-600 dark:text-blue-300 text-sm"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-gray-800 dark:text-white text-lg font-bold leading-snug tracking-tight">
+                                Listado de Usuarios
+                            </p>
+                            <p style="margin-top:-10px;" class="text-gray-500 dark:text-gray-400 text-xs leading-snug">
+                                {{ totalRecords }} usuarios registrados
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Indicador de estado -->
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full"
+                             [ngClass]="loading ? 'bg-orange-500 animate-pulse' : 'bg-emerald-500'"></div>
+                        <span class="text-xs font-medium text-surface-600 dark:text-surface-300">
+                            {{ loading ? 'Actualizando' : 'Actualizado' }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Contenedor de la tabla -->
+                <div class="bg-surface-0 dark:bg-surface-900 rounded-lg shadow-sm border border-surface-200 dark:border-surface-700">
+                    @if (loading) {
+                        <!-- Skeleton Loading para Tabla -->
+                        <div class="p-4 space-y-4">
+                            <!-- Header skeleton -->
+                            <div class="flex justify-between items-center">
+                                <div class="h-8 bg-surface-200 dark:bg-surface-700 rounded w-32 animate-pulse"></div>
+                                <div class="h-8 bg-surface-200 dark:bg-surface-700 rounded w-48 animate-pulse"></div>
+                            </div>
+
+                            <!-- Table header skeleton -->
+                            <div class="grid grid-cols-8 gap-2 p-3 border-b border-surface-200 dark:border-surface-700">
+                                @for (header of [1,2,3,4,5,6,7,8]; track header) {
+                                    <div class="h-4 bg-surface-200 dark:bg-surface-700 rounded animate-pulse"></div>
+                                }
+                            </div>
+
+                            <!-- Table rows skeleton -->
+                            @for (row of [1,2,3,4,5,6,7,8]; track row) {
+                                <div class="grid grid-cols-8 gap-2 p-3 border-b border-surface-100 dark:border-surface-800">
+                                    @for (col of [1,2,3,4,5,6,7,8]; track col) {
+                                        <div class="h-4 bg-surface-100 dark:bg-surface-800 rounded animate-pulse"></div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    } @else {
+                        <!-- Tabla Real -->
+                        <p-table
+                            #dt1
+                            [value]="users"
+                            dataKey="id"
+                            [rows]="10"
+                            [loading]="loading"
+                            [rowHover]="true"
+                            [showGridlines]="true"
+                            [paginator]="true"
+                            [globalFilterFields]="['username', 'email', 'name', 'lastName', 'dni']"
+                            responsiveLayout="scroll"
+                            class="p-datatable-sm">
+
+                            <ng-template #caption>
+                                <div class="flex justify-between items-center flex-column sm:flex-row p-4 bg-surface-50 dark:bg-surface-800">
+                                    <div class="flex gap-2 mb-2">
+                                        <p-button
+                                            label="Limpiar Filtros"
+                                            class="p-button-outlined"
+                                            icon="pi pi-filter-slash"
+                                            size="small"
+                                            (onClick)="clearTableFilters(dt1)">
+                                        </p-button>
+                                        <p-button
+                                            label="Nuevo Usuario"
+                                            icon="pi pi-plus"
+                                            severity="success"
+                                            size="small"
+                                            (onClick)="openNew()">
+                                        </p-button>
+                                    </div>
+                                    <p-iconfield iconPosition="left" class="ml-auto">
+                                        <p-inputicon>
+                                            <i class="pi pi-search"></i>
+                                        </p-inputicon>
+                                        <input
+                                            pInputText
+                                            type="text"
+                                            (input)="onGlobalFilter(dt1, $event)"
+                                            placeholder="Buscar usuarios..."
+                                            class="text-sm" />
+                                    </p-iconfield>
+                                </div>
+                            </ng-template>
+
+                            <ng-template #header>
+                                <tr>
+                                    <th style="min-width: 6rem">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-semibold text-xs">ID</span>
+                                            <p-columnFilter type="numeric" field="id" display="menu"></p-columnFilter>
+                                        </div>
+                                    </th>
+                                    <th style="min-width: 10rem">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-semibold text-xs">NOMBRE</span>
+                                            <p-columnFilter type="text" field="name" display="menu"></p-columnFilter>
+                                        </div>
+                                    </th>
+                                    <th style="min-width: 10rem">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-semibold text-xs">APELLIDO</span>
+                                            <p-columnFilter type="text" field="lastName" display="menu"></p-columnFilter>
+                                        </div>
+                                    </th>
+                                    <th style="min-width: 10rem">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-semibold text-xs">DNI</span>
+                                            <p-columnFilter type="text" field="dni" display="menu"></p-columnFilter>
+                                        </div>
+                                    </th>
+                                    <th style="min-width: 10rem">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-semibold text-xs">USUARIO</span>
+                                            <p-columnFilter type="text" field="username" display="menu"></p-columnFilter>
+                                        </div>
+                                    </th>
+                                    <th style="min-width: 12rem">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-semibold text-xs">EMAIL</span>
+                                            <p-columnFilter type="text" field="email" display="menu"></p-columnFilter>
+                                        </div>
+                                    </th>
+                                    <th style="min-width: 6rem" class="text-center">
+                                        <div class="flex justify-center items-center">
+                                            <span class="font-semibold text-xs">ESTADO</span>
+                                        </div>
+                                    </th>
+                                    <th style="min-width: 10rem" class="text-center">
+                                        <span class="font-semibold text-xs">ACCIONES</span>
+                                    </th>
+                                </tr>
+                            </ng-template>
+
+                            <ng-template #body let-user>
+                                <tr class="hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors">
+                                    <td>
+                                        <span class="font-mono text-xs">{{ user.id }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-sm font-medium">{{ user.name }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-sm font-medium">{{ user.lastName }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="flex items-center gap-2">
+                                            <i class="pi pi-id-card text-blue-500 text-sm"></i>
+                                            <span class="text-sm font-mono">{{ user.dni }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-6 h-6 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center">
+                                                <i class="pi pi-user text-white text-xs"></i>
+                                            </div>
+                                            <span class="text-sm font-medium">{{ user.username }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex items-center gap-2">
+                                            <i class="pi pi-envelope text-blue-500 text-sm"></i>
+                                            <span class="text-sm">{{ user.email }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="flex justify-center">
+                                            @if (user.status === 'A') {
+                                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium">
+                                                    <i class="pi pi-check-circle text-xs"></i>
+                                                    Activo
+                                                </span>
+                                            } @else {
+                                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium">
+                                                    <i class="pi pi-times-circle text-xs"></i>
+                                                    Inactivo
+                                                </span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="flex justify-center gap-2">
+                                            <p-button
+                                                icon="pi pi-pencil"
+                                                severity="info"
+                                                [text]="true"
+                                                [rounded]="true"
+                                                size="small"
+                                                pTooltip="Editar usuario"
+                                                tooltipPosition="bottom"
+                                                (onClick)="editUser(user)">
+                                            </p-button>
+                                            <p-button
+                                                icon="pi pi-eye-slash"
+                                                severity="danger"
+                                                [text]="true"
+                                                [rounded]="true"
+                                                size="small"
+                                                pTooltip="Ocultar usuario"
+                                                tooltipPosition="bottom"
+                                                (onClick)="deleteUser(user)">
+                                            </p-button>
+                                            <p-button
+                                                icon="pi pi-trash"
+                                                severity="danger"
+                                                [text]="true"
+                                                [rounded]="true"
+                                                size="small"
+                                                pTooltip="Eliminar definitivamente"
+                                                tooltipPosition="bottom"
+                                                (onClick)="deleteForceUser(user)">
+                                            </p-button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </ng-template>
+
+                            <ng-template #emptymessage>
+                                <tr>
+                                    <td colspan="8" class="text-center py-8">
+                                        <div class="flex flex-col items-center gap-3">
+                                            <i class="pi pi-users text-4xl text-surface-300 dark:text-surface-600"></i>
+                                            <div>
+                                                <p class="text-surface-500 dark:text-surface-400 font-medium">No se encontraron usuarios</p>
+                                                <p class="text-sm text-surface-400 dark:text-surface-500">Ajusta los filtros o agrega nuevos usuarios</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </ng-template>
+
+                            <ng-template #loadingbody>
+                                <tr>
+                                    <td colspan="8" class="text-center py-8">
+                                        <div class="flex items-center justify-center gap-3">
+                                            <i class="pi pi-spin pi-spinner text-xl text-primary"></i>
+                                            <span class="text-surface-600 dark:text-surface-400">Cargando usuarios...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </ng-template>
+                        </p-table>
+                    }
+                </div>
+            </div>
+        </div>
     </div>
-
-    <p-dialog [(visible)]="userDialog" [style]="{ width: '450px' }" header="Usuario Details" [modal]="true"
-      styleClass="p-fluid">
-      <form [formGroup]="userForm">
-        <div class="field">
-          <div>
-            <label for="name_us">Name</label>
-            <input type="text" pInputText id="name_us" formControlName="name_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('name_us') }" />
-            <small *ngIf="isRequire('name_us', 'required')" class="input-invalid">User name is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="lastname_us">Lastname</label>
-            <input type="text" pInputText id="lastname_us" formControlName="lastname_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('lastname_us') }" />
-            <small *ngIf="isRequire('lastname_us', 'required')" class="input-invalid">Last name is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="email_us">Email</label>
-            <input type="text" pInputText id="email_us" formControlName="email_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('email_us') }" />
-            <small *ngIf="isRequire('email_us', 'required')" class="input-invalid">Email is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="password_us">Password</label>
-            <input type="text" pInputText id="password_us" formControlName="password_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('password_us') }" />
-            <small *ngIf="isRequire('password_us', 'required')" class="input-invalid">Password is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="dni_us">DNI</label>
-            <input type="text" pInputText id="dni_us" formControlName="dni_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('dni_us') }" />
-            <small *ngIf="isRequire('dni_us', 'required')" class="input-invalid">DNI is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="phone_us">Phone</label>
-            <input type="text" pInputText id="phone_us" formControlName="phone_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('phone_us') }" />
-            <small *ngIf="isRequire('phone_us', 'required')" class="input-invalid">Phone is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="nationality_us">Nationality</label>
-            <input type="text" pInputText id="nationality_us" formControlName="nationality_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('nationality_us') }" />
-            <small *ngIf="isRequire('nationality_us', 'required')" class="input-invalid">Nationality is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="gender_us">Gender</label>
-            <input type="text" pInputText id="gender_us" formControlName="gender_us" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('gender_us') }" />
-            <small *ngIf="isRequire('gender_us', 'required')" class="input-invalid">Gender is
-              required.</small>
-          </div>
-        </div>
-        <div class="field">
-          <div>
-            <label for="terms_and_conditions">Terms and Conditions</label>
-            <input type="text" pInputText id="terms_and_conditions" formControlName="terms_and_conditions" autofocus
-              [ngClass]="{ 'ng-dirty': isInvalid('terms_and_conditions') }" />
-            <small *ngIf="isRequire('terms_and_conditions', 'required')" class="input-invalid">Terms and Conditions is
-              required.</small>
-          </div>
-
-        </div>
-
-        <div class="flex">
-          <p-button label="Cancel" onkeyup icon="pi pi-times" text (click)="hideDialog()" />
-          <p-button label="Save" onkeyup icon="pi pi-check" (click)="saveUser()" />
-        </div>
-      </form>
-    </p-dialog>
-
-    <p-confirmdialog [style]="{ width: '450px' }" />
-  </div>
 </div>
+<!-- Dialog de Creación de Usuario -->
+<p-dialog
+    [(visible)]="userDialog"
+    [style]="{ width: '600px' }"
+    [header]="isEditMode ? 'Editar Usuario' : 'Nuevo Usuario'"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    styleClass="p-fluid">
+
+    <ng-template pTemplate="content">
+        <form [formGroup]="userForm" class="space-y-4">
+
+            <!-- Nombre y Apellido -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-surface-900 dark:text-surface-0 mb-2">
+                        Nombre <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        pInputText
+                        id="name"
+                        formControlName="name"
+                        placeholder="Ingrese el nombre"
+                        [class.ng-invalid]="isFieldInvalid('name')"
+                        [class.ng-dirty]="isFieldInvalid('name')" />
+                    @if (isFieldInvalid('name')) {
+                        <small class="text-red-500 text-xs mt-1">{{ getFieldError('name') }}</small>
+                    }
+                </div>
+
+                <div>
+                    <label for="lastName" class="block text-sm font-medium text-surface-900 dark:text-surface-0 mb-2">
+                        Apellido <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        pInputText
+                        id="lastName"
+                        formControlName="lastName"
+                        placeholder="Ingrese el apellido"
+                        [class.ng-invalid]="isFieldInvalid('lastName')"
+                        [class.ng-dirty]="isFieldInvalid('lastName')" />
+                    @if (isFieldInvalid('lastName')) {
+                        <small class="text-red-500 text-xs mt-1">{{ getFieldError('lastName') }}</small>
+                    }
+                </div>
+            </div>
+
+            <!-- DNI y Teléfono -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="dni" class="block text-sm font-medium text-surface-900 dark:text-surface-0 mb-2">
+                        DNI/Cédula <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        pInputText
+                        id="dni"
+                        formControlName="dni"
+                        placeholder="10 dígitos"
+                        [class.ng-invalid]="isFieldInvalid('dni')"
+                        [class.ng-dirty]="isFieldInvalid('dni')" />
+                    @if (isFieldInvalid('dni')) {
+                        <small class="text-red-500 text-xs mt-1">{{ getFieldError('dni') }}</small>
+                    }
+                </div>
+
+                <div>
+                    <label for="phone" class="block text-sm font-medium text-surface-900 dark:text-surface-0 mb-2">
+                        Teléfono <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        pInputText
+                        id="phone"
+                        formControlName="phone"
+                        placeholder="10 dígitos"
+                        [class.ng-invalid]="isFieldInvalid('phone')"
+                        [class.ng-dirty]="isFieldInvalid('phone')" />
+                    @if (isFieldInvalid('phone')) {
+                        <small class="text-red-500 text-xs mt-1">{{ getFieldError('phone') }}</small>
+                    }
+                </div>
+            </div>
+
+            <!-- Dirección y Edad -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="address" class="block text-sm font-medium text-surface-900 dark:text-surface-0 mb-2">
+                        Dirección <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        pInputText
+                        id="address"
+                        formControlName="address"
+                        placeholder="Ingrese la dirección"
+                        [class.ng-invalid]="isFieldInvalid('address')"
+                        [class.ng-dirty]="isFieldInvalid('address')" />
+                    @if (isFieldInvalid('address')) {
+                        <small class="text-red-500 text-xs mt-1">{{ getFieldError('address') }}</small>
+                    }
+                </div>
+
+                <div>
+                    <label for="age" class="block text-sm font-medium text-surface-900 dark:text-surface-0 mb-2">
+                        Edad <span class="text-red-500">*</span>
+                    </label>
+                    <p-inputNumber
+                        inputId="age"
+                        formControlName="age"
+                        [min]="18"
+                        [max]="100"
+                        [showButtons]="true"
+                        placeholder="Edad"
+                        [class.ng-invalid]="isFieldInvalid('age')"
+                        [class.ng-dirty]="isFieldInvalid('age')">
+                    </p-inputNumber>
+                    @if (isFieldInvalid('age')) {
+                        <small class="text-red-500 text-xs mt-1">{{ getFieldError('age') }}</small>
+                    }
+                </div>
+            </div>
+
+            <!-- Usuario y Email -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-surface-900 dark:text-surface-0 mb-2">
+                        Usuario <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        pInputText
+                        id="username"
+                        formControlName="username"
+                        placeholder="Nombre de usuario"
+                        [class.ng-invalid]="isFieldInvalid('username')"
+                        [class.ng-dirty]="isFieldInvalid('username')" />
+                    @if (isFieldInvalid('username')) {
+                        <small class="text-red-500 text-xs mt-1">{{ getFieldError('username') }}</small>
+                    }
+                </div>
+
+                <div>
+                    <label for="email" class="block text-sm font-medium text-surface-900 dark:text-surface-0 mb-2">
+                        Email <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        pInputText
+                        id="email"
+                        formControlName="email"
+                        placeholder="correo@ejemplo.com"
+                        [class.ng-invalid]="isFieldInvalid('email')"
+                        [class.ng-dirty]="isFieldInvalid('email')" />
+                    @if (isFieldInvalid('email')) {
+                        <small class="text-red-500 text-xs mt-1">{{ getFieldError('email') }}</small>
+                    }
+                </div>
+            </div>
+
+            <!-- Contraseña -->
+            <div>
+                <label for="password" class="block text-sm font-medium text-surface-900 dark:text-surface-0 mb-2">
+                    Contraseña
+                    @if (!isEditMode) {
+                        <span class="text-red-500">*</span>
+                    } @else {
+                        <span class="text-surface-500 text-xs">(Dejar en blanco para no cambiar)</span>
+                    }
+                </label>
+                <p-password
+                    inputId="password"
+                    formControlName="password"
+                    [placeholder]="isEditMode ? 'Dejar vacío para no cambiar' : 'Mínimo 6 caracteres'"
+                    [toggleMask]="true"
+                    [feedback]="false"
+                    [fluid]="true">
+                </p-password>
+                @if (isFieldInvalid('password')) {
+                    <small class="text-red-500 text-xs mt-1">{{ getFieldError('password') }}</small>
+                }
+            </div>
+
+        </form>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+        <p-button
+            label="Cancelar"
+            icon="pi pi-times"
+            [text]="true"
+            (onClick)="hideDialog()">
+        </p-button>
+        <p-button
+            label="Guardar"
+            icon="pi pi-check"
+            (onClick)="saveUser()">
+        </p-button>
+    </ng-template>
+</p-dialog>
