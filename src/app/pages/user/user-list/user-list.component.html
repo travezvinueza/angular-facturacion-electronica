@@ -126,12 +126,6 @@
 
                             <ng-template #header>
                                 <tr>
-                                    <th style="min-width: 6rem">
-                                        <div class="flex justify-between items-center">
-                                            <span class="font-semibold text-xs">ID</span>
-                                            <p-columnFilter type="numeric" field="id" display="menu"></p-columnFilter>
-                                        </div>
-                                    </th>
                                     <th style="min-width: 10rem">
                                         <div class="flex justify-between items-center">
                                             <span class="font-semibold text-xs">NOMBRE</span>
@@ -222,6 +216,16 @@
                                     <td class="text-center">
                                         <div class="flex justify-center gap-2">
                                             <p-button
+                                                icon="pi pi-briefcase"
+                                                severity="secondary"
+                                                [text]="true"
+                                                [rounded]="true"
+                                                size="small"
+                                                pTooltip="Ver work items"
+                                                tooltipPosition="bottom"
+                                                (onClick)="viewWorkItems(user)">
+                                            </p-button>
+                                            <p-button
                                                 icon="pi pi-pencil"
                                                 severity="info"
                                                 [text]="true"
@@ -287,6 +291,74 @@
         </div>
     </div>
 </div>
+
+<p-dialog
+    [(visible)]="workItemsDialog"
+    [style]="{ width: '600px' }"
+    [header]="'Work Items — ' + (selectedUserForItems?.username ?? '')"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    (onHide)="hideWorkItemsDialog()">
+
+    <p-table
+        [value]="workItems"
+        [loading]="workItemsLoading"
+        [paginator]="true"
+        [rows]="5"
+        [rowsPerPageOptions]="[5, 10]"
+        styleClass="p-datatable-sm"
+        [tableStyle]="{ 'min-width': '100%' }">
+
+        <ng-template pTemplate="header">
+            <tr>
+                <th>Código</th>
+                <th>Descripción</th>
+                <th>Estado</th>
+                <th>Relevancia</th>
+                <th>Vencimiento</th>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-item>
+            <tr>
+                <td>
+                    <span class="font-mono text-sm font-semibold text-primary">
+                        {{ item.code }}
+                    </span>
+                </td>
+                <td class="text-sm">{{ item.description }}</td>
+                <td>
+                    <p-tag
+                        [value]="getStatusLabel(item.status)"
+                        [severity]="getStatusSeverity(item.status)">
+                    </p-tag>
+                </td>
+                <td>
+                    <div class="flex align-items-center gap-2">
+                        <i class="pi pi-star-fill text-yellow-400 text-xs"></i>
+                        <span class="text-sm font-medium">{{ item.relevance }}</span>
+                    </div>
+                </td>
+                <td class="text-sm text-surface-500">
+                    {{ item.expirationDate | date: 'dd/MM/yyyy' }}
+                </td>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+            <tr>
+                <td colspan="5" class="text-center text-surface-500 py-4">
+                    <i class="pi pi-inbox text-2xl block mb-2"></i>
+                    Sin work items asignados
+                </td>
+            </tr>
+        </ng-template>
+
+    </p-table>
+
+</p-dialog>
+
 <!-- Dialog de Creación de Usuario -->
 <p-dialog
     [(visible)]="userDialog"

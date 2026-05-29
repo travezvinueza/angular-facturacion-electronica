@@ -30,6 +30,8 @@ export class AppMenu {
                 label: 'UI Components',
                 items: [
                     { label: 'Gestion Usuarios', isAuthenticated: true, icon: 'pi pi-fw pi-id-card', routerLink: ['/pages/user-list'] },
+                    { label: 'Gestion Items de Trabajo', isAuthenticated: true, icon: 'pi pi-fw pi-id-card', routerLink: ['/pages/work-items'] },
+
                 ]
             },
             {

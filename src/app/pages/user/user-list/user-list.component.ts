@@ -17,30 +17,18 @@ import { PasswordModule } from 'primeng/password';
 import { Table, TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { WorkItemDto } from '@/core/models/WorkItemDto';
+import { Tag } from 'primeng/tag';
 
 
 @Component({
     selector: 'app-user-list',
     standalone: true,
-    imports: [
-        CommonModule,
-        ReactiveFormsModule,
-        TableModule,
-        InputTextModule,
-        InputNumberModule,
-        PasswordModule,
-        ButtonModule,
-        IconFieldModule,
-        InputIconModule,
-        TooltipModule,
-        DialogModule,
-        ConfirmDialogModule
-    ],
+    imports: [CommonModule, ReactiveFormsModule, TableModule, InputTextModule, InputNumberModule, PasswordModule, ButtonModule, IconFieldModule, InputIconModule, TooltipModule, DialogModule, ConfirmDialogModule, Tag],
     templateUrl: './user-list.component.html',
     styleUrls: ['./user-list.component.css']
 })
 export class UserListComponent implements OnInit {
-
     users: UserDto[] = [];
     loading = false;
     totalRecords = 0;
@@ -51,12 +39,65 @@ export class UserListComponent implements OnInit {
     isEditMode = false;
     selectedUserId: number | null = null;
 
+    workItemsDialog = false;
+    workItems: WorkItemDto[] = [];
+    workItemsLoading = false;
+    selectedUserForItems: UserDto | null = null;
+
+    viewWorkItems(user: UserDto): void {
+        this.selectedUserForItems = user;
+        this.workItemsLoading = true;
+        this.workItemsDialog = true;
+
+        this.userService.getWorkItemsByUser(user.id).subscribe({
+            next: (items: WorkItemDto[]) => {
+                this.workItems = items;
+                this.workItemsLoading = false;
+            },
+            error: (error: HttpErrorResponse) => {
+                console.error(error);
+                this.msgService.add({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: error.error?.message || 'No se pudieron cargar los work items'
+                });
+                this.workItemsLoading = false;
+            }
+        });
+    }
+
+    hideWorkItemsDialog(): void {
+        this.workItemsDialog = false;
+        this.workItems = [];
+        this.selectedUserForItems = null;
+    }
+
+    getStatusLabel(status: string): string {
+        const map: Record<string, string> = {
+            A: 'Activo',
+            I: 'Inactivo',
+            P: 'Pendiente',
+            D: 'Disponible'
+        };
+        return map[status] ?? status;
+    }
+
+    getStatusSeverity(status: string): string {
+        const map: Record<string, string> = {
+            A: 'success',
+            I: 'danger',
+            P: 'warn',
+            D: 'info'
+        };
+        return map[status] ?? 'secondary';
+    }
+
     constructor(
         private readonly userService: UserService,
         private readonly msgService: MessageService,
         private readonly formBuilder: FormBuilder,
         private readonly confirmationService: ConfirmationService
-    ) { }
+    ) {}
 
     ngOnInit(): void {
         this.getAllUsers();
@@ -76,7 +117,6 @@ export class UserListComponent implements OnInit {
             password: ['']
         });
     }
-
 
     getAllUsers(): void {
         this.loading = true;
@@ -208,7 +248,7 @@ export class UserListComponent implements OnInit {
 
         this.userService.updateUser(this.selectedUserId!, updateData).subscribe({
             next: (updatedUser: UserDto) => {
-                const index = this.users.findIndex(u => u.id === this.selectedUserId);
+                const index = this.users.findIndex((u) => u.id === this.selectedUserId);
                 if (index !== -1) {
                     this.users[index] = updatedUser;
                 }
@@ -242,7 +282,7 @@ export class UserListComponent implements OnInit {
             accept: () => {
                 this.userService.deleteUser(user.id).subscribe({
                     next: () => {
-                        this.users = this.users.filter(u => u.id !== user.id);
+                        this.users = this.users.filter((u) => u.id !== user.id);
                         this.totalRecords = this.users.length;
                         this.msgService.add({
                             severity: 'success',
@@ -316,7 +356,7 @@ export class UserListComponent implements OnInit {
             accept: () => {
                 this.userService.deleteForceUser(user.id).subscribe({
                     next: () => {
-                        this.users = this.users.filter(u => u.id !== user.id);
+                        this.users = this.users.filter((u) => u.id !== user.id);
                         this.totalRecords = this.users.length;
                         this.msgService.add({
                             severity: 'success',

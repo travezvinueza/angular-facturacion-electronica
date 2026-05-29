@@ -7,6 +7,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { CreateUserDto } from '@/core/models/CreateUserDto';
 import { UpdateUserDto } from '@/core/models/UpdateUserDto';
+import { WorkItemDto } from '@/core/models/WorkItemDto';
 
 @Injectable({
     providedIn: 'root'
@@ -46,6 +47,18 @@ export class UserService {
     }
     deleteForceUser(id: number): Observable<UserDto> {
         return this.http.delete<ApiResponse<UserDto>>(`${this.baseUrl}/deleteForceUserById/${id}`, { headers: this.getHeaders() }).pipe(
+            map(response => response.data)
+        );
+    }
+
+    getWorkItemsByUser(userId: number): Observable<WorkItemDto[]> {
+        return this.http.get<ApiResponse<WorkItemDto[]>>(`${this.baseUrl}/${userId}/work-items`, { headers: this.getHeaders() }).pipe(
+            map(response => response.data)
+        );
+    }
+
+    getWorkItemsByStatus(status: string): Observable<WorkItemDto[]> {
+        return this.http.get<ApiResponse<WorkItemDto[]>>(`${this.baseUrl}/status/${status}`, { headers: this.getHeaders() }).pipe(
             map(response => response.data)
         );
     }
