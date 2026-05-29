@@ -1,0 +1,203 @@
+<div class="card">
+    <div class="flex flex-col gap-8 w-full">
+
+        <!-- Header -->
+        <div class="flex items-center gap-2 min-w-0">
+            <div class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-orange-100 via-orange-200/60 to-orange-300/40 dark:from-orange-900/50 dark:via-orange-800/70 dark:to-orange-700/50 border border-orange-200/60 dark:border-orange-600/40 shadow-lg">
+                <i class="pi pi-briefcase text-orange-600 dark:text-orange-300 text-xl"></i>
+            </div>
+            <div class="min-w-0">
+                <p class="text-gray-800 dark:text-white text-xl sm:text-2xl font-bold leading-snug tracking-tight">
+                    Work Items Pendientes
+                </p>
+                <p style="margin-top:-15px;" class="text-gray-500 dark:text-gray-400 text-xs sm:text-sm leading-snug">
+                    Items de trabajo con estado pendiente de resolución
+                </p>
+            </div>
+        </div>
+
+        <!-- Panel -->
+        <div class="bg-surface-50/50 dark:bg-surface-900/50 backdrop-blur-sm rounded-xl border border-surface-200/50 dark:border-surface-700/50 p-6">
+            <div class="w-full">
+
+                <!-- Header tabla -->
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-orange-100 via-orange-200/60 to-orange-300/40 dark:from-orange-900/50 dark:via-orange-800/70 dark:to-orange-700/50 border border-orange-200/60 dark:border-orange-600/40 shadow-lg">
+                            <i class="pi pi-table text-orange-600 dark:text-orange-300 text-sm"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-gray-800 dark:text-white text-lg font-bold leading-snug tracking-tight">
+                                Listado de Items
+                            </p>
+                            <p style="margin-top:-10px;" class="text-gray-500 dark:text-gray-400 text-xs leading-snug">
+                                {{ totalRecords }} items pendientes
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full"
+                             [ngClass]="loading ? 'bg-orange-500 animate-pulse' : 'bg-emerald-500'"></div>
+                        <span class="text-xs font-medium text-surface-600 dark:text-surface-300">
+                            {{ loading ? 'Actualizando' : 'Actualizado' }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Contenedor tabla -->
+                <div class="bg-surface-0 dark:bg-surface-900 rounded-lg shadow-sm border border-surface-200 dark:border-surface-700">
+                    @if (loading) {
+                        <div class="p-4 space-y-4">
+                            <div class="flex justify-between items-center">
+                                <div class="h-8 bg-surface-200 dark:bg-surface-700 rounded w-32 animate-pulse"></div>
+                                <div class="h-8 bg-surface-200 dark:bg-surface-700 rounded w-48 animate-pulse"></div>
+                            </div>
+                            <div class="grid grid-cols-6 gap-2 p-3 border-b border-surface-200 dark:border-surface-700">
+                                @for (header of [1,2,3,4,5,6]; track header) {
+                                    <div class="h-4 bg-surface-200 dark:bg-surface-700 rounded animate-pulse"></div>
+                                }
+                            </div>
+                            @for (row of [1,2,3,4,5,6,7,8]; track row) {
+                                <div class="grid grid-cols-6 gap-2 p-3 border-b border-surface-100 dark:border-surface-800">
+                                    @for (col of [1,2,3,4,5,6]; track col) {
+                                        <div class="h-4 bg-surface-100 dark:bg-surface-800 rounded animate-pulse"></div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    } @else {
+                        <p-table
+                            #dt1
+                            [value]="workItems"
+                            dataKey="id"
+                            [rows]="10"
+                            [rowHover]="true"
+                            [showGridlines]="true"
+                            [paginator]="true"
+                            [globalFilterFields]="['code', 'description']"
+                            responsiveLayout="scroll"
+                            class="p-datatable-sm">
+
+                            <ng-template #caption>
+                                <div class="flex justify-between items-center flex-column sm:flex-row p-4 bg-surface-50 dark:bg-surface-800">
+                                    <div class="flex gap-2 mb-2">
+                                        <p-button
+                                            label="Limpiar Filtros"
+                                            class="p-button-outlined"
+                                            icon="pi pi-filter-slash"
+                                            size="small"
+                                            (onClick)="clearTableFilters(dt1)">
+                                        </p-button>
+                                        <p-button
+                                            label="Actualizar"
+                                            icon="pi pi-refresh"
+                                            severity="secondary"
+                                            size="small"
+                                            (onClick)="getPendingWorkItems()">
+                                        </p-button>
+                                    </div>
+                                    <p-iconfield iconPosition="left" class="ml-auto">
+                                        <p-inputicon>
+                                            <i class="pi pi-search"></i>
+                                        </p-inputicon>
+                                        <input
+                                            pInputText
+                                            type="text"
+                                            (input)="onGlobalFilter(dt1, $event)"
+                                            placeholder="Buscar items..."
+                                            class="text-sm" />
+                                    </p-iconfield>
+                                </div>
+                            </ng-template>
+
+                            <ng-template #header>
+                                <tr>
+                                    <th style="min-width: 8rem">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-semibold text-xs">CÓDIGO</span>
+                                            <p-columnFilter type="text" field="code" display="menu"></p-columnFilter>
+                                        </div>
+                                    </th>
+                                    <th style="min-width: 16rem">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-semibold text-xs">DESCRIPCIÓN</span>
+                                            <p-columnFilter type="text" field="description" display="menu"></p-columnFilter>
+                                        </div>
+                                    </th>
+                                    <th style="min-width: 8rem" class="text-center">
+                                        <span class="font-semibold text-xs">RELEVANCIA</span>
+                                    </th>
+                                    <th style="min-width: 10rem">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-semibold text-xs">CREADO</span>
+                                        </div>
+                                    </th>
+                                    <th style="min-width: 10rem">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-semibold text-xs">VENCIMIENTO</span>
+                                        </div>
+                                    </th>
+                                </tr>
+                            </ng-template>
+
+                            <ng-template #body let-item>
+                                <tr class="hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors">
+                                    <td>
+                                        <span class="font-mono text-xs">{{ item.id }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="font-mono text-sm font-semibold text-primary">{{ item.code }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-sm">{{ item.description }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="flex justify-center items-center gap-1">
+                                            <i class="pi pi-star-fill text-xs" [ngClass]="getRelevanceIcon(item.relevance)"></i>
+                                            <span class="text-sm font-semibold" [ngClass]="getRelevanceIcon(item.relevance)">
+                                                {{ item.relevance }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="text-sm text-surface-500">{{ item.createdAt | date: 'dd/MM/yyyy' }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-sm text-surface-500">{{ item.expirationDate | date: 'dd/MM/yyyy' }}</span>
+                                    </td>
+                                </tr>
+                            </ng-template>
+
+                            <ng-template #emptymessage>
+                                <tr>
+                                    <td colspan="6" class="text-center py-8">
+                                        <div class="flex flex-col items-center gap-3">
+                                            <i class="pi pi-briefcase text-4xl text-surface-300 dark:text-surface-600"></i>
+                                            <div>
+                                                <p class="text-surface-500 dark:text-surface-400 font-medium">No hay items pendientes</p>
+                                                <p class="text-sm text-surface-400 dark:text-surface-500">No se encontraron work items con estado pendiente</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </ng-template>
+
+                            <ng-template #loadingbody>
+                                <tr>
+                                    <td colspan="6" class="text-center py-8">
+                                        <div class="flex items-center justify-center gap-3">
+                                            <i class="pi pi-spin pi-spinner text-xl text-primary"></i>
+                                            <span class="text-surface-600 dark:text-surface-400">Cargando items...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </ng-template>
+
+                        </p-table>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
